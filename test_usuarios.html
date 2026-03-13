@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test — Módulo Usuarios</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body { background:#f1f5f9; font-family:'Inter',system-ui,sans-serif; }
+    .kpi-card { background:white; border-radius:14px; box-shadow:0 1px 8px rgba(0,0,0,.07); }
+    .perm-badge { display:inline-block; background:#eef2ff; color:#4338ca; padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:700; }
+    #content-area { padding:0; }
+  </style>
+</head>
+<body>
+
+<div class="container-fluid py-3">
+  <div id="content-area"></div>
+</div>
+
+<!-- SweetAlert2 para los diálogos -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+// ── STUBS DE ENTORNO ────────────────────────────────────────────────────────
+var currentUser = { nombre:'ADMIN', password:'segura123', permisos:'P_Admin' };
+var usuDB = [
+  { nombre:'JUAN PEREZ',    password:'abc123', permisos:'P_Dash,P_Valid,P_Ped,P_Cap' },
+  { nombre:'MARIA LOPEZ',   password:'xyz789', permisos:'P_Dash,P_Prog,P_Wip,P_Edit' },
+  { nombre:'ADMIN',         password:'segura123', permisos:'P_Admin' }
+];
+var usuSelected = null;
+
+function tienePermiso(p){ return true; } // en test siempre admin
+function showLoader(msg){ console.log('LOADER:', msg); }
+function hideLoader(){ }
+function sAlert(msg, type, title){
+  Swal.fire({ icon: type||'info', title: title||'', text: msg, confirmButtonColor:'#6366f1', timer:2500, timerProgressBar:true });
+}
+function sConfirm(msg, title, confirmText, cancelText){
+  return Swal.fire({ icon:'warning', title: title||'¿Confirmar?', text: msg,
+    showCancelButton:true, confirmButtonText: confirmText||'Confirmar',
+    cancelButtonText: cancelText||'Cancelar', confirmButtonColor:'#dc2626' });
+}
+
+// Stub de google.script.run — simula respuestas exitosas
+var google = {
+  script: {
+    run: new Proxy({}, {
+      get: function(){ return new Proxy({}, {
+        get: function(target, prop){
+          if(prop==='withSuccessHandler') return function(fn){ target._success=fn; return target; };
+          if(prop==='withFailureHandler') return function(fn){ target._fail=fn; return target; };
+          // cualquier método GAS: simula éxito
+          return function(){
+            setTimeout(function(){
+              if(prop==='obtenerUsuariosPCP' && target._success) target._success(usuDB);
+              else if(target._success) target._success({success:true});
+            }, 400);
+          };
+        }
+      });
+    })
+  }
+};
+
+// ── PERMISOS ─────────────────────────────────────────────────────────────────
+var PERMISOS_LIST=[
+  {perm:'P_Dash',label:'Dashboard'},{perm:'P_Met',label:'Tablero Métricas'},
+  {perm:'P_Valid',label:'Validador'},{perm:'P_Track',label:'Tracking'},
+  {perm:'P_Ped',label:'Nuevo Pedido'},{perm:'P_PedI',label:'Pedido INT'},
+  {perm:'P_MRP_MP',label:'MRP Mat. Prima'},{perm:'P_SAL_AL',label:'Salida Alambres'},
+  {perm:'P_Gen',label:'Generador Órdenes'},{perm:'P_Plan',label:'Planificador'},
+  {perm:'P_Prog',label:'Programador MRP'},{perm:'P_PInter',label:'Prog. Interactivo'},
+  {perm:'P_Wip',label:'WIP'},
+  {perm:'P_Cap',label:'Nueva Captura'},{perm:'P_Sup',label:'Tablero Supervisor'},
+  {perm:'P_Edit',label:'Editor Producción'},
+  {perm:'P_Ruta',label:'Nueva Ruta'},{perm:'P_EdR',label:'Editor Rutas'},
+  {perm:'P_Doc',label:'Gestión Documental'},
+  {perm:'P_Admin',label:'Administrador'}
+];
+
+var PERMISOS_GRUPOS = [
+  {
+    label: 'General',
+    icon: 'fa-tachometer-alt',
+    color: '#6366f1',
+    perms: [
+      { perm: 'P_Dash',  label: 'Dashboard' },
+      { perm: 'P_Met',   label: 'Tablero Métricas' },
+      { perm: 'P_Valid', label: 'Validador' },
+      { perm: 'P_Track', label: 'Tracking' }
+    ]
+  },
+  {
+    label: 'Planeación',
+    icon: 'fa-calendar-alt',
+    color: '#0891b2',
+    perms: [
+      { perm: 'P_Ped',    label: 'Nuevo Pedido' },
+      { perm: 'P_PedI',   label: 'Pedido INT' },
+      { perm: 'P_MRP_MP', label: 'MRP Materia Prima' },
+      { perm: 'P_SAL_AL', label: 'Salida Alambres' },
+      { perm: 'P_Gen',    label: 'Generador Órdenes' },
+      { perm: 'P_Plan',   label: 'Planificador' },
+      { perm: 'P_Prog',   label: 'Programador MRP' },
+      { perm: 'P_PInter', label: 'Prog. Interactivo' },
+      { perm: 'P_Wip',    label: 'WIP' }
+    ]
+  },
+  {
+    label: 'Producción',
+    icon: 'fa-industry',
+    color: '#059669',
+    perms: [
+      { perm: 'P_Cap',  label: 'Nueva Captura' },
+      { perm: 'P_Sup',  label: 'Tablero Supervisor' },
+      { perm: 'P_Edit', label: 'Editor Producción' }
+    ]
+  },
+  {
+    label: 'Ingeniería',
+    icon: 'fa-drafting-compass',
+    color: '#d97706',
+    perms: [
+      { perm: 'P_Ruta', label: 'Nueva Ruta' },
+      { perm: 'P_EdR',  label: 'Editor Rutas' },
+      { perm: 'P_Doc',  label: 'Gestión Documental' }
+    ]
+  },
+  {
+    label: 'Administración',
+    icon: 'fa-shield-alt',
+    color: '#dc2626',
+    perms: [
+      { perm: 'P_Admin', label: 'Administrador (acceso total)' }
+    ]
+  }
+];
+
+// ── FUNCIONES DEL MÓDULO USUARIOS ────────────────────────────────────────────
+function loadUsuarios(){
+  if(!tienePermiso('P_Admin')){sAlert('No tienes permisos para gestionar usuarios','warning','Acceso restringido');return;}
+  document.getElementById('content-area').innerHTML=
+    '<div style="padding:1.5rem">'
+    +'<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">'
+    +'<div><h5 class="fw-black m-0" style="color:#0f172a"><i class="fas fa-users-cog me-2" style="color:#6366f1"></i>Gestión de Usuarios</h5>'
+    +'<p class="text-muted small m-0">Administra accesos y permisos del sistema</p></div>'
+    +'<button class="btn btn-sm fw-bold" style="background:#6366f1;color:white;" onclick="usuNuevo()"><i class="fas fa-user-plus me-1"></i>Nuevo Usuario</button>'
+    +'</div>'
+    +'<div class="row g-3">'
+    +'<div class="col-md-4">'
+    +'<div class="kpi-card p-0" style="max-height:75vh;overflow-y:auto;">'
+    +'<div style="padding:.8rem 1rem;border-bottom:1px solid #e2e8f0;font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.08em;">Usuarios del sistema</div>'
+    +'<div id="usu-list">Cargando...</div>'
+    +'</div>'
+    +'</div>'
+    +'<div class="col-md-8">'
+    +'<div class="kpi-card p-4" id="usu-form-panel">'
+    +'<div class="text-center text-muted py-5"><i class="fas fa-user-circle fa-3x mb-3" style="opacity:.2"></i><p class="small">Selecciona un usuario o crea uno nuevo</p></div>'
+    +'</div>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
+  usuCargarLista();
+}
+
+function usuCargarLista(){
+  showLoader('Cargando usuarios...');
+  google.script.run
+    .withSuccessHandler(function(u){
+      hideLoader();
+      usuDB=u||[];
+      usuRenderLista();
+    })
+    .withFailureHandler(function(e){hideLoader();sAlert('Error al cargar usuarios: '+e,'error');})
+    .obtenerUsuariosPCP();
+}
+
+function usuRenderLista(){
+  var html='';
+  usuDB.forEach(function(u,i){
+    var esAdmin=(u.permisos||'').includes('P_Admin');
+    var sel=usuSelected&&usuSelected.nombre===u.nombre?'background:#eef2ff;border-left:3px solid #6366f1;':'';
+    html+='<div onclick="usuSeleccionar('+i+')" style="padding:.7rem 1rem;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .15s;'+sel+'" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\''+(sel?'#eef2ff':'white')+'\';">'
+      +'<div style="font-weight:700;font-size:.85rem;color:#0f172a">'+u.nombre+'</div>'
+      +'<div style="font-size:.72rem;color:#94a3b8;margin-top:2px">'
+      +'<span style="background:'+(esAdmin?'#eef2ff':'#f0fdf4')+';color:'+(esAdmin?'#4338ca':'#15803d')+';padding:2px 7px;border-radius:20px;font-weight:700;font-size:.65rem">'+(esAdmin?'Admin':'Usuario')+'</span>'
+      +'</div>'
+      +'</div>';
+  });
+  if(!html)html='<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:.82rem">No hay usuarios</div>';
+  var el=document.getElementById('usu-list');
+  if(el)el.innerHTML=html;
+}
+
+function usuSeleccionar(idx){
+  usuSelected=usuDB[idx];
+  usuRenderLista();
+  usuRenderForm(usuSelected);
+}
+
+function usuNuevo(){
+  usuSelected=null;
+  usuRenderForm(null);
+}
+
+function usuRenderForm(u){
+  var panel=document.getElementById('usu-form-panel');
+  if(!panel)return;
+  var isNuevo=!u;
+  var permsActivos=u?(u.permisos||'').split(',').map(function(p){return p.trim();}).filter(Boolean):[];
+
+  var permsHtml='<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">';
+
+  PERMISOS_GRUPOS.forEach(function(grupo, gi){
+    var allPermsGrupo = grupo.perms.map(function(p){ return p.perm; });
+    var todosActivos  = allPermsGrupo.every(function(p){ return permsActivos.indexOf(p)>-1; });
+    var algunoActivo  = allPermsGrupo.some(function(p){ return permsActivos.indexOf(p)>-1; });
+    var masterState   = todosActivos ? 'checked' : '';
+
+    permsHtml += '<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">'
+      + '<div style="background:#f8fafc;padding:9px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-bottom:1px solid #e2e8f0;" onclick="usuToggleGrupo('+gi+')">'
+      +   '<input type="checkbox" id="usu-grp-'+gi+'" '+masterState+' '
+      +     'onclick="event.stopPropagation();usuMasterCheck('+gi+',this.checked)" '
+      +     'style="accent-color:'+grupo.color+';width:17px;height:17px;cursor:pointer;flex-shrink:0;">'
+      +   '<i class="fas '+grupo.icon+' fa-fw" style="color:'+grupo.color+';font-size:.85rem;"></i>'
+      +   '<span style="font-weight:800;font-size:.82rem;color:#0f172a;flex:1;">'+grupo.label+'</span>'
+      +   '<i class="fas fa-chevron-down fa-fw" id="usu-grp-arrow-'+gi+'" style="color:#94a3b8;font-size:.7rem;transition:transform .2s;"></i>'
+      + '</div>'
+      + '<div id="usu-grp-items-'+gi+'" style="padding:8px 14px 10px 14px;display:flex;flex-direction:column;gap:6px;">';
+
+    grupo.perms.forEach(function(p){
+      var checked = permsActivos.indexOf(p.perm)>-1 ? 'checked' : '';
+      permsHtml += '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:7px;transition:background .15s;" '
+        + 'onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'transparent\'">'
+        + '<input type="checkbox" id="usu-perm-'+p.perm+'" value="'+p.perm+'" '+checked+' '
+        +   'onchange="usuSyncMaster('+gi+')" '
+        +   'style="accent-color:'+grupo.color+';width:16px;height:16px;cursor:pointer;flex-shrink:0;">'
+        + '<span style="font-size:.82rem;font-weight:600;color:#334155;">'+p.label+'</span>'
+        + '</label>';
+    });
+
+    permsHtml += '</div></div>';
+  });
+
+  permsHtml += '</div>';
+
+  panel.innerHTML=
+    '<h6 class="fw-black mb-3" style="color:#0f172a;border-bottom:2px solid #eef2ff;padding-bottom:.7rem">'
+    +'<i class="fas fa-'+(isNuevo?'user-plus':'user-edit')+' me-2" style="color:#6366f1"></i>'
+    +(isNuevo?'Nuevo Usuario':'Editar: '+u.nombre)
+    +'</h6>'
+    +'<div class="row g-3 mb-3">'
+    +'<div class="col-md-6">'
+    +'<label class="form-label small fw-bold">Nombre de usuario</label>'
+    +'<input type="text" id="usu-nombre" class="form-control" value="'+(u?u.nombre:'')+'" placeholder="Nombre completo" '+(isNuevo?'':'readonly style="background:#f8fafc"')+'>'
+    +'</div>'
+    +'<div class="col-md-6">'
+    +'<label class="form-label small fw-bold">'+(isNuevo?'Contraseña':'Nueva contraseña (dejar vacío = no cambiar)')+'</label>'
+    +'<input type="password" id="usu-pass" class="form-control" placeholder="'+(isNuevo?'Contraseña inicial':'Nueva contraseña...')+'">'
+    +'</div>'
+    +'</div>'
+    +'<div class="d-flex align-items-center justify-content-between mb-2">'
+    +'<label class="form-label small fw-bold text-uppercase mb-0" style="letter-spacing:.05em;color:#475569"><i class="fas fa-shield-alt me-1" style="color:#6366f1"></i>Permisos por módulo</label>'
+    +'<button type="button" onclick="usuToggleTodos(true)" style="background:none;border:none;font-size:.75rem;font-weight:700;color:#6366f1;cursor:pointer;padding:2px 6px;">✓ Todos</button>'
+    +'<button type="button" onclick="usuToggleTodos(false)" style="background:none;border:none;font-size:.75rem;font-weight:700;color:#94a3b8;cursor:pointer;padding:2px 6px;">✗ Ninguno</button>'
+    +'</div>'
+    +permsHtml
+    +'<div class="d-flex gap-2 mt-4 flex-wrap">'
+    +'<button class="btn fw-bold px-4" style="background:#6366f1;color:white;border:none" onclick="usuGuardar('+(isNuevo?'true':'false')+')">'
+    +'<i class="fas fa-save me-1"></i>'+(isNuevo?'Crear Usuario':'Guardar Cambios')+'</button>'
+    +(isNuevo?'':'<button class="btn fw-bold px-4" style="background:#fee2e2;color:#b91c1c;border:none" onclick="usuEliminar()"><i class="fas fa-user-times me-1"></i>Eliminar</button>')
+    +'</div>';
+
+  PERMISOS_GRUPOS.forEach(function(grupo, gi){
+    var master = document.getElementById('usu-grp-'+gi);
+    if(!master) return;
+    var allP = grupo.perms.map(function(p){ return p.perm; });
+    var act  = allP.filter(function(p){ var el=document.getElementById('usu-perm-'+p); return el&&el.checked; }).length;
+    if(act>0 && act<allP.length) master.indeterminate = true;
+  });
+}
+
+function usuMasterCheck(gi, checked){
+  var grupo = PERMISOS_GRUPOS[gi];
+  if(!grupo) return;
+  grupo.perms.forEach(function(p){
+    var el=document.getElementById('usu-perm-'+p.perm);
+    if(el) el.checked=checked;
+  });
+  var master=document.getElementById('usu-grp-'+gi);
+  if(master) master.indeterminate=false;
+}
+
+function usuSyncMaster(gi){
+  var grupo=PERMISOS_GRUPOS[gi];
+  if(!grupo) return;
+  var total=grupo.perms.length;
+  var activos=grupo.perms.filter(function(p){
+    var el=document.getElementById('usu-perm-'+p.perm); return el&&el.checked;
+  }).length;
+  var master=document.getElementById('usu-grp-'+gi);
+  if(!master) return;
+  if(activos===0){ master.checked=false; master.indeterminate=false; }
+  else if(activos===total){ master.checked=true; master.indeterminate=false; }
+  else { master.checked=false; master.indeterminate=true; }
+}
+
+function usuToggleGrupo(gi){
+  var items=document.getElementById('usu-grp-items-'+gi);
+  var arrow=document.getElementById('usu-grp-arrow-'+gi);
+  if(!items) return;
+  var oculto=items.style.display==='none';
+  items.style.display=oculto?'flex':'none';
+  if(arrow) arrow.style.transform=oculto?'rotate(0deg)':'rotate(-90deg)';
+}
+
+function usuToggleTodos(val){
+  PERMISOS_GRUPOS.forEach(function(grupo, gi){
+    grupo.perms.forEach(function(p){
+      var el=document.getElementById('usu-perm-'+p.perm);
+      if(el) el.checked=val;
+    });
+    var master=document.getElementById('usu-grp-'+gi);
+    if(master){ master.checked=val; master.indeterminate=false; }
+  });
+}
+
+function usuGuardar(esNuevo){
+  var nombre=(document.getElementById('usu-nombre').value||'').trim().toUpperCase();
+  var pass=document.getElementById('usu-pass').value;
+  if(!nombre){sAlert('Ingresa un nombre de usuario','warning');return;}
+  var permsSeleccionados=[];
+  PERMISOS_LIST.forEach(function(p){
+    var chk=document.getElementById('usu-perm-'+p.perm);
+    if(chk&&chk.checked)permsSeleccionados.push(p.perm);
+  });
+  var permStr=permsSeleccionados.join(',');
+  if(esNuevo){
+    if(!pass){sAlert('Ingresa una contraseña inicial','warning');return;}
+    if(usuDB.find(function(u){return u.nombre===nombre;})){sAlert('Ya existe un usuario con ese nombre','warning','Usuario duplicado');return;}
+    var data={nombre:nombre,password:pass,permisos:permStr};
+    showLoader('Creando usuario...');
+    google.script.run
+      .withSuccessHandler(function(res){
+        hideLoader();
+        // simulado: agregar al array local
+        usuDB.push({nombre:nombre,password:pass,permisos:permStr});
+        Swal.fire({icon:'success',title:'Usuario creado',text:nombre+' ha sido creado exitosamente.',confirmButtonColor:'#6366f1',timer:3000,timerProgressBar:true});
+        usuCargarLista();
+      })
+      .withFailureHandler(function(e){hideLoader();sAlert('Error: '+e,'error');})
+      .crearUsuarioPCP(data);
+  } else {
+    var data2={nombre:nombre,permisos:permStr};
+    if(pass)data2.password=pass;
+    showLoader('Guardando cambios...');
+    google.script.run
+      .withSuccessHandler(function(res){
+        hideLoader();
+        // simulado: actualizar array local
+        var idx=usuDB.findIndex(function(u){return u.nombre===nombre;});
+        if(idx>-1){usuDB[idx].permisos=permStr; if(pass)usuDB[idx].password=pass;}
+        Swal.fire({icon:'success',title:'Cambios guardados',text:'Usuario actualizado correctamente.',confirmButtonColor:'#6366f1',timer:3000,timerProgressBar:true});
+        usuCargarLista();
+      })
+      .withFailureHandler(function(e){hideLoader();sAlert('Error: '+e,'error');})
+      .actualizarUsuarioPCP(data2);
+  }
+}
+
+function usuEliminar(){
+  if(!usuSelected)return;
+  if(usuSelected.nombre===currentUser.nombre){sAlert('No puedes eliminar tu propio usuario','warning');return;}
+  sConfirm('¿Eliminar al usuario '+usuSelected.nombre+' permanentemente?','¿Confirmar eliminación?','Sí, eliminar','Cancelar').then(function(r){
+    if(!r.isConfirmed)return;
+    showLoader('Eliminando usuario...');
+    google.script.run
+      .withSuccessHandler(function(){
+        hideLoader();
+        usuDB=usuDB.filter(function(u){return u.nombre!==usuSelected.nombre;});
+        Swal.fire({icon:'success',title:'Usuario eliminado',text:usuSelected.nombre+' fue eliminado.',confirmButtonColor:'#6366f1',timer:2500,timerProgressBar:true});
+        usuSelected=null;
+        usuCargarLista();
+        document.getElementById('usu-form-panel').innerHTML='<div class="text-center text-muted py-5"><i class="fas fa-user-circle fa-3x mb-3" style="opacity:.2"></i><p class="small">Selecciona un usuario o crea uno nuevo</p></div>';
+      })
+      .withFailureHandler(function(e){hideLoader();sAlert('Error: '+e,'error');})
+      .eliminarUsuarioPCP(usuSelected.nombre);
+  });
+}
+
+// ── INICIO ───────────────────────────────────────────────────────────────────
+window.onload = function(){ loadUsuarios(); };
+</script>
+</body>
+</html>

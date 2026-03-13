@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe:*)",
+      "Bash(clasp:*)",
+      "Bash(start:*)",
+      "Bash(code:*)",
+      "Bash(C:\\\\Users\\\\rcdga\\\\Deploy-Prod.bat:*)",
+      "Bash(cd /c/Users/rcdga && cmd.exe //c Deploy-Prod.bat)",
+      "Bash(ls /c/Users/rcdga/Deploy-Prod*)"
+    ]
+  }
+}
