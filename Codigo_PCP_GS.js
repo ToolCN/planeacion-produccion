@@ -52,7 +52,7 @@ function obtenerUsuariosPCP() {
       var nombre        = String(row[1]).trim().toUpperCase(); // col B
       var password      = String(row[2] || "").trim();         // col C
       var rol           = String(row[3] || "").trim();         // col D = ROL (Admin / "")
-      var celdaPermisos = String(row[4] || "").trim();         // col E = permisos completos
+      var celdaPermisos = String(row[5] || "").trim();         // col F = DEPARTAMENTO (permisos)
 
       // Separar todos los permisos de la celda
       var todos = celdaPermisos.split(',').map(function(p){ return p.trim(); }).filter(function(p){ return p; });
@@ -93,8 +93,8 @@ function guardarPermisosPCP(nombre, nuevosPCP) {
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][1]).trim().toUpperCase() !== nombre.toUpperCase()) continue;
 
-      // Celda actual col E
-      var celdaActual = String(data[i][4] || "").trim();
+      // Celda actual col F = DEPARTAMENTO
+      var celdaActual = String(data[i][5] || "").trim();
 
       // Conservar los que NO son P_
       var otros = celdaActual.split(',')
@@ -109,7 +109,7 @@ function guardarPermisosPCP(nombre, nuevosPCP) {
       // Resultado: otros primero, luego los P_ nuevos
       var resultado = otros.concat(nuevosP).join(',');
 
-      sheet.getRange(i + 1, 5).setValue(resultado); // col E
+      sheet.getRange(i + 1, 6).setValue(resultado); // col F = DEPARTAMENTO
       return JSON.stringify({ success: true, msg: "Permisos guardados" });
     }
 
@@ -172,8 +172,8 @@ function crearUsuarioPCP(data) {
               ? 'Admin'
               : '';
 
-    // Agregar fila: [colA vacía, NOMBRE, PASSWORD, ROL, PERMISOS]
-    sheet.appendRow(['', nombre, password, rol, permisos]);
+    // Agregar fila: [colA vacía, NOMBRE, PASSWORD, ROL, col E vacía, PERMISOS en col F]
+    sheet.appendRow(['', nombre, password, rol, '', permisos]);
 
     return JSON.stringify({ success: true, msg: "Usuario creado: " + nombre });
   } catch (e) {
@@ -209,8 +209,8 @@ function actualizarUsuarioPCP(data) {
       var esAdmin = listaP.indexOf('P_Admin') > -1;
       sheet.getRange(i + 1, 4).setValue(esAdmin ? 'Admin' : '');
 
-      // ── PERMISOS (col E) — conservar los que NO son P_ ──
-      var celdaActual = String(filas[i][4] || "").trim();
+      // ── PERMISOS (col F = DEPARTAMENTO) — conservar los que NO son P_ ──
+      var celdaActual = String(filas[i][5] || "").trim();
       var otros = celdaActual.split(',')
         .map(function(p){ return p.trim(); })
         .filter(function(p){ return p && p.indexOf('P_') !== 0; });
@@ -218,7 +218,7 @@ function actualizarUsuarioPCP(data) {
       var soloP = listaP.filter(function(p){ return p.indexOf('P_') === 0; });
 
       var resultado = otros.concat(soloP).join(',');
-      sheet.getRange(i + 1, 5).setValue(resultado);
+      sheet.getRange(i + 1, 6).setValue(resultado);
 
       return JSON.stringify({ success: true, msg: "Usuario actualizado: " + nombre });
     }
@@ -3799,6 +3799,63 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
       maqPermitidasMap[String(dRutas[r][1]).trim() + "_" + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || "");
     }
 
+    // Cargar INVENTARIO_EXTERNO: col A=CODIGO, B=EXISTENCIA, C=MINIMO, D=MAXIMO
+    var shInvExt = ss.getSheetByName("INVENTARIO_EXTERNO");
+    var invExtMap = {};
+    if (shInvExt) {
+      var dInvExt = shInvExt.getDataRange().getValues();
+      for (var ie = 1; ie < dInvExt.length; ie++) {
+        var invCod = String(dInvExt[ie][0] || "").trim().toUpperCase();
+        if (!invCod) continue;
+        invExtMap[invCod] = {
+          exist: parseFloat(dInvExt[ie][1]) || 0,
+          min:   parseFloat(dInvExt[ie][2]) || 0,
+          max:   parseFloat(dInvExt[ie][3]) || 0
+        };
+      }
+    }
+
+    // Cargar CODIGOS: col A=CODIGO, F=CODIGO_VENTA (índice 5)
+    var shCodigos = ss.getSheetByName("CODIGOS");
+    var codigoVentaMap = {};
+    if (shCodigos) {
+      var dCodigos = shCodigos.getDataRange().getValues();
+      for (var cv = 1; cv < dCodigos.length; cv++) {
+        var cvCod = String(dCodigos[cv][0] || "").trim().toUpperCase();
+        var cvVenta = String(dCodigos[cv][5] || "").trim().toUpperCase();
+        if (cvCod && cvVenta) codigoVentaMap[cvCod] = cvVenta;
+      }
+    }
+
+    // Función helper para obtener datos de inventario por código de orden
+    var getInvExt = function(codigoOrden) {
+      var cUp = String(codigoOrden || "").trim().toUpperCase();
+      var esC7 = cUp.charAt(0) === "7";
+      if (esC7) {
+        var cVenta = codigoVentaMap[cUp] || "";
+        if (cVenta) {
+          var datoVenta = invExtMap[cVenta];
+          var datoOriginal = invExtMap[cUp] || null;
+          if (datoVenta) {
+            return {
+              exist: datoVenta.exist,
+              min:   datoVenta.min,
+              max:   datoVenta.max,
+              existNeg: datoOriginal ? datoOriginal.exist : null
+            };
+          }
+        }
+        // Si no hay CODIGO_VENTA o no existe en inventario, buscar con el código 7 directo
+        var datoDirecto = invExtMap[cUp] || null;
+        return datoDirecto
+          ? { exist: datoDirecto.exist, min: datoDirecto.min, max: datoDirecto.max, existNeg: datoDirecto.exist }
+          : { exist: null, min: null, max: null, existNeg: null };
+      }
+      var dato = invExtMap[cUp];
+      return dato ? { exist: dato.exist, min: dato.min, max: dato.max, existNeg: null } : { exist: null, min: null, max: null, existNeg: null };
+    };
+
+    var planif_invTmp = null;
     var resultados = [];
     var procsFiltro = procesosSeleccionados.map(p => String(p).toUpperCase().trim());
 
@@ -3835,7 +3892,11 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
             estadoSVG:         getSvgEstado(est),
             aceroSVG:          getSvgAcero(aceroVal),
             avance:            row[idx.SOL] > 0 ? Math.round((row[idx.PROD] / row[idx.SOL]) * 100) : 0,
-            maquinasPermitidas: maqPermitidasMap[String(row[idx.COD]) + "_" + String(row[idx.PROC]).toUpperCase().trim()] || String(row[idx.MAQ])
+            maquinasPermitidas: maqPermitidasMap[String(row[idx.COD]) + "_" + String(row[idx.PROC]).toUpperCase().trim()] || String(row[idx.MAQ]),
+            invExist:    (function(){ var _d=getInvExt(row[idx.COD]); planif_invTmp=_d; return _d.exist; })(),
+            invMin:      planif_invTmp ? planif_invTmp.min : null,
+            invMax:      planif_invTmp ? planif_invTmp.max : null,
+            invExistNeg: planif_invTmp ? (planif_invTmp.existNeg !== undefined ? planif_invTmp.existNeg : null) : null
           });
         }
       }
@@ -4082,7 +4143,9 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
       SOLICITADO: getIdx("SOLICITADO"),
       DESCRIPCION: getIdx("DESCRIPCION"),
       PESO: getIdx("PESO"),
-      LONGITUD: getIdx("LONGITUD")
+      LONGITUD: getIdx("LONGITUD"),
+      PRODUCIDO: getIdx("PRODUCIDO"),
+      ESTADO: getIdx("ESTADO")
     };
     
     var serieTarget = "";
@@ -4129,9 +4192,19 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
         }
         
         sh.getRange(j+1, idx.SOLICITADO+1).setValue(nuevoSolicitado);
+
+        // Re-evaluar ESTADO: si estaba TERMINADO o SOBREPRODUCCION y producido < nuevo solicitado → EN PROCESO
+        var ESTADOS_REVERTIBLES = ["TERMINADO", "SOBREPRODUCCION"];
+        if(idx.PRODUCIDO > -1 && idx.ESTADO > -1) {
+          var producido = parseFloat(data[j][idx.PRODUCIDO]) || 0;
+          var estadoActual = String(data[j][idx.ESTADO] || "").toUpperCase().trim();
+          if(ESTADOS_REVERTIBLES.indexOf(estadoActual) > -1 && producido < nuevoSolicitado) {
+            sh.getRange(j+1, idx.ESTADO+1).setValue("EN PROCESO");
+          }
+        }
       }
     }
-    
+
     // Actualizar el pedido
     if(pedidoTarget && shPedidos) {
       var dataPed = shPedidos.getDataRange().getValues();
@@ -4151,6 +4224,7 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
       }
     }
     
+    SpreadsheetApp.flush();
     return true;
   } catch(e) {
     throw new Error("Error actualizando cantidad: " + e.message);
@@ -7014,7 +7088,7 @@ function guardarProduccionCompleta(payload) {
 
         if (!existeYa) {
           maxIdLote++;
-          var numLoteFormato = ("00" + r.numLote).slice(-2);
+          var numLoteFormato = Number(r.numLote) < 100 ? ("00" + r.numLote).slice(-2) : String(r.numLote);
           var qrOriginal = (filaReferencia > -1) ? String(dataLotes[filaReferencia][10]) : "";
           var nuevoQr = qrOriginal !== "" ? qrOriginal.substring(0, qrOriginal.length - 2) + numLoteFormato : "";
           
@@ -7046,7 +7120,7 @@ function guardarProduccionCompleta(payload) {
           Utilities.getUuid(), r.serie, r.ordenID, r.loteFull, r.maquina,
           new Date(r.fecha + "T12:00:00"), r.turno, r.op1_id, r.pesoI, r.pesoF,
           r.producido, "", "", horas, r.sello || "", r.comentarios || "",
-          r.numLote, r.op1_txt, r.op2_id, r.op2_txt, "", "", r.pesoTina, "",
+          r.numLote, r.op1_txt, r.op2_id, r.op2_txt, r.proceso || "", "", r.pesoTina, "",
           r.usuario || "",          // Y: USER
           new Date()                // Z: FECHA_REG
        ];
@@ -7958,7 +8032,7 @@ function generarLotesTablero(payload) {
   for (var c = 1; c <= cantGenerar; c++) {
     var consec     = consecInicial + c;
     var numOrdStr  = ("0000" + ordenNum).slice(-4);
-    var consecStr  = ("00" + consec).slice(-2);
+    var consecStr  = consec < 100 ? ("00" + consec).slice(-2) : String(consec);
     var nombreLote = serie + "." + numOrdStr + "." + consecStr;
 
     // FIX 3: UUID como texto — único garantizado, sin pérdida de precisión
@@ -8028,7 +8102,7 @@ function generarNuevosLotes(payload) {
       maxID++;
       var consec = consecInicial + c;
       var numOrdStr = ("0000" + ordenNum).slice(-4);
-      var consecStr = ("00" + consec).slice(-2);
+      var consecStr = consec < 100 ? ("00" + consec).slice(-2) : String(consec);
       var nombreLote = serie + "." + numOrdStr + "." + consecStr;
       
       var fila = [ maxID, serie, idOrden, consec, nombreLote, pesoLote, 0, "ABIERTO", fecha, "", "", "", "", "", "NADA" ];
@@ -9549,70 +9623,153 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
 function obtenerMisRegistros(nombreUsuario) {
   var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
   var sheetProd = ss.getSheetByName("PRODUCCION");
-  var data      = sheetProd.getDataRange().getValues();
-  var h         = data[0].map(function(x){ return String(x).toUpperCase().trim(); });
+  var sheetOrd  = ss.getSheetByName("ORDENES");
+
+  // ── 1. Leer ORDENES una sola vez → mapa ordenID → producto ──
+  var dataOrd = sheetOrd.getDataRange().getValues();
+  var hOrd    = dataOrd[0].map(function(x){ return String(x).toUpperCase().trim(); });
+  var oTIPO   = hOrd.indexOf("TIPO");
+  var oDIA    = hOrd.indexOf("DIAMETRO");
+  var oLON    = hOrd.indexOf("LONGITUD");
+  var oCUERPO = hOrd.indexOf("CUERPO");
+  var oCUERDA = hOrd.indexOf("CUERDA");
+  var oACERO  = hOrd.indexOf("ACERO");
+  var mapaProducto = {};
+  for (var o = 1; o < dataOrd.length; o++) {
+    var or     = dataOrd[o];
+    var ordId  = String(or[0]);
+    var tipo   = String(or[oTIPO]   || "").trim();
+    var dia    = String(or[oDIA]    || "").trim();
+    var lon    = String(or[oLON]    || "").trim();
+    var cuerpo = oCUERPO >= 0 ? String(or[oCUERPO] || "").trim() : "";
+    var cuerda = oCUERDA >= 0 ? String(or[oCUERDA] || "").trim() : "";
+    var acero  = oACERO  >= 0 ? String(or[oACERO]  || "").trim() : "";
+    var partes = [tipo];
+    if (dia || lon) partes.push(dia + " X " + lon);
+    if (cuerpo) partes.push(cuerpo);
+    if (cuerda) partes.push(cuerda);
+    if (acero)  partes.push("Acero " + acero);
+    mapaProducto[ordId] = partes.filter(function(p){ return p !== ""; }).join(" ");
+  }
+
+  // ── 2. Leer PRODUCCION ──
+  var data = sheetProd.getDataRange().getValues();
+  var h    = data[0].map(function(x){ return String(x).toUpperCase().trim(); });
 
   var IDX = {
-    ID:      h.indexOf("ID"),
-    SERIE:   h.indexOf("SERIE"),
-    ORDEN:   h.indexOf("ORDEN"),
-    LOTE:    h.indexOf("LOTE"),
-    MAQ:     h.indexOf("MAQUINA"),
-    FECHA:   h.indexOf("FECHA"),
-    TURNO:   h.indexOf("TURNO"),
-    OP_ID:   h.indexOf("OPERADOR"),
-    OP_TXT:  h.indexOf("NOMBRE_OPERADOR_TXT"),
-    PESO_I:  h.indexOf("PESO_I"),
-    PESO_F:  h.indexOf("PESO_F"),
-    PESO_T:  h.indexOf("PESO_TINA"),
-    PROD:    h.indexOf("PRODUCIDO"),
-    SELLO:   h.indexOf("SELLO"),
-    COM:     h.indexOf("COMENTARIO"),
-    USER:      h.indexOf("USER"),
-    FECHA_REG: h.indexOf("FECHA_REG"),
-    CAMBIOS:   h.indexOf("CAMBIOS")
+    ID:       h.indexOf("ID"),
+    SERIE:    h.indexOf("SERIE"),
+    ORDEN:    h.indexOf("ORDEN"),
+    LOTE:     h.indexOf("LOTE"),
+    MAQ:      h.indexOf("MAQUINA"),
+    FECHA:    h.indexOf("FECHA"),
+    TURNO:    h.indexOf("TURNO"),
+    OP_TXT:   h.indexOf("NOMBRE_OPERADOR_TXT"),
+    PESO_I:   h.indexOf("PESO_I"),
+    PESO_F:   h.indexOf("PESO_F"),
+    PESO_T:   h.indexOf("PESO_TINA"),
+    PROD:     h.indexOf("PRODUCIDO"),
+    SELLO:    h.indexOf("SELLO"),
+    COM:      h.indexOf("COMENTARIO"),
+    USER:     h.indexOf("USER"),
+    PROCESO:  h.indexOf("PROCESO"),
+    FECHA_REG:h.indexOf("FECHA_REG"),
+    CAMBIOS:  h.indexOf("CAMBIOS")
   };
 
-  // Límite: hace 2 días a las 00:00:00
+  // ── Mapa ordenID → proceso (fallback cuando PRODUCCION no tiene col PROCESO) ──
+  var mapaProceso = {};
+  var iProcOrd = hOrd.indexOf("PROCESO");
+  if (iProcOrd >= 0) {
+    for (var o2 = 1; o2 < dataOrd.length; o2++) {
+      var idO = String(dataOrd[o2][0]);
+      var prO = String(dataOrd[o2][iProcOrd] || "").trim().toUpperCase();
+      if (idO && prO && !mapaProceso[idO]) mapaProceso[idO] = prO;
+    }
+  }
+
+  // Función para obtener proceso de una fila: primero de PRODUCCION, luego de ORDENES
+  function getProceso(row) {
+    if (IDX.PROCESO >= 0) {
+      var p = String(row[IDX.PROCESO] || "").trim().toUpperCase();
+      if (p) return p;
+    }
+    var ordRef = String(row[IDX.ORDEN] || "");
+    return mapaProceso[ordRef] || "";
+  }
+
+  // ── Helper: convertir cualquier valor a Date de forma robusta ──
+  // Col Z FECHA_REG puede venir como Date nativo o como string "17/3/2026 17:22:43"
+  function toDate(val) {
+    if (!val || val === "") return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    // Intentar parsear string — soporta dd/MM/yyyy y yyyy-MM-dd
+    var s = String(val).trim();
+    // Formato dd/MM/yyyy HH:mm:ss o dd/MM/yyyy
+    var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) {
+      var d = new Date(Number(m[3]), Number(m[2])-1, Number(m[1]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    // Formato yyyy-MM-dd
+    var d2 = new Date(s);
+    return isNaN(d2.getTime()) ? null : d2;
+  }
+
+  // ── 3. Límite: hace 2 días a las 00:00:00 ──
   var hoy       = new Date();
   var limiteMin = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 2, 0, 0, 0);
 
+  // ── 4. Primera pasada: encontrar procesos del usuario en el rango ──
+  var procesosUsuario = {};
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    // FECHA_REG debe existir y estar dentro del rango (col Z)
+    var fechaReg = toDate(row[IDX.FECHA_REG]);
+    if (!fechaReg || fechaReg < limiteMin) continue;
+    var user = String(row[IDX.USER] || "").trim().toUpperCase();
+    if (user !== nombreUsuario.toUpperCase().trim()) continue;
+    var proc = getProceso(row);
+    if (proc) procesosUsuario[proc] = true;
+  }
+
+  // ── 5. Segunda pasada: traer TODOS los registros de esos procesos en el rango ──
   var resultados = [];
   for (var i = 1; i < data.length; i++) {
-    var row  = data[i];
-    var user = String(row[IDX.USER] || "").trim();
-    if (user.toUpperCase() !== nombreUsuario.toUpperCase()) continue;
-
-    // Filtrar por FECHA_REG: solo últimos 2 días
-    var fechaReg = row[IDX.FECHA_REG];
-    if (!(fechaReg instanceof Date)) continue;
-    if (fechaReg < limiteMin) continue;
+    var row      = data[i];
+    var fechaReg = toDate(row[IDX.FECHA_REG]);
+    if (!fechaReg || fechaReg < limiteMin) continue;  // sin FECHA_REG → omitir
+    var proc = getProceso(row);
+    if (!procesosUsuario[proc]) continue;
 
     var fVal = row[IDX.FECHA];
     var fStr = "";
-    if (fVal instanceof Date) {
+    if (fVal instanceof Date && !isNaN(fVal.getTime())) {
       fStr = fVal.getFullYear()
            + "-" + (fVal.getMonth()+1 < 10 ? "0" : "") + (fVal.getMonth()+1)
            + "-" + (fVal.getDate()    < 10 ? "0" : "") +  fVal.getDate();
     }
 
+    var ordId = String(row[IDX.ORDEN] || "");
     resultados.push({
-      id:          String(row[IDX.ID]),
+      id:          String(row[IDX.ID]    || ""),
       fila:        i + 1,
-      serie:       String(row[IDX.SERIE]  || ""),
-      ordenRef:    String(row[IDX.ORDEN]  || ""),
-      lote:        String(row[IDX.LOTE]   || ""),
-      maquina:     String(row[IDX.MAQ]    || ""),
+      serie:       String(row[IDX.SERIE] || ""),
+      ordenRef:    ordId,
+      lote:        String(row[IDX.LOTE]  || ""),
+      maquina:     String(row[IDX.MAQ]   || ""),
+      producto:    mapaProducto[ordId]   || "",
       fecha:       fStr,
-      turno:       String(row[IDX.TURNO]  || ""),
-      operadorId:  String(row[IDX.OP_ID]  || ""),
-      operadorTxt: String(row[IDX.OP_TXT] || ""),
+      turno:       String(row[IDX.TURNO] || ""),
+      operadorTxt: String(row[IDX.OP_TXT]|| ""),
       pesoI:       Number(row[IDX.PESO_I])  || 0,
       pesoF:       Number(row[IDX.PESO_F])  || 0,
       pesoTina:    Number(row[IDX.PESO_T])  || 0,
       producido:   Number(row[IDX.PROD])    || 0,
       sello:       String(row[IDX.SELLO]   || ""),
       comentario:  String(row[IDX.COM]     || ""),
+      registrador: String(row[IDX.USER]    || ""),
+      proceso:     getProceso(row),
       cambios:     String(row[IDX.CAMBIOS] || "")
     });
   }
@@ -9661,6 +9818,24 @@ function guardarCambioMiRegistro(payload) {
       valorAnterior = Number(valorAnterior) || 0;
     }
     sheetProd.getRange(payload.fila, colNum).setValue(valor);
+
+    // Si cambió un peso, recalcular producido = pesoF - pesoTina - pesoI y guardarlo
+    if (["pesoI", "pesoF", "pesoTina"].indexOf(payload.campo) >= 0) {
+      var colPI = mapaColumnas.pesoI    - 1;
+      var colPF = mapaColumnas.pesoF    - 1;
+      var colPT = mapaColumnas.pesoTina - 1;
+      var colPROD = mapaColumnas.producido - 1;
+      // Leer la fila actualizada (ya escribimos el nuevo valor arriba)
+      var filaActual = sheetProd.getRange(payload.fila, 1, 1, sheetProd.getLastColumn()).getValues()[0];
+      var newPI   = Number(filaActual[colPI])   || 0;
+      var newPF   = Number(filaActual[colPF])   || 0;
+      var newPT   = Number(filaActual[colPT])   || 0;
+      var newProd = Math.round(newPF - newPT - newPI);
+      if (newProd < 0) newProd = 0;
+      sheetProd.getRange(payload.fila, mapaColumnas.producido).setValue(newProd);
+      // Recalcular estado de la orden maestra
+      recalcularEstadoOrdenMaestro(String(data[filaVerif][2]));
+    }
 
     if (payload.campo === "producido") {
       recalcularEstadoOrdenMaestro(String(data[filaVerif][2]));
@@ -9789,6 +9964,172 @@ function respaldarSheet() {
   
   var carpetas = DriveApp.getFoldersByName(carpetaNombre);
   var carpeta = carpetas.hasNext() ? carpetas.next() : DriveApp.createFolder(carpetaNombre);
-  
+
   DriveApp.getFileById(origen).makeCopy(nombreCopia, carpeta);
+}
+
+function obtenerDatosEficienciaParaCaptura(registros) {
+  var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var sheetOrd = ss.getSheetByName("ORDENES");
+  var sheetEst = ss.getSheetByName("ESTANDARES");
+  var dataOrd  = sheetOrd.getDataRange().getValues();
+  var dataEst  = sheetEst.getDataRange().getValues();
+
+  var cleanNum = function(val) {
+    if (val == null || val === "") return 0;
+    if (typeof val === 'number') return val;
+    var num = parseFloat(String(val).replace(/,/g,'').trim());
+    return isNaN(num) ? 0 : num;
+  };
+
+  // --- ESTANDARES: mapa MAQUINA -> velocidad ---
+  var hStd = dataEst[0];
+  var iSMaq = hStd.indexOf("MAQUINA");
+  var iSVel = hStd.indexOf("VELOCIDAD");
+  var mapStd = {};
+  for (var s = 1; s < dataEst.length; s++) {
+    var maqS = String(dataEst[s][iSMaq >= 0 ? iSMaq : 3] || "").toUpperCase().trim();
+    var velS  = cleanNum(dataEst[s][iSVel >= 0 ? iSVel : 4]);
+    if (maqS && !mapStd[maqS]) mapStd[maqS] = velS;
+  }
+
+  // --- ORDENES: mapa ID -> { tipo, desc, proceso, peso } ---
+  var hOrd = dataOrd[0];
+  var iODesc    = hOrd.indexOf("DESCRIPCION");
+  var iOTipo    = hOrd.indexOf("TIPO");
+  var iOProceso = hOrd.indexOf("PROCESO");
+  var iOPeso    = hOrd.indexOf("PESO");
+  var mapOrd = {};
+  for (var o = 1; o < dataOrd.length; o++) {
+    var ro = dataOrd[o];
+    mapOrd[String(ro[0])] = {
+      desc:    String(ro[iODesc    >= 0 ? iODesc    : 0] || "").trim(),
+      tipo:    String(ro[iOTipo    >= 0 ? iOTipo    : 0] || "").trim(),
+      proceso: String(ro[iOProceso >= 0 ? iOProceso : 0] || "").toUpperCase().trim(),
+      peso:    cleanNum(ro[iOPeso  >= 0 ? iOPeso    : 0])
+    };
+  }
+
+  // --- MODO DE CÁLCULO según proceso (igual que obtenerDatosEficiencia) ---
+  var getModo = function(proc) {
+    var p = proc.toUpperCase();
+    if (p.indexOf("COLATADO")   >= 0) return "ROLLOS";
+    if (p.indexOf("ROSCADO")    >= 0 || p.indexOf("ESTIRADO") >= 0 ||
+        p.indexOf("ENDEREZADO") >= 0 || p.indexOf("CORTE")    >= 0 ||
+        p.indexOf("PULIDO")     >= 0 || p.indexOf("TREFILADO")>= 0) return "METROS";
+    if (p.indexOf("FORJA")      >= 0 || p.indexOf("ESTAMPADO")>= 0 ||
+        p.indexOf("PUNTEADO")   >= 0 || p.indexOf("ROLADO")   >= 0) return "PIEZAS";
+    return "KILOS";
+  };
+
+  // --- AGRUPAR registros: proceso -> maquina+operador ---
+  var reporte = {};
+
+  registros.forEach(function(r) {
+    var proc  = (r.proceso || "SIN PROCESO").toUpperCase().trim();
+    var maq   = String(r.maquina  || "").toUpperCase().trim();
+    var op    = String(r.op1_txt  || "");
+    var prod  = cleanNum(r.producido);
+    var horas = r.turno == "2" ? 7.0 : r.turno == "3" ? 8.0 : 7.5;
+    var ordId = String(r.ordenID || "");
+    var fecha = String(r.fecha   || "");
+
+    var info    = mapOrd[ordId] || { desc:"", tipo:"", proceso: proc, peso:0 };
+    var modo    = getModo(proc);
+    var std     = mapStd[maq] || 0;
+    var pesoUnit = info.peso;
+
+    // Real para eficiencia (igual que obtenerDatosEficiencia)
+    var realParaEfic = 0;
+    var kilosReales  = prod;
+    if (modo === "ROLLOS") {
+      realParaEfic = prod;
+    } else if (modo === "PIEZAS" || modo === "METROS") {
+      realParaEfic = (pesoUnit > 0) ? prod / pesoUnit : prod;
+    } else {
+      realParaEfic = prod;
+    }
+
+    // Producto para mostrar en tabla
+    var producto = (info.tipo + " " + info.desc).trim() || ordId;
+
+    if (!reporte[proc]) reporte[proc] = { nombre: proc, modo: modo, grupos: {} };
+
+    var gKey = maq + "||" + op;
+    if (!reporte[proc].grupos[gKey]) {
+      reporte[proc].grupos[gKey] = {
+        maquina: maq, operador: op,
+        totalKilos: 0, sumaReal: 0, sumaTeorico: 0,
+        turnosProcesados: {},
+        detalles: []
+      };
+    }
+    var grp = reporte[proc].grupos[gKey];
+
+    // Anti-duplicado horas: una sola vez por fecha+turno por máquina
+    var llaveTurno = fecha + "_" + r.turno;
+    if (!grp.turnosProcesados[llaveTurno]) {
+      var teorico = 0;
+      if (std > 0) {
+        if (modo === "ROLLOS" || modo === "PIEZAS" || modo === "METROS") {
+          teorico = std * 60 * horas;
+        } else {
+          teorico = std * horas;
+        }
+      }
+      grp.sumaTeorico += teorico;
+      grp.turnosProcesados[llaveTurno] = true;
+    }
+
+    grp.totalKilos += kilosReales;
+    grp.sumaReal   += realParaEfic;
+    grp.detalles.push({
+      lote:     r.loteFull  || "",
+      producto: producto,
+      cantidad: prod
+    });
+  });
+
+  // --- CALCULAR EFICIENCIAS FINALES y armar estructura para el frontend ---
+  var porProceso = {};
+
+  Object.keys(reporte).forEach(function(proc) {
+    var r = reporte[proc];
+    var grupos = [];
+    var totalKilosProc  = 0;
+    var sumaRealGlobal  = 0;
+    var sumaTeoGlobal   = 0;
+
+    Object.keys(r.grupos).forEach(function(gKey) {
+      var grp    = r.grupos[gKey];
+      var effGrp = grp.sumaTeorico > 0 ? (grp.sumaReal / grp.sumaTeorico) * 100
+                 : grp.sumaReal   > 0  ? 100 : 0;
+
+      grupos.push({
+        maquina:   grp.maquina,
+        operador:  grp.operador,
+        total:     grp.totalKilos,
+        eficiencia: effGrp,
+        detalles:  grp.detalles
+      });
+
+      totalKilosProc += grp.totalKilos;
+      sumaRealGlobal += grp.sumaReal;
+      sumaTeoGlobal  += grp.sumaTeorico;
+    });
+
+    grupos.sort(function(a, b){ return a.maquina.localeCompare(b.maquina); });
+
+    var effTotal = sumaTeoGlobal > 0 ? (sumaRealGlobal / sumaTeoGlobal) * 100
+                 : sumaRealGlobal > 0 ? 100 : 0;
+
+    porProceso[proc] = {
+      nombre:          proc,
+      totalKilos:      totalKilosProc,
+      eficienciaTotal: effTotal,
+      grupos:          grupos
+    };
+  });
+
+  return JSON.stringify(porProceso);
 }
