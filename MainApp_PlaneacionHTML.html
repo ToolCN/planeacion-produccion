@@ -2892,7 +2892,19 @@ function val_renderSincro(excelData){
     var filterType='TODOS',incClass='';
     if(!pSys){filterType='NO_ENCONTRADO';}
     else if(codExc!==pSys.cod){filterType='INCONGRUENCIA';incClass='val-row-incongruencia';}
-    else{var obj=pSys.inv&&pSys.inv.max>0?(pSys.inv.max-pSys.cant):pendExc,diff=obj>0?(pendExc/obj)*100:0;if(diff>=90&&diff<=110)filterType='OK';else if(diff>110)filterType='EXCEDIDO';else filterType='MENOS';}
+    else{
+      var ordsActivas=[];for(var ok in val_dataOrig.ordenes){var og=val_dataOrig.ordenes[ok];if(og.keyPed===keyPed){var p0=og.rows[0];if(p0&&String(p0.est||'').toUpperCase()!=='CANCELADO')ordsActivas.push(p0);}}
+      var cantSistema=0;
+      ordsActivas.forEach(function(p0){
+        var fac=1,uniP=String(p0.uni||'').toUpperCase(),tipoP=String(p0.tipo||'').toUpperCase();
+        if(uniP.includes('PZA')||uniP.includes('CTO')||uniP.includes('PIEZA')){fac=Number(p0.peso)||1;if(tipoP.includes('VARILLA')){var lmP=String(p0.long||'').match(/[\d.]+/);fac*=lmP?parseFloat(lmP[0]):1;}}
+        cantSistema+=Math.round((Number(p0.sol)||0)/(fac||1));
+      });
+      var limInf=solExc*0.95,limSup=solExc*1.05;
+      if(cantSistema>=limInf&&cantSistema<=limSup)filterType='OK';
+      else if(cantSistema>limSup)filterType='EXCEDIDO';
+      else filterType='MENOS';
+    }
     html+='<tr id="rowS-'+i+'" data-type="'+filterType+'" class="'+incClass+'" data-search="'+pedExc+' '+codExc+' '+descExc+'" data-family="'+(pSys?pSys.family||'':'')+'" data-diametro="'+(pSys?pSys.diametro||'':'')+'" data-longitud="'+(pSys?pSys.longitud||'':'')+'" onclick="val_focusRow('+i+')">';
     html+='<td class="td-numero" style="text-align:center;font-size:12px">'+contador+'</td>';
     var descSys = pSys ? [pSys.tipo, pSys.diametro?(pSys.diametro+'×'+pSys.longitud):'', pSys.cuerpo, pSys.cuerda, pSys.acero?('<'+pSys.acero+'>'):'' ].filter(Boolean).join(' ') : '';
@@ -2915,7 +2927,7 @@ function val_renderSincro(excelData){
     var p=val_dataOrig.pedidos[k];
     if(!setPedidosExcel.has(p.nombre)&&p.nombre&&!p.nombre.startsWith('INT')&&p.est&&!p.est.match(/TERMINADO|CANCELADO|CERRADO/)){
       contador++;
-      html+='<tr id="rowS-'+idxVer+'" data-type="VERIFICAR" style="background:#e3f2fd" data-search="'+p.nombre+' '+(p.cod||'')+'" data-family="'+(p.family||'')+'" data-diametro="'+(p.diametro||'')+'" data-longitud="'+(p.longitud||'')+'" onclick="val_focusRow('+idxVer+')">';
+      html+='<tr id="rowS-'+idxVer+'" data-type="VERIFICAR" style="background:#e3f2fd" data-search="'+p.nombre+' '+(p.cod||'')+'" data-family="'+(p.family||'')+'" data-diametro="'+(p.diametro||'')+'" data-longitud="'+(p.longitud||'')+'" data-keyped="'+k+'" onclick="val_focusRow('+idxVer+')">';
       html+='<td class="td-numero" style="text-align:center;font-size:12px">'+contador+'</td>';
       var descP = [p.tipo, p.diametro?(p.diametro+'×'+p.longitud):'', p.cuerpo, p.cuerda, p.acero?('<'+p.acero+'>'):'' ].filter(Boolean).join(' ');
       html+='<td class="val-ventas-col-kensei"><b style="color:#d32f2f">NO ESTÁ EN EL REPORTE</b><br><b class="cod-txt">'+(p.cod||'')+'</b>'+(descP?'<br><span style="font-size:11px;color:#78909c;">'+descP+'</span>':'');
@@ -2982,19 +2994,21 @@ async function val_exportarPorEstado(){
       'NO_ENCONTRADO':{bg:'FF37474F',fg:'FFFFFFFF'},
       'INCONGRUENCIA':{bg:'FF6A1B9A',fg:'FFFFFFFF'}
     };
-    var HEADERS=['#','ESTADO','PEDIDO','PARTIDA','CÓDIGO','DESCRIPCIÓN','SOL.EXCEL','PEND.EXCEL','CANT.SISTEMA','ORDEN','PROCESO','SOL.ORDEN','PROD.ORDEN','SALDO','AVANCE%','ENTREGADO'];
-    var ANCHOS=[5,14,14,9,12,40,12,12,14,14,16,12,12,10,10,18];
-    // Columnas numéricas (índice base-0): SOL.EXCEL=6, PEND.EXCEL=7, CANT.SISTEMA=8, SOL.ORDEN=11, PROD.ORDEN=12, SALDO=13
-    var COLS_NUM=[6,7,8,11,12,13];
+    var HEADERS=['#','ESTADO','FECHA','PEDIDO','PARTIDA','CÓDIGO','DESCRIPCIÓN','SOL.EXCEL','PEND.EXCEL','CANT.SISTEMA','ORDEN','PROCESO','SOL.ORDEN','PROD.ORDEN','SALDO','AVANCE%','ENTREGADO'];
+    var ANCHOS=[5,14,12,14,9,12,40,12,12,14,14,16,12,12,10,10,18];
+    // Columnas numéricas (índice base-0): SOL.EXCEL=7, PEND.EXCEL=8, CANT.SISTEMA=9, SOL.ORDEN=12, PROD.ORDEN=13, SALDO=14
+    var COLS_NUM=[7,8,9,12,13,14];
 
     // Recolectar todas las filas con su estado (lógica original sin cambios)
     var todasFilas=[];
+    var filasResumen=[];
     document.querySelectorAll('#val-tblSincroBody > tr').forEach(function(tr){
       var type=tr.dataset.type,cells=tr.querySelectorAll('td');
       var pedExcel='',partidaExc='',codExcel='',descExcel='',solExc=0,pendExc=0,keyPed='';
       if(type==='VERIFICAR'){
-        var b=cells[2]&&cells[2].querySelector('.val-toolcn-detalles b');
-        if(b){var m=b.innerText.match(/(.+?)\s*\(P\.(\d+)\)/);if(m){pedExcel=m[1].trim();partidaExc=m[2];keyPed=pedExcel+'_'+partidaExc;}}
+        keyPed=tr.dataset.keyped||'';
+        var pV=val_dataOrig.pedidos[keyPed];
+        if(pV){pedExcel=pV.nombre||'';partidaExc='';codExcel=pV.cod||'';descExcel=[pV.tipo,pV.diametro?(pV.diametro+'×'+pV.longitud):'',pV.cuerpo,pV.cuerda].filter(Boolean).join(' ');}
       } else {
         var bi=cells[1]&&cells[1].querySelector('b');
         var pedInfo=bi?bi.innerText:'';
@@ -3009,21 +3023,38 @@ async function val_exportarPorEstado(){
       }
       var pSys=val_dataOrig.pedidos[keyPed];
       if(!pSys){
-        todasFilas.push({estado:type,row:['',type,pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,'NO ENCONTRADO','','','','','','','']});
+        var fechaHoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'});
+        var filaNoEnc={estado:type,row:['',type,fechaHoy,pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,'NO ENCONTRADO','','','','','','','']};
+        todasFilas.push(filaNoEnc);
+        filasResumen.push(filaNoEnc);
         return;
       }
       var ords=[];for(var k in val_dataOrig.ordenes){if(val_dataOrig.ordenes[k].keyPed===keyPed)ords.push(val_dataOrig.ordenes[k]);}
       if(!ords.length){
-        todasFilas.push({estado:type,row:['',type,pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,pSys.cant,'SIN ORDENES','','','','','0%','0 de '+pSys.cant]});
+        var filaSinOrd={estado:type,row:['',type,pSys.fechaPed||'',pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,pSys.cant,'SIN ORDENES','','','','','0%','0 de '+pSys.cant]};
+        todasFilas.push(filaSinOrd);
+        filasResumen.push(filaSinOrd);
       } else {
+        // todasFilas: detalle completo por proceso/orden (para pestañas por estado)
         ords.forEach(function(g){
           g.rows.forEach(function(proc){
             var factor=1,uni=String(proc.uni||'').toUpperCase(),tipo=String(proc.tipo||'').toUpperCase();
             if(uni.includes('PZA')||uni.includes('CTO')||uni.includes('PIEZA')){factor=Number(proc.peso)||1;if(tipo.includes('VARILLA')){var lm=String(proc.long||'').match(/[\d.]+/);factor*=lm?parseFloat(lm[0]):1;}}
-            var pc=Math.round(proc.prod/(factor||1)),av=pSys.cant>0?((pc/pSys.cant)*100).toFixed(1)+'%':'0%';
-            todasFilas.push({estado:type,row:['',type,pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,pSys.cant,g.key,proc.proc,proc.sol,proc.prod,proc.sol-proc.prod,av,pc+' de '+pSys.cant]});
+            var solConv=Math.round((proc.sol||0)/(factor||1)),prodConv=Math.round((proc.prod||0)/(factor||1)),saldoConv=solConv-prodConv;
+            var av=pSys.cant>0?((prodConv/pSys.cant)*100).toFixed(1)+'%':'0%';
+            todasFilas.push({estado:type,row:['',type,pSys.fechaPed||'',pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,pSys.cant,g.key,proc.proc,solConv,prodConv,saldoConv,av,prodConv+' de '+pSys.cant]});
           });
         });
+        // filasResumen: un renglón por pedido con órdenes unidas por coma y sumas (para hoja TODOS)
+        var ordenKeys=ords.map(function(g){return g.key;}).join(', ');
+        var primerProc=ords[0].rows[0]?ords[0].rows[0].proc:'';
+        var factor2=1,proc0=ords[0].rows[0];
+        if(proc0){var uni2=String(proc0.uni||'').toUpperCase(),tipo2=String(proc0.tipo||'').toUpperCase();if(uni2.includes('PZA')||uni2.includes('CTO')||uni2.includes('PIEZA')){factor2=Number(proc0.peso)||1;if(tipo2.includes('VARILLA')){var lm2=String(proc0.long||'').match(/[\d.]+/);factor2*=lm2?parseFloat(lm2[0]):1;}}}
+        var totalSol=0,totalProd=0;
+        ords.forEach(function(g){var p0=g.rows[0];if(p0){totalSol+=Math.round((Number(p0.sol)||0)/(factor2||1));totalProd+=Math.round((Number(p0.prod)||0)/(factor2||1));}});
+        var totalSaldo=totalSol-totalProd;
+        var av2=pSys.cant>0?((totalProd/pSys.cant)*100).toFixed(1)+'%':'0%';
+        filasResumen.push({estado:type,row:['',type,pSys.fechaPed||'',pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,pSys.cant,ordenKeys,primerProc,totalSol,totalProd,totalSaldo,av2,totalProd+' de '+pSys.cant]});
       }
     });
 
@@ -3097,8 +3128,8 @@ async function val_exportarPorEstado(){
     workbook.creator='PCP Tool CN';
     workbook.created=new Date();
 
-    // Hoja TODOS
-    await crearHoja(workbook,'TODOS',todasFilas,'FF37474F');
+    // Hoja TODOS (un renglón por pedido usando filasResumen)
+    await crearHoja(workbook,'TODOS',filasResumen,'FF37474F');
     // Una hoja por estado
     for(var ei=0;ei<ESTADOS.length;ei++){
       var est=ESTADOS[ei];
@@ -3128,7 +3159,7 @@ function val_exportarVistaExcel(){
         if(tr.style.display==='none')return;
         var type=tr.dataset.type,cells=tr.querySelectorAll('td');
         var pedExcel='',partidaExc='',codExcel='',descExcel='',solExc=0,pendExc=0,keyPed='';
-        if(type==='VERIFICAR'){var b=cells[2]&&cells[2].querySelector('.val-toolcn-detalles b');if(b){var m=b.innerText.match(/(.+?)\s*\(P\.(\d+)\)/);if(m){pedExcel=m[1].trim();partidaExc=m[2];keyPed=pedExcel+'_'+partidaExc;}}}
+        if(type==='VERIFICAR'){keyPed=tr.dataset.keyped||'';var pV=val_dataOrig.pedidos[keyPed];if(pV){pedExcel=pV.nombre||'';partidaExc='';codExcel=pV.cod||'';descExcel=[pV.tipo,pV.diametro?(pV.diametro+'×'+pV.longitud):'',pV.cuerpo,pV.cuerda].filter(Boolean).join(' ');}}
         else{var bi=cells[1]&&cells[1].querySelector('b');var pedInfo=bi?bi.innerText:'';pedExcel=pedInfo.split('[')[0].trim();var pm=pedInfo.match(/\[P:(\d+)\]/);partidaExc=pm?pm[1]:'1';var ct=cells[1]&&cells[1].querySelector('.cod-txt');codExcel=ct?ct.innerText.trim():'';var dt=cells[1]&&cells[1].querySelector('.val-desc-min');descExcel=dt?dt.innerText.trim():'';var ft=cells[1]&&cells[1].innerText||'';solExc=Number((ft.match(/Sol:\s*([\d,]+)/)||['','0'])[1].replace(/,/g,''))||0;pendExc=Number((ft.match(/Pend:\s*([\d,]+)/)||['','0'])[1].replace(/,/g,''))||0;keyPed=pedExcel+'_'+partidaExc;}
         var pSys=val_dataOrig.pedidos[keyPed];
         if(!pSys){rows.push(['',type,pedExcel,partidaExc,codExcel,descExcel,solExc,pendExc,'NO ENCONTRADO','','','','','','','','']);return;}
