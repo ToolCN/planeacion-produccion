@@ -3300,6 +3300,27 @@ function loadTracking() {
   </div>
   <p class="search-hint">Puedes buscar por: número de pedido · código de producto · descripción · estado</p>
 
+  <div id="trk-exportBlock" style="display:none;width:100%;max-width:700px;margin:0 auto 10px auto;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:18px 22px;">
+    <div style="font-family:'Exo 2',sans-serif;font-size:13px;font-weight:900;color:#00d4ff;letter-spacing:2px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+      <span>📊</span> EXPORTAR REGISTROS DE PRODUCCIÓN
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;">FECHA INICIO</label>
+        <input type="date" id="trk-expFechaIni" style="background:#0f1f33;border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:'Exo 2',sans-serif;outline:none;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;">FECHA FIN</label>
+        <input type="date" id="trk-expFechaFin" style="background:#0f1f33;border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:'Exo 2',sans-serif;outline:none;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding-top:18px;">
+        <button onclick="trkExportarProduccion()" style="background:linear-gradient(135deg,#00d4ff,#0099bb);border:none;border-radius:8px;color:#0a0e1a;padding:9px 22px;font-family:'Exo 2',sans-serif;font-size:13px;font-weight:900;letter-spacing:1.5px;cursor:pointer;transition:opacity .2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          📥 EXPORTAR EXCEL
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="results-container" id="trk-resultsContainer"></div>
 </div>
 
@@ -3326,6 +3347,24 @@ function loadTracking() {
   var inp = document.getElementById('trk-txtBuscar');
   if(inp) { inp.value=''; inp.focus(); }
   document.getElementById('trk-resultsContainer').innerHTML = '';
+  // Mostrar bloque exportación solo a usuarios con permiso P_Plan
+  var expBlock = document.getElementById('trk-exportBlock');
+  if (expBlock) {
+    if (tienePermiso('P_Plan')) {
+      expBlock.style.display = 'block';
+      // Poner fechas por defecto: inicio = primer día del mes actual, fin = hoy
+      var hoy = new Date();
+      var yyyy = hoy.getFullYear();
+      var mm   = String(hoy.getMonth()+1).padStart(2,'0');
+      var dd   = String(hoy.getDate()).padStart(2,'0');
+      var primerDia = yyyy + '-' + mm + '-01';
+      var hoyStr   = yyyy + '-' + mm + '-' + dd;
+      document.getElementById('trk-expFechaIni').value = primerDia;
+      document.getElementById('trk-expFechaFin').value = hoyStr;
+    } else {
+      expBlock.style.display = 'none';
+    }
+  }
 }
 function loadNuevoPedido(){
   // ── CSS guard ──────────────────────────────────────────────────────────────
@@ -5021,6 +5060,7 @@ var PROCESOS_SVG_MAP = {
   'ENDEREZADO':        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 8 Q7 4 12 8 Q17 12 21 8" fill="none" stroke="#ef5350" stroke-width="2.5" stroke-linecap="round"/><line x1="3" y1="14" x2="21" y2="14" stroke="#388e3c" stroke-width="2.5" stroke-linecap="round"/><polygon points="3,11 5,14 3,17" fill="#388e3c"/><polygon points="21,11 19,14 21,17" fill="#388e3c"/></svg>',
   'CORTE':             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="2" fill="#9e9e9e"/><polygon points="12,2 14,11 10,11" fill="#37474f"/><polygon points="12,22 14,13 10,13" fill="#37474f"/><line x1="3" y1="5" x2="21" y2="5" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="2,2"/><line x1="3" y1="19" x2="21" y2="19" stroke="#bdbdbd" stroke-width="1" stroke-dasharray="2,2"/></svg>',
   'PULIDO BARRA':      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="10" rx="5" fill="#e0e0e0" stroke="#757575" stroke-width="1"/><rect x="6" y="9" width="12" height="6" rx="3" fill="#bdbdbd"/><rect x="6" y="9" width="12" height="2" rx="1" fill="#f5f5f5" opacity="0.8"/><line x1="9" y1="8" x2="7" y2="5" stroke="#ffeb3b" stroke-width="1.2"/><line x1="12" y1="7" x2="12" y2="4" stroke="#ffeb3b" stroke-width="1.2"/><line x1="15" y1="8" x2="17" y2="5" stroke="#ffeb3b" stroke-width="1.2"/></svg>',
+  'BARRA':             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="2" y="9" width="20" height="6" rx="3" fill="#b0bec5" stroke="#546e7a" stroke-width="1"/><rect x="2" y="9" width="20" height="2" rx="1" fill="#eceff1" opacity="0.7"/><rect x="2" y="13" width="20" height="1" rx="0.5" fill="#78909c" opacity="0.5"/><circle cx="4" cy="12" r="1.5" fill="#546e7a"/><circle cx="20" cy="12" r="1.5" fill="#546e7a"/><line x1="2" y1="7" x2="2" y2="17" stroke="#546e7a" stroke-width="1.5" stroke-linecap="round"/><line x1="22" y1="7" x2="22" y2="17" stroke="#546e7a" stroke-width="1.5" stroke-linecap="round"/></svg>',
   'FORJA':             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="4" rx="1" fill="#546e7a"/><rect x="10" y="6" width="4" height="14" fill="#78909c"/><line x1="10" y1="8" x2="14" y2="9" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="10" x2="14" y2="11" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="12" x2="14" y2="13" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="14" x2="14" y2="15" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="16" x2="14" y2="17" stroke="#455a64" stroke-width="0.7"/><path d="M9 20 Q12 22 15 20 L14 20 L10 20 Z" fill="#546e7a"/></svg>',
   'ROLADO TORN':       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 7 Q5 5 7 7 Q9 9 11 7 Q13 5 15 7 Q17 9 19 7 Q21 5 21 7" fill="none" stroke="#546e7a" stroke-width="2" stroke-linecap="round"/><path d="M3 12 Q5 10 7 12 Q9 14 11 12 Q13 10 15 12 Q17 14 19 12 Q21 10 21 12" fill="none" stroke="#546e7a" stroke-width="2" stroke-linecap="round"/><path d="M3 17 Q5 15 7 17 Q9 19 11 17 Q13 15 15 17 Q17 19 19 17 Q21 15 21 17" fill="none" stroke="#546e7a" stroke-width="2" stroke-linecap="round"/></svg>',
   'PUNTEADO':          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12,2 14,8 12,22 10,8" fill="#78909c" stroke="#37474f" stroke-width="0.8"/><polygon points="8,8 16,8 14,14 10,14" fill="#546e7a"/><line x1="10" y1="8" x2="9" y2="12" stroke="#455a64" stroke-width="1"/><line x1="14" y1="8" x2="15" y2="12" stroke="#455a64" stroke-width="1"/></svg>',
@@ -5043,7 +5083,7 @@ function getProcSVG(nombre) {
 // Orden visual fijo — 3 filas definidas + cuarto renglón dinámico con el resto
 var PROCESOS_FILAS_FIJAS = [
   ['COLATADO','ESTAMPADO','EMPAQUE CLAVO','ROSCADO','TREFILADO','RECOCIDO'],
-  ['ESTIRADO','ENDEREZADO','CORTE','PULIDO BARRA'],
+  ['ESTIRADO','ENDEREZADO','CORTE','PULIDO BARRA','BARRA'],
   ['FORJA','ROLADO TORN','PUNTEADO','LAVADO','ENDEREZADO PIJA','TEMPLE Y REVENIDO']
 ];
 var PROCESOS_EXCLUIR = ['SERVICIOS'];
@@ -10221,7 +10261,7 @@ function loadCaptura() {
       <h2 style="text-align:center;color:#263238;font-weight:900;font-size:30px;">VALIDAR REGISTROS</h2>
       <div style="max-height:400px;overflow-y:auto;border:1px solid #ddd;margin:15px 0;">
         <table style="width:100%;border-collapse:collapse;font-size:14px;text-align:center;">
-          <thead style="background:#263238;color:white;"><tr><th style="padding:15px">LOTE</th><th>P.INI</th><th>P.TINA</th><th>P.FIN</th><th>NETO</th><th>OP</th><th>✖</th></tr></thead>
+          <thead style="background:#263238;color:white;"><tr><th style="padding:15px">LOTE</th><th>P.INI</th><th>P.TINA</th><th>P.FIN</th><th>NETO</th><th>OP</th><th>MÁQUINA</th><th>✖</th></tr></thead>
           <tbody id="cap-previewBody"></tbody>
         </table>
       </div>
@@ -10276,6 +10316,7 @@ function loadCaptura() {
   .cap-lot-box.editing { background:#ffe0b2; border-color:#fb8c00; }
   .cap-lot-box.complete { background:#c8e6c9; border-color:#2e7d32; }
   .cap-lot-box.locked { background:#cfd8dc !important; opacity:0.7; pointer-events:none; }
+  .cap-lot-box.locked .cap-maqinfo-activo { pointer-events:all; opacity:1; }
   .cap-lot-header { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; background:#263238; color:white; padding:8px 12px; border-radius:8px; }
   .cap-btn-t { background:#ffca28; border:none; color:black; font-weight:900; width:40px; height:40px; border-radius:6px; cursor:pointer; font-size:22px; }
   .cap-inp-cap { width:100%; padding:10px; border:2px solid #555; border-radius:6px; font-size:24px; font-weight:900; text-align:center; color:black; }
@@ -10285,7 +10326,39 @@ function loadCaptura() {
   .cap-btn-lot-action { grid-column:1/-1; padding:15px; border:none; border-radius:8px; font-weight:900; cursor:pointer; font-size:18px; text-transform:uppercase; }
   .cap-btn-add-lot { background:#1565c0; color:white; width:70px; height:70px; border-radius:50%; border:none; font-size:45px; cursor:pointer; flex-shrink:0; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; }
   .cap-fab-save { position:fixed; bottom:30px; right:30px; background:#2e7d32; color:white; padding:25px 50px; border-radius:60px; font-weight:900; font-size:26px; box-shadow:0 10px 25px rgba(0,0,0,0.5); border:3px solid white; display:none; cursor:pointer; z-index:2000; }
+  /* ── MODAL SELECCIÓN DE MÁQUINA ── */
+  .cap-maq-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:5000; display:flex; justify-content:center; align-items:center; }
+  .cap-maq-card { background:white; border-radius:16px; padding:24px; width:480px; max-width:95%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .cap-maq-title { font-size:20px; font-weight:900; color:#1565c0; margin-bottom:6px; text-align:center; text-transform:uppercase; }
+  .cap-maq-subtitle { font-size:13px; color:#546e7a; text-align:center; margin-bottom:14px; }
+  .cap-maq-grupo-label { font-size:12px; font-weight:900; color:#78909c; text-transform:uppercase; letter-spacing:1px; margin:10px 0 4px 0; padding-left:4px; }
+  .cap-maq-btn { display:block; width:100%; padding:12px 16px; margin-bottom:6px; border-radius:10px; border:2px solid #cfd8dc; background:white; font-size:16px; font-weight:700; cursor:pointer; text-align:left; transition:0.15s; }
+  .cap-maq-btn:hover { background:#e3f2fd; border-color:#1565c0; }
+  .cap-maq-btn.cap-maq-asignada { background:#fffde7; border:3px solid red; color:#1a237e; }
+  @keyframes cap-blink-red { 0%,100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); border-color:red; } 50%{ box-shadow:0 0 0 6px rgba(211,47,47,0.35); border-color:#ff8f00; } }
+  .cap-maq-btn.cap-maq-asignada { animation:cap-blink-red 1.2s infinite; }
+  .cap-maq-aceptar { width:100%; margin-top:14px; padding:14px; background:#1565c0; color:white; border:none; border-radius:10px; font-size:18px; font-weight:900; cursor:pointer; }
+  .cap-maq-aceptar:hover { background:#0d47a1; }
+  .cap-maq-cancelar { width:100%; margin-top:8px; padding:10px; background:#eceff1; color:#546e7a; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
   .cap-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:3000; display:none; justify-content:center; align-items:center; }
+  .cap-maqsel-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:5000; display:flex; justify-content:center; align-items:center; }
+  .cap-maqsel-card { background:white; border-radius:16px; padding:24px; width:780px; max-width:97%; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .cap-maqsel-grupos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .cap-maqsel-grupo-col { background:#f5f5f5; border-radius:10px; padding:10px; }
+  .cap-maqsel-title { font-size:20px; font-weight:900; color:#1565c0; text-align:center; text-transform:uppercase; margin-bottom:4px; }
+  .cap-maqsel-sub { font-size:13px; color:#546e7a; text-align:center; margin-bottom:14px; }
+  .cap-maqsel-grp { font-size:11px; font-weight:900; color:#78909c; text-transform:uppercase; letter-spacing:1px; margin:10px 0 4px 4px; }
+  .cap-maqsel-btn { display:block; width:100%; padding:12px 16px; margin-bottom:6px; border-radius:10px; border:2px solid #cfd8dc; background:white; font-size:15px; font-weight:700; cursor:pointer; text-align:left; transition:0.15s; }
+  .cap-maqsel-btn:hover { background:#e3f2fd; border-color:#1565c0; }
+  .cap-maqsel-btn.selected { background:#e3f2fd; border:3px solid #1565c0; font-weight:900; }
+  .cap-maqsel-btn.asignada { background:#fffde7; border:3px solid red; color:#1a237e; }
+  @keyframes cap-blink-border { 0%,100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); border-color:red; } 50%{ box-shadow:0 0 0 6px rgba(211,47,47,0.3); border-color:#ff6f00; } }
+  .cap-maqsel-btn.asignada { animation:cap-blink-border 1.2s infinite; }
+  .cap-maqsel-btn.cap-nueva-sel { background:#fffde7 !important; border:3px solid red !important; color:#1a237e !important; animation:cap-blink-border 1.2s infinite !important; }
+  .cap-maqsel-btn.asignada.sin-parpadeo { animation:none !important; border:2px solid #aaa !important; background:white !important; }
+  .cap-maqsel-ok { width:100%; margin-top:14px; padding:14px; background:#1565c0; color:white; border:none; border-radius:10px; font-size:17px; font-weight:900; cursor:pointer; }
+  .cap-maqsel-ok:hover { background:#0d47a1; }
+  .cap-maqsel-cancel { width:100%; margin-top:8px; padding:10px; background:#eceff1; color:#546e7a; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; }
   .cap-modal-card { background:white; padding:25px; border-radius:15px; width:1000px; max-width:95%; position:relative; overflow:hidden; }
   .cap-border-anim { position:absolute; background:#2e7d32; display:none; z-index:50; }
   .cap-b-top-1 { top:0; left:50%; height:8px; width:0; animation:cap-anim-t1 1s linear forwards; }
@@ -10387,13 +10460,15 @@ function loadCaptura() {
 
   // ══ ESTADO DEL MÓDULO ══
   var capDb = { maquinas:[], currentOps:[], lotesExistentes:[], historial:{} };
+  var capMaqModal = { oid: null, pendingNombre: null, maqSeleccionada: null };
   var capLocalEntries = [];
   var capAllRows = [];
   var capFocusIdx = 0;
   var capCurrentProceso = "";
   var capCurrentTurno = 1;
   var capCurrentGrupo = "TODOS";
-  var capTermMap = { "COLATADO":"TARIMA","ROSCADO":"ATADO","ESTIRADO":"ATADO","ENDEREZADO":"ATADO","CORTE":"ATADO","PULIDO":"ATADO" };
+  var capTermMap = { "COLATADO":"TARIMA","ROSCADO":"ATADO","ESTIRADO":"ATADO","ENDEREZADO":"ATADO","CORTE":"ATADO","PULIDO":"ATADO","BARRA":"ATADO" };
+  var CAP_BARRA_PROCESOS = ['ESTIRADO','ENDEREZADO','CORTE','PULIDO BARRA'];
 
   // ══ INICIALIZACIÓN ══
   showLoader('CARGANDO PROCESOS...');
@@ -10422,30 +10497,103 @@ function loadCaptura() {
     document.getElementById('cap-view1').style.display = 'none';
     document.getElementById('cap-view2').style.display = 'block';
     showLoader('CARGANDO PROCESO: '+proc+'...');
-    capDb.currentOps = capDb.operadoresAll.filter(function(o){ return o.procs.includes(proc.toUpperCase()) || o.procs.includes("TODOS"); });
+    // Operadores: para BARRA incluir operadores de todos los 4 procesos
+    var procsParaOps = (proc === 'BARRA') ? CAP_BARRA_PROCESOS : [proc];
+    capDb.currentOps = capDb.operadoresAll.filter(function(o){
+      return procsParaOps.some(function(p){ return o.procs.includes(p.toUpperCase()); }) || o.procs.includes("TODOS");
+    });
     document.getElementById('cap-listOps').innerHTML = capDb.currentOps.map(function(o){ return '<option value="'+o.nombre+'">'; }).join('');
-    google.script.run.withSuccessHandler(function(jsonRes) {
-      try {
-        var res = JSON.parse(jsonRes);
-        if (res.success) {
-          document.getElementById('cap-mainContent').innerHTML = "";
-          capDb.historial = res.historial;
-          capDb.lotesExistentes = res.lotesExistentes;
-          capDb.ultimasPorMaquina = res.ultimasPorMaquina;
-          capDb.maquinas = [];
-          res.maquinas.forEach(function(m) {
-            var mappedOrders = res.ordenes.filter(function(o){ return o.maq.toUpperCase().includes(m.maq.toUpperCase()); }).map(function(o){
-              return { id:o.id, serie:o.serie, nombre:o.serie+"."+o.num, tipo:o.tipo, medidas:o.medidas, acero:o.acero, sol:o.sol, prod:o.prod, prioridad:o.prioridad, esUltima:(o.id==capDb.ultimasPorMaquina[m.maq.toUpperCase()]), avance:(o.sol>0)?(o.prod/o.sol)*100:0 };
+
+    if(proc !== 'BARRA'){
+      // Flujo normal: un solo proceso
+      google.script.run.withSuccessHandler(function(jsonRes) {
+        try {
+          var res = JSON.parse(jsonRes);
+          if (res.success) {
+            document.getElementById('cap-mainContent').innerHTML = "";
+            capDb.historial = res.historial;
+            capDb.lotesExistentes = res.lotesExistentes;
+            capDb.ultimasPorMaquina = res.ultimasPorMaquina;
+            capDb.maquinas = [];
+            res.maquinas.forEach(function(m) {
+              var mappedOrders = res.ordenes.filter(function(o){ return o.maq.toUpperCase().includes(m.maq.toUpperCase()); }).map(function(o){
+                return { id:o.id, serie:o.serie, nombre:o.serie+"."+o.num, tipo:o.tipo, medidas:o.medidas, acero:o.acero, sol:o.sol, prod:o.prod, prioridad:o.prioridad, esUltima:(o.id==capDb.ultimasPorMaquina[m.maq.toUpperCase()]), avance:(o.sol>0)?(o.prod/o.sol)*100:0 };
+              });
+              var maqData = { maquina:m.maq, ordenes:mappedOrders, grupo:m.grupo };
+              capDb.maquinas.push(maqData);
+              capRenderAccordion(maqData, m.grupo);
             });
-            var maqData = { maquina:m.maq, ordenes:mappedOrders, grupo:m.grupo };
-            capDb.maquinas.push(maqData);
-            capRenderAccordion(maqData, m.grupo);
-          });
-          capRenderFilterBar(proc);
-        } else { sAlert("Error: "+res.error); }
-      } catch(e) { console.error(e); sAlert("Error al procesar datos del servidor."); }
-      finally { hideLoader(); }
-    }).obtenerTodoElProcesoNvo(proc);
+            capRenderFilterBar(proc);
+          } else { sAlert("Error: "+res.error); }
+        } catch(e) { console.error(e); sAlert("Error al procesar datos del servidor."); }
+        finally { hideLoader(); }
+      }).obtenerTodoElProcesoNvo(proc);
+    } else {
+      // Flujo BARRA: 4 procesos en paralelo, fusionar resultados
+      document.getElementById('cap-mainContent').innerHTML = "";
+      capDb.historial = {};
+      capDb.lotesExistentes = [];
+      capDb.ultimasPorMaquina = {};
+      capDb.maquinas = [];
+      var total = CAP_BARRA_PROCESOS.length;
+      var completados = 0;
+      var errores = [];
+      CAP_BARRA_PROCESOS.forEach(function(subProc) {
+        google.script.run
+          .withSuccessHandler(function(jsonRes) {
+            try {
+              var res = JSON.parse(jsonRes);
+              if(res.success){
+                // Fusionar historial
+                Object.keys(res.historial||{}).forEach(function(k){ capDb.historial[k] = res.historial[k]; });
+                // Fusionar lotesExistentes
+                (res.lotesExistentes||[]).forEach(function(l){ if(capDb.lotesExistentes.indexOf(l)<0) capDb.lotesExistentes.push(l); });
+                // Fusionar ultimasPorMaquina
+                Object.keys(res.ultimasPorMaquina||{}).forEach(function(k){ capDb.ultimasPorMaquina[k] = res.ultimasPorMaquina[k]; });
+                // Renderizar máquinas de este subproceso
+                res.maquinas.forEach(function(m) {
+                  var mappedOrders = res.ordenes.filter(function(o){ return o.maq.toUpperCase().includes(m.maq.toUpperCase()); }).map(function(o){
+                    var rowObj = { id:o.id, serie:o.serie, nombre:o.serie+"."+o.num, tipo:o.tipo, medidas:o.medidas, acero:o.acero, sol:o.sol, prod:o.prod, prioridad:o.prioridad, esUltima:(o.id==capDb.ultimasPorMaquina[m.maq.toUpperCase()]), avance:(o.sol>0)?(o.prod/o.sol)*100:0, procesoReal:res.proceso||subProc };
+                    return rowObj;
+                  });
+                  var maqData = { maquina:m.maq, ordenes:mappedOrders, grupo:m.grupo, procesoReal:res.proceso||subProc };
+                  capDb.maquinas.push(maqData);
+                  capRenderAccordion(maqData, m.grupo);
+                });
+              } else { errores.push(res.error); }
+            } catch(e){ errores.push(e.toString()); }
+            completados++;
+            if(completados === total){
+              hideLoader();
+              if(errores.length) sAlert('Algunos procesos no cargaron: '+errores.join(', '),'warning');
+              capRenderFilterBarBarra();
+            }
+          })
+          .withFailureHandler(function(e){
+            errores.push(String(e));
+            completados++;
+            if(completados === total){ hideLoader(); sAlert('Error cargando BARRA: '+errores.join(', '),'error'); }
+          })
+          .obtenerTodoElProcesoNvo(subProc);
+      });
+    }
+  };
+
+  window.capRenderFilterBarBarra = function() {
+    // Para BARRA: mostrar los 4 subprocesos como filtros
+    var html = '<button class="cap-btn-grp active" onclick="capFilterByGrp(\'TODOS\',this)">TODOS</button>';
+    CAP_BARRA_PROCESOS.forEach(function(p){
+      html += '<button class="cap-btn-grp" onclick="capFilterByGrpBarra(\''+p+'\',this)">'+p+'</button>';
+    });
+    document.getElementById('cap-filterBar').innerHTML = html;
+  };
+
+  window.capFilterByGrpBarra = function(proc, btn) {
+    document.querySelectorAll('.cap-btn-grp').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('#cap-panel .cap-machine-section').forEach(function(sec){
+      sec.style.display = (proc==='TODOS' || sec.dataset.procesoReal===proc) ? 'block' : 'none';
+    });
   };
 
   window.capRenderFilterBar = function(proc) {
@@ -10477,6 +10625,7 @@ function loadCaptura() {
     sec.className = "cap-machine-section";
     sec.id = "cap-sec-"+res.maquina.replace(/\s+/g,'');
     sec.dataset.group = group;
+    sec.dataset.procesoReal = res.procesoReal || capCurrentProceso;
     sec.innerHTML = '<div class="cap-machine-header" onclick="capToggleAccordion(\''+sec.id+'\')"><span>'+res.maquina+'</span><span>▼</span></div>'
       +'<div class="cap-ords-container" id="cap-cont-'+sec.id+'" style="display:none"></div>';
     container.appendChild(sec);
@@ -10499,6 +10648,7 @@ function loadCaptura() {
       row.className = "cap-order-row "+(o.esUltima?'last-produced':'');
       row.id = "cap-row-"+o.id;
       row.dataset.maq = maq;
+      row.dataset.procesoReal = o.procesoReal || capCurrentProceso;
       row.dataset.serie = o.serie;
       row.dataset.nombre = o.nombre;
       row.innerHTML = '<div class="cap-order-info">'
@@ -10512,7 +10662,7 @@ function loadCaptura() {
         +'<div style="padding:15px;"><button class="cap-btn-add-lot" id="cap-btnAdd-'+o.id+'" onclick="capInitAddLot(\''+o.id+'\',\''+o.nombre+'\')">+</button></div>';
       cont.appendChild(row);
       capAllRows.push(row);
-      capInitAddLot(o.id, o.nombre);
+      capInitAddLotReal(o.id, o.nombre);
       capActualizarResumenVisual(o.id);
     });
   };
@@ -10520,13 +10670,119 @@ function loadCaptura() {
   window.capInitAddLot = function(oid, oNombre) {
     var scroll = document.getElementById('cap-scroll-'+oid);
     var btnAdd = document.getElementById('cap-btnAdd-'+oid);
-    var row = document.getElementById('cap-row-'+oid);
     var prevBoxes = scroll.querySelectorAll('.cap-lot-box');
     if(prevBoxes.length>0) {
       var lastBox = prevBoxes[prevBoxes.length-1];
       if(!lastBox.classList.contains('complete')&&!lastBox.classList.contains('locked')){ sAlert("Finalice el lote actual antes de abrir uno nuevo."); return; }
     }
     if(btnAdd) btnAdd.style.display="none";
+    // Mostrar modal de selección de máquina antes de crear el lote
+    capMaqModal.oid = oid;
+    capMaqModal.pendingNombre = oNombre;
+    var row = document.getElementById('cap-row-'+oid);
+    var maqAsignada = row ? row.dataset.maq.toUpperCase().trim() : '';
+    capMaqModal.maqSeleccionada = maqAsignada;
+    capMaqModal.maqAsignada = maqAsignada;
+    // Obtener máquinas del proceso desde caché maquinasRaw
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === capCurrentProceso.toUpperCase().trim();
+    });
+    // Agrupar por grupo
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    // Si la máquina asignada no está en ESTANDARES, agregarla
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqAsignada && todasMaqs.indexOf(maqAsignada) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqAsignada);
+    }
+    var html = '<div class="cap-maqsel-title">🏭 SELECCIONA MÁQUINA</div>'
+      + '<div class="cap-maqsel-sub">Proceso: <b>' + capCurrentProceso + '</b></div>'
+      + capMaqSelBuildHTML(grupos, maqAsignada);
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">' + html
+      + '<button class="cap-maqsel-ok" onclick="capMaqSelAceptar()">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capMaqSelBuildHTML = function(grupos, maqAsignada) {
+    var gruposOrdenados = Object.keys(grupos).sort();
+    var html = '<div class="cap-maqsel-grupos-grid">';
+    gruposOrdenados.forEach(function(g){
+      html += '<div class="cap-maqsel-grupo-col">';
+      html += '<div class="cap-maqsel-grp">📦 ' + g + '</div>';
+      grupos[g].forEach(function(m){
+        var esAsignada = (m.toUpperCase().trim() === maqAsignada.toUpperCase().trim());
+        html += '<button class="cap-maqsel-btn' + (esAsignada ? ' asignada selected' : '') + '" '
+          + 'data-maq="' + m + '" onclick="capMaqSelClick(this)">'
+          + (esAsignada ? '⭐ ' : '') + m + '</button>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  };
+
+  window.capMaqSelClick = function(btn) {
+    var maqAsignada = (capMaqModal.maqAsignada || '').toUpperCase().trim();
+    document.querySelectorAll('.cap-maqsel-btn').forEach(function(b){
+      b.classList.remove('selected','cap-nueva-sel','sin-parpadeo');
+      // Restaurar estilo base de la máquina asignada (corona, sin parpadeo)
+      if(b.dataset.maq.toUpperCase().trim() === maqAsignada){
+        b.classList.add('asignada');
+      }
+    });
+    var esMismaAsignada = (btn.dataset.maq.toUpperCase().trim() === maqAsignada);
+    if(esMismaAsignada){
+      // Eligió la misma que venía: quitar cap-nueva-sel y restaurar parpadeo asignada
+      btn.classList.remove('sin-parpadeo');
+    } else {
+      // Eligió diferente: apagar parpadeo de la asignada y prender en la nueva
+      document.querySelectorAll('.cap-maqsel-btn.asignada').forEach(function(b){
+        b.classList.add('sin-parpadeo');
+      });
+      btn.classList.add('cap-nueva-sel');
+    }
+    capMaqModal.maqSeleccionada = btn.dataset.maq;
+  };
+
+  window.capMaqSelAceptar = function() {
+    if(!capMaqModal.maqSeleccionada){ sAlert('Selecciona una máquina primero.','warning'); return; }
+    var oid = capMaqModal.oid;
+    var oNombre = capMaqModal.pendingNombre;
+    var row = document.getElementById('cap-row-'+oid);
+    if(row) row.dataset.maq = capMaqModal.maqSeleccionada;
+    capMaqSelCancelar();
+    capInitAddLotReal(oid, oNombre);
+  };
+
+  window.capMaqSelCancelar = function() {
+    var overlay = document.getElementById('cap-maqsel-overlay');
+    if(overlay) overlay.parentNode.removeChild(overlay);
+    // Restaurar botón + si no hay lote en progreso
+    var oid = capMaqModal.oid;
+    if(oid){
+      var scroll = document.getElementById('cap-scroll-'+oid);
+      var prevBoxes = scroll ? scroll.querySelectorAll('.cap-lot-box') : [];
+      var hayAbierto = Array.from(prevBoxes).some(function(b){ return !b.classList.contains('locked'); });
+      if(!hayAbierto){
+        var btnAdd = document.getElementById('cap-btnAdd-'+oid);
+        if(btnAdd) btnAdd.style.display='flex';
+      }
+    }
+  };
+
+  window.capInitAddLotReal = function(oid, oNombre) {
+    var scroll = document.getElementById('cap-scroll-'+oid);
+    var prevBoxes = scroll.querySelectorAll('.cap-lot-box');
     var lIdx=1;
     var localPrev = capLocalEntries.filter(function(e){ return e.ordenID==oid; });
     if(localPrev.length>0) lIdx=parseInt(localPrev[localPrev.length-1].numLote);
@@ -10552,7 +10808,7 @@ function loadCaptura() {
       +'<div style="grid-column:span 4;border-top:1px solid #ccc;padding-top:10px;">'
       +'<label style="font-weight:900;font-size:14px;"><input type="checkbox" id="cap-chk-'+oid+'-'+boxIdx+'" '+(op1?'checked':'disabled')+' onchange="capToggleOpManual(\''+oid+'\','+boxIdx+')"> Usar default: <span class="cap-op-label">'+(op1||'N/A')+'</span></label>'
       +'<div class="cap-manual-ops" style="display:'+(op1?'none':'block')+';margin-top:8px;">'
-      +'<input type="text" class="cap-inp-cap" style="font-size:16px;text-align:left;" list="cap-listOps" placeholder="Op 1..." onkeydown="capHandleSmartInput(this,event)" onblur="capValLote(\''+oid+'\','+boxIdx+')">'
+      +'<input type="text" class="cap-inp-cap cap-op-manual-inp" style="font-size:16px;text-align:left;" list="cap-listOps" placeholder="Op 1..." onkeydown="capHandleSmartInput(this,event)" oninput="capValLote(\''+oid+'\','+boxIdx+')" onblur="capValLote(\''+oid+'\','+boxIdx+')">'
       +'<input type="text" class="cap-inp-cap" style="display:none;font-size:16px;text-align:left;margin-top:5px;" list="cap-listOps" id="cap-op2-'+oid+'-'+boxIdx+'" placeholder="Op 2...">'
       +'<button class="cap-btn-lot-action" style="background:#546e7a;color:white;padding:8px;margin-top:5px;font-size:14px;" onclick="this.previousElementSibling.style.display=\'block\';this.remove()">+ Op 2</button>'
       +'</div></div>'
@@ -10563,6 +10819,51 @@ function loadCaptura() {
       +'<button class="cap-btn-lot-action" id="cap-btnS-'+oid+'-'+boxIdx+'" disabled onclick="capSaveLocal(\''+oid+'\','+boxIdx+')">AGREGAR LOTE</button>';
     scroll.appendChild(box);
     capAdjT(oid, boxIdx, 0);
+  };
+
+  window.capAbrirCambioMaq = function(oid, boxIdx) {
+    var row = document.getElementById('cap-row-'+oid);
+    var maqActual = row ? row.dataset.maq.toUpperCase().trim() : '';
+    capMaqModal.oid = oid;
+    capMaqModal.pendingNombre = null;
+    capMaqModal.maqSeleccionada = maqActual;
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === capCurrentProceso.toUpperCase().trim();
+    });
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqActual && todasMaqs.indexOf(maqActual) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqActual);
+    }
+    var html = '<div class="cap-maqsel-title">✏️ CAMBIAR MÁQUINA</div>'
+      + capMaqSelBuildHTML(grupos, maqActual);
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">' + html
+      + '<button class="cap-maqsel-ok" onclick="capMaqCambioAceptar(\''+oid+'\','+boxIdx+')">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capMaqCambioAceptar = function(oid, boxIdx) {
+    if(!capMaqModal.maqSeleccionada){ sAlert('Selecciona una máquina primero.','warning'); return; }
+    var row = document.getElementById('cap-row-'+oid);
+    if(row) row.dataset.maq = capMaqModal.maqSeleccionada;
+    // Actualizar el texto visible en el lote
+    var txtEl = document.getElementById('cap-maqtxt-'+oid+'-'+boxIdx);
+    if(txtEl) txtEl.innerText = capMaqModal.maqSeleccionada;
+    // Actualizar el entry guardado en capLocalEntries
+    var entry = capLocalEntries.find(function(e){ return e.ordenID==oid && String(e.numLote)==String(document.getElementById('cap-num-'+oid+'-'+boxIdx) ? document.getElementById('cap-num-'+oid+'-'+boxIdx).innerText : ''); });
+    if(entry) entry.maquina = capMaqModal.maqSeleccionada;
+    capMaqSelCancelar();
   };
 
   window.capValLote = function(oid, boxIdx) {
@@ -10578,19 +10879,27 @@ function loadCaptura() {
     var op1Val = manualInp?manualInp.value:"";
     var selloInp = document.getElementById('cap-sello-'+oid+'-'+boxIdx);
     var selloVal = selloInp.value.trim();
-    var procsConSello = ["FORJA","PUNTEADO","ROLADO TORN"];
+    var procsConSello = ["FORJA","PUNTEADO","ROLADO TORN","TREFILADO"];
     var necesitaSello = procsConSello.includes(capCurrentProceso.toUpperCase());
     var selloOk = true;
     if(necesitaSello){ if(selloVal.length<2){ selloOk=false; selloInp.style.borderColor="red"; selloInp.style.backgroundColor="#ffebee"; }else{ selloInp.style.borderColor="#2e7d32"; selloInp.style.backgroundColor="#e8f5e9"; } }
     else { selloInp.style.borderColor="#555"; selloInp.style.backgroundColor="white"; }
     var esPesoValido = pf>(pi+pt);
-    var operadorOk = (chk||op1Val.length>5);
+    var opEnLista = capDb.currentOps.some(function(o){ return o.nombre.trim().toLowerCase() === op1Val.trim().toLowerCase(); });
+    var manualOpInp = box.querySelector('.cap-op-manual-inp');
+    if(!chk && manualOpInp){
+      if(op1Val.length > 0 && !opEnLista){ manualOpInp.style.borderColor='red'; manualOpInp.style.backgroundColor='#ffebee'; }
+      else if(opEnLista){ manualOpInp.style.borderColor='#2e7d32'; manualOpInp.style.backgroundColor='#e8f5e9'; }
+      else { manualOpInp.style.borderColor='#555'; manualOpInp.style.backgroundColor='white'; }
+    }
+    var operadorOk = (chk || opEnLista);
     var btn = document.getElementById('cap-btnS-'+oid+'-'+boxIdx);
     if(neto>0&&esPesoValido&&operadorOk&&selloOk){ box.classList.remove('editing'); box.classList.add('complete'); btn.disabled=false; btn.style.background="#2e7d32"; btn.style.color="white"; }
     else{ box.classList.remove('complete'); box.classList.add('editing'); btn.disabled=true; btn.style.background="#eee"; btn.style.color="#888"; }
   };
 
   window.capSaveLocal = function(oid, boxIdx) {
+    // 1. Validar fecha
     var fechaIngresada = document.getElementById('cap-txtFecha').value;
     if(fechaIngresada){
       var hoy = new Date(); hoy.setHours(23,59,59,999);
@@ -10601,35 +10910,107 @@ function loadCaptura() {
         return;
       }
     }
+    // 2. Validar operador
     var box = document.getElementById('cap-box-'+oid+'-'+boxIdx);
+    var chk = document.getElementById('cap-chk-'+oid+'-'+boxIdx).checked;
+    if(!chk){
+      var manInp = box.querySelectorAll('.cap-manual-ops input')[0];
+      var nomOp1Manual = manInp ? manInp.value.trim() : '';
+      var opValida = capDb.operadoresAll.some(function(o){ return o.nombre.trim().toLowerCase() === nomOp1Manual.toLowerCase(); });
+      if(!opValida){
+        if(manInp){ manInp.style.borderColor='red'; manInp.style.backgroundColor='#ffebee'; }
+        sAlert('⛔ "'+nomOp1Manual+'" no es un operador válido. Selecciona uno de la lista.', 'error', 'Operador inválido');
+        return;
+      }
+    }
+    // 3. Mostrar modal de confirmación de máquina
     var row = document.getElementById('cap-row-'+oid);
+    var maqAsignada = row ? row.dataset.maq.toUpperCase().trim() : '';
+    capMaqModal.oid = oid;
+    capMaqModal.boxIdx = boxIdx;
+    capMaqModal.maqSeleccionada = maqAsignada;
+    capMaqModal.maqAsignada = maqAsignada;
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === capCurrentProceso.toUpperCase().trim();
+    });
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqAsignada && todasMaqs.indexOf(maqAsignada) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqAsignada);
+    }
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">'
+      + '<div class="cap-maqsel-title">🏭 CONFIRMA MÁQUINA</div>'
+      + '<div class="cap-maqsel-sub">Proceso: <b>' + capCurrentProceso + '</b></div>'
+      + capMaqSelBuildHTML(grupos, maqAsignada)
+      + '<button class="cap-maqsel-ok" onclick="capMaqGuardarAceptar()">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capMaqGuardarAceptar = function() {
+    if(!capMaqModal.maqSeleccionada){ sAlert('Selecciona una máquina primero.','warning'); return; }
+    capMaqSelCancelar();
+    var oid = capMaqModal.oid;
+    var boxIdx = capMaqModal.boxIdx;
+    var row = document.getElementById('cap-row-'+oid);
+    if(row) row.dataset.maq = capMaqModal.maqSeleccionada;
+    var box = document.getElementById('cap-box-'+oid+'-'+boxIdx);
     var lIdx = document.getElementById('cap-num-'+oid+'-'+boxIdx).innerText;
     var nLote = parseInt(lIdx);
-    var loteFull = row.dataset.nombre+"."+(nLote < 100 ? ("00"+nLote).slice(-2) : String(nLote));
+    var loteFull = row.dataset.nombre+'.'+( nLote < 100 ? ('00'+nLote).slice(-2) : String(nLote));
     var existeEnSistema = capDb.lotesExistentes.includes(loteFull);
-    if(!existeEnSistema){ if(!window.confirm("⚠️ El lote "+loteFull+" NO existe en el sistema. Se creará automáticamente.\n¿Desea continuar?"))return; }
-    var chk = document.getElementById('cap-chk-'+oid+'-'+boxIdx).checked;
-    var nomOp1 = chk?document.getElementById('cap-defOp1').value:box.querySelectorAll('.cap-manual-ops input')[0].value;
-    var objOp1 = capDb.operadoresAll.find(function(o){ return o.nombre===nomOp1; });
-    var nomOp2 = chk?document.getElementById('cap-defOp2').value:(box.querySelectorAll('.cap-manual-ops input')[1]?box.querySelectorAll('.cap-manual-ops input')[1].value:"");
-    capLocalEntries.push({
-      boxId: oid+"-"+boxIdx, maquina:row.dataset.maq, serie:row.dataset.serie, ordenID:oid, loteFull:loteFull, numLote:lIdx,
-      pesoI:parseFloat(document.getElementById('cap-pi-'+oid+'-'+boxIdx).value)||0,
-      pesoTina:parseFloat(document.getElementById('cap-pt-'+oid+'-'+boxIdx).value)||0,
-      pesoF:parseFloat(document.getElementById('cap-pf-'+oid+'-'+boxIdx).value)||0,
-      producido:parseInt(document.getElementById('cap-neto-'+oid+'-'+boxIdx).innerText)||0,
-      op1_id:objOp1?objOp1.id:"MANUAL", op1_txt:nomOp1, op2_txt:nomOp2,
-      sello:document.getElementById('cap-sello-'+oid+'-'+boxIdx).value,
-      comentarios:document.getElementById('cap-com-'+oid+'-'+boxIdx).value,
-      fecha:document.getElementById('cap-txtFecha').value, turno:capCurrentTurno, crearLote:!existeEnSistema,
-      proceso: capCurrentProceso,
-      usuario: (currentUser && currentUser.nombre) ? currentUser.nombre : ''
-    });
-    box.classList.remove('editing','complete'); box.classList.add('locked');
-    var btnAdd = document.getElementById('cap-btnAdd-'+oid);
-    if(btnAdd) btnAdd.style.display="flex";
-    capActualizarFab();
-    capActualizarResumenVisual(oid);
+    var doGuardar = function(){
+      var chk2 = document.getElementById('cap-chk-'+oid+'-'+boxIdx).checked;
+      var nomOp1 = chk2 ? document.getElementById('cap-defOp1').value : (box.querySelectorAll('.cap-manual-ops input')[0] ? box.querySelectorAll('.cap-manual-ops input')[0].value : '');
+      var objOp1 = capDb.operadoresAll.find(function(o){ return o.nombre===nomOp1; });
+      var nomOp2 = chk2 ? document.getElementById('cap-defOp2').value : (box.querySelectorAll('.cap-manual-ops input')[1] ? box.querySelectorAll('.cap-manual-ops input')[1].value : '');
+      capLocalEntries.push({
+        boxId:oid+'-'+boxIdx, maquina:row.dataset.maq, serie:row.dataset.serie, ordenID:oid, loteFull:loteFull, numLote:lIdx,
+        pesoI:parseFloat(document.getElementById('cap-pi-'+oid+'-'+boxIdx).value)||0,
+        pesoTina:parseFloat(document.getElementById('cap-pt-'+oid+'-'+boxIdx).value)||0,
+        pesoF:parseFloat(document.getElementById('cap-pf-'+oid+'-'+boxIdx).value)||0,
+        producido:parseInt(document.getElementById('cap-neto-'+oid+'-'+boxIdx).innerText)||0,
+        op1_id:objOp1?objOp1.id:'MANUAL', op1_txt:nomOp1, op2_txt:nomOp2,
+        sello:document.getElementById('cap-sello-'+oid+'-'+boxIdx).value,
+        comentarios:document.getElementById('cap-com-'+oid+'-'+boxIdx).value,
+        fecha:document.getElementById('cap-txtFecha').value, turno:capCurrentTurno, crearLote:!existeEnSistema,
+        proceso:(row.dataset.procesoReal && row.dataset.procesoReal !== 'BARRA') ? row.dataset.procesoReal : capCurrentProceso,
+        usuario:(currentUser&&currentUser.nombre)?currentUser.nombre:''
+      });
+      box.classList.remove('editing','complete'); box.classList.add('locked');
+      var maqGuardada = row.dataset.maq;
+      var maqInfoEl = document.createElement('div');
+      maqInfoEl.className = 'cap-maqinfo-activo';
+      maqInfoEl.style.cssText = 'grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#e8f5e9;border-radius:8px;margin-top:6px;font-size:13px;';
+      maqInfoEl.id = 'cap-maqinfo-'+oid+'-'+boxIdx;
+      maqInfoEl.innerHTML = '<span>🏭 <b>MÁQUINA:</b> <span id="cap-maqtxt-'+oid+'-'+boxIdx+'">' + maqGuardada + '</span></span>'
+        + '<div style="display:flex;gap:6px;">'
+        + '<button style="background:#1565c0;color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:900;" '
+        + 'onclick="capAbrirCambioMaq(\''+oid+'\','+boxIdx+')">✏️ CAMBIAR</button>'
+        + '<button style="background:#d32f2f;color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:900;" '
+        + 'onclick="capRemoveLot(\''+oid+'\','+boxIdx+')">🗑️ ELIMINAR</button>'
+        + '</div>';
+      box.appendChild(maqInfoEl);
+      var btnAdd = document.getElementById('cap-btnAdd-'+oid);
+      if(btnAdd) btnAdd.style.display='flex';
+      capActualizarFab();
+      capActualizarResumenVisual(oid);
+    };
+    if(!existeEnSistema){
+      Swal.fire({title:'⚠️ Lote nuevo', text:'El lote '+loteFull+' NO existe. Se creará automáticamente. ¿Continuar?', icon:'warning', showCancelButton:true, confirmButtonText:'Sí, continuar', cancelButtonText:'Cancelar'}).then(function(r){ if(r.isConfirmed) doGuardar(); });
+      return;
+    }
+    doGuardar();
   };
 
   window.capAdjT = function(oid, boxIdx, delta) {
@@ -10670,7 +11051,10 @@ function loadCaptura() {
     var local = capLocalEntries.filter(function(e){ return e.ordenID==oid; });
     if(local.length>0){ var u=local[local.length-1]; datos={fecha:u.fecha,turno:u.turno,maquina:u.maquina,lote:u.loteFull,pi:u.pesoI,pf:u.pesoF,tina:u.pesoTina,prod:u.producido,sello:u.sello||"N/A"}; }
     else if(capDb.historial[oid]&&capDb.historial[oid].lastFullRecord){ datos=capDb.historial[oid].lastFullRecord; }
-    if(datos){ container.innerHTML='<div style="border-bottom:2px solid #ffb74d;margin-bottom:8px;color:#e65100;font-size:18px;"><b>ÚLTIMO MOVIMIENTO:</b></div><div class="cap-last-summary-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;"><span><b>FEC:</b> '+datos.fecha+'</span><span><b>TUR:</b> '+datos.turno+'</span><span><b>MAQ:</b> '+datos.maquina+'</span><span><b>LOT:</b> '+datos.lote+'</span><span><b>P.I:</b> '+datos.pi+'</span><span><b>P.F:</b> '+datos.pf+'</span><span><b>TIN:</b> '+datos.tina+'</span><span><b>PROD:</b> '+datos.prod+' kg</span></div><div style="margin-top:10px;font-size:18px;"><span><b>SELLO:</b> '+datos.sello+'</span></div>'; }
+    if(datos){
+      var fmtN = function(n){ return Number(n||0).toLocaleString('es-MX'); };
+      container.innerHTML='<div style="border-bottom:2px solid #ffb74d;margin-bottom:8px;color:#e65100;font-size:18px;"><b>ÚLTIMO MOVIMIENTO:</b></div><div class="cap-last-summary-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;"><span><b>FEC:</b> '+datos.fecha+'</span><span><b>TUR:</b> '+datos.turno+'</span><span><b>MAQ:</b> '+datos.maquina+'</span><span><b>LOT:</b> '+datos.lote+'</span><span><b>P.I:</b> '+fmtN(datos.pi)+'</span><span><b>P.F:</b> '+fmtN(datos.pf)+'</span><span><b>TIN:</b> '+fmtN(datos.tina)+'</span><span><b>PROD:</b> '+fmtN(datos.prod)+' kg</span></div><div style="margin-top:10px;font-size:18px;"><span><b>SELLO:</b> '+datos.sello+'</span></div>';
+    }
     else { container.innerHTML="<i>Sin registros previos</i>"; }
   };
 
@@ -10821,15 +11205,27 @@ function loadCaptura() {
     });
     procesosUnicos.forEach(function(proc){
       var regsProc = capLocalEntries.filter(function(e){ return (e.proceso||'SIN PROCESO')===proc; });
-      tbody.innerHTML += '<tr><td colspan="7" style="background:#1565c0;color:white;font-weight:900;padding:8px 12px;text-align:left;font-size:14px;letter-spacing:0.5px;">📋 '+proc+' — '+regsProc.length+' registro(s)</td></tr>';
-      regsProc.forEach(function(e){
-        var idx = capLocalEntries.indexOf(e);
-        tbody.innerHTML+='<tr><td style="padding:10px"><b>'+e.loteFull+'</b></td><td>'+e.pesoI+'</td>'
-          +'<td><input type="number" class="cap-inp-cap" style="font-size:14px;width:70px;padding:4px;" value="'+e.pesoTina+'" oninput="capEditP('+idx+',\'pesoTina\',this.value)"></td>'
-          +'<td><input type="number" class="cap-inp-cap" style="font-size:14px;width:70px;padding:4px;" value="'+e.pesoF+'" oninput="capEditP('+idx+',\'pesoF\',this.value)"></td>'
-          +'<td id="cap-net-'+idx+'" style="font-weight:900;color:#1565c0;">'+e.producido+'</td>'
-          +'<td>'+e.op1_txt+(e.op2_txt?' / '+e.op2_txt:'')+'</td>'
-          +'<td><button style="border:none;background:#d32f2f;color:white;padding:6px 10px;border-radius:4px;cursor:pointer;font-weight:900;" onclick="capDelP('+idx+')">✖</button></td></tr>';
+      tbody.innerHTML += '<tr><td colspan="8" style="background:#1565c0;color:white;font-weight:900;padding:8px 12px;text-align:left;font-size:14px;letter-spacing:0.5px;">📋 '+proc+' — '+regsProc.length+' registro(s)</td></tr>';
+      // Agrupar por máquina
+      var maqsEnProc = [];
+      regsProc.forEach(function(e){ if(maqsEnProc.indexOf(e.maquina)<0) maqsEnProc.push(e.maquina); });
+      maqsEnProc.forEach(function(maq){
+        var regsMaq = regsProc.filter(function(e){ return e.maquina===maq; });
+        tbody.innerHTML += '<tr><td colspan="8" style="background:#37474f;color:#ffca28;font-weight:900;padding:6px 16px;font-size:13px;">🏭 '+maq
+          +'<button style="margin-left:12px;background:#1565c0;color:white;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:900;" '
+          +'onclick="capPreviewCambioMaq(\''+maq+'\',\''+proc+'\')">✏️ CAMBIAR MÁQUINA</button></td></tr>';
+        regsMaq.forEach(function(e){
+          var idx = capLocalEntries.indexOf(e);
+          tbody.innerHTML+='<tr>'
+            +'<td style="padding:8px 10px"><b>'+e.loteFull+'</b></td>'
+            +'<td>'+Number(e.pesoI).toLocaleString('es-MX')+'</td>'
+            +'<td><input type="number" class="cap-inp-cap" style="font-size:14px;width:75px;padding:4px;" value="'+e.pesoTina+'" oninput="capEditP('+idx+',\'pesoTina\',this.value)"></td>'
+            +'<td><input type="number" class="cap-inp-cap" style="font-size:14px;width:75px;padding:4px;" value="'+e.pesoF+'" oninput="capEditP('+idx+',\'pesoF\',this.value)"></td>'
+            +'<td id="cap-net-'+idx+'" style="font-weight:900;color:#1565c0;">'+Number(e.producido).toLocaleString('es-MX')+'</td>'
+            +'<td>'+e.op1_txt+(e.op2_txt?' / '+e.op2_txt:'')+'</td>'
+            +'<td>'+e.maquina+'</td>'
+            +'<td><button style="border:none;background:#d32f2f;color:white;padding:6px 10px;border-radius:4px;cursor:pointer;font-weight:900;" onclick="capDelP('+idx+')">✖</button></td></tr>';
+        });
       });
     });
     capCalcPrevTotal();
@@ -10856,6 +11252,47 @@ function loadCaptura() {
         }).guardarProduccionCompleta({ registros: capLocalEntries });
       };
     },10000);
+  };
+
+  window.capPreviewCambioMaq = function(maqActual, proc) {
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === proc.toUpperCase().trim();
+    });
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    var maqUp = maqActual.toUpperCase().trim();
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqUp && todasMaqs.indexOf(maqUp) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqActual);
+    }
+    capMaqModal.maqAsignada = maqActual;
+    capMaqModal.maqSeleccionada = maqActual;
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">'
+      + '<div class="cap-maqsel-title">✏️ CAMBIAR MÁQUINA</div>'
+      + '<div class="cap-maqsel-sub">Proceso: <b>' + proc + '</b></div>'
+      + capMaqSelBuildHTML(grupos, maqActual)
+      + '<button class="cap-maqsel-ok" onclick="capPreviewCambioMaqAceptar(\''+maqActual+'\',\''+proc+'\')">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capPreviewCambioMaqAceptar = function(maqAnterior, proc) {
+    var nuevaMaq = capMaqModal.maqSeleccionada;
+    if(!nuevaMaq){ sAlert('Selecciona una máquina.','warning'); return; }
+    capMaqSelCancelar();
+    capLocalEntries.forEach(function(e){
+      if(e.maquina === maqAnterior && (e.proceso||'SIN PROCESO') === proc) e.maquina = nuevaMaq;
+    });
+    capAbrirPreview();
   };
 
   window.capCerrarPreview = function() {
@@ -10893,13 +11330,14 @@ function loadCaptura() {
   };
 
   window.capRemoveLot = function(oid, boxIdx) {
-    if(window.confirm('¿Eliminar este lote?')){
+    Swal.fire({title:'¿Eliminar lote?',text:'Se borrará este registro preguardado.',icon:'warning',showCancelButton:true,confirmButtonText:'Sí, eliminar',cancelButtonText:'Cancelar',confirmButtonColor:'#d32f2f'}).then(function(r){
+      if(!r.isConfirmed) return;
       var numSpan=document.getElementById('cap-num-'+oid+'-'+boxIdx);
       if(numSpan) capLocalEntries=capLocalEntries.filter(function(e){ return !(e.ordenID==oid&&e.numLote==numSpan.innerText); });
       var box=document.getElementById('cap-box-'+oid+'-'+boxIdx); if(box)box.remove();
-      var btnAdd=document.getElementById('cap-btnAdd-'+oid); if(btnAdd)btnAdd.style.display="flex";
+      var btnAdd=document.getElementById('cap-btnAdd-'+oid); if(btnAdd)btnAdd.style.display='flex';
       capActualizarFab();
-    }
+    });
   };
 
   window.capShowOp2 = function(oid, boxIdx, btn) {
@@ -13102,7 +13540,8 @@ function loadTableroSup() {
     <div class="turno-topbar">
       <button class="btn-back" onclick="tsupVolverDesdeTurno()">◀</button>
       <div class="turno-title">🖨 FORM. PRODUCCIÓN — <span id="tsup-turnoProceso"></span></div>
-      <button class="btn-imprimir" onclick="tsupImprimirTurno()">🖨 IMPRIMIR</button>
+      <button class="btn-imprimir" onclick="tsupImprimirTurno('horizontal')" style="background:#1565c0;">🖨 Horizontal</button>
+      <button class="btn-imprimir" onclick="tsupImprimirTurno('vertical')" style="background:#2e7d32;margin-left:6px;">🖨 Vertical</button>
     </div>
     <div class="turno-body" id="tsup-turnoBody">
       <div class="turno-empty">Cargando reporte...</div>
@@ -13502,8 +13941,13 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     return html;
   }
 
-  function tsupHtmlTurno(lista) {
+  function tsupHtmlTurno(lista, procesoNombre) {
     if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes para este proceso.</p>';
+    var esColatado = (procesoNombre || document.getElementById('tsup-turnoProceso').textContent || '').toUpperCase().includes('COLATADO');
+    if (esColatado) {
+      return tsupHtmlTurnoColatado(lista);
+    }
+    // ── Render genérico (procesos distintos a COLATADO) ──
     var html = '';
     lista.forEach(function(m) {
       html += '<div style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);">'
@@ -13558,6 +14002,132 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     return html;
   }
 
+  // ── HTML compartido para vista previa e impresión de COLATADO ──
+  function tsupHtmlTurnoColatado(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#000;">No hay órdenes para este proceso.</p>';
+
+    function getCirculoAvance(avance) {
+      var pct = Math.round(avance);
+      var color = pct <= 50 ? '#2196f3' : pct <= 75 ? '#fbc02d' : pct <= 90 ? '#66bb6a' : pct <= 105 ? '#2e7d32' : '#e91e63';
+      var r = 14, circ = 2 * Math.PI * r;
+      var fill = Math.min(avance, 105);
+      var offset = circ - (fill / 105) * circ;
+      return '<svg width="38" height="38" viewBox="0 0 38 38" style="display:inline-block;vertical-align:middle;">'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="#e0e0e0" stroke-width="4"/>'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4"'
+        + ' stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"'
+        + ' stroke-linecap="round" transform="rotate(-90 19 19)"/>'
+        + '<text x="19" y="23" text-anchor="middle" font-size="8" font-weight="900" fill="' + color + '">' + pct + '%</text>'
+        + '</svg>';
+    }
+
+    var html = '';
+    lista.forEach(function(m) {
+      var ordenesFiltradas = (m.ordenes || []).slice(0, 2);
+
+      var filasDatos = '';
+      ordenesFiltradas.forEach(function(o) {
+        var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+        var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+        filasDatos +=
+          '<tr style="height:28px;">'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;font-weight:900;color:#000;">' + (o.pedido || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#1565c0;">' + (o.ordenFull || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;color:#000;">' + (o.producto || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + diam + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + lon + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerda || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerpo || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px;text-align:center;">' + getCirculoAvance(o.avance || 0) + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:11px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.ultimoLote || '-') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + Math.round(Number(o.ultimoPIni) || 0) + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + Math.round(Number(o.ultimoPFin) || 0) + '</td>'
+          + '<td style="border:2px solid #000;border-left:3px solid #000;padding:2px;background:#fafafa;width:22px;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-right:3px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-left:2px solid #000;padding:2px;background:#fafafa;width:22px;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-right:3px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '</tr>';
+      });
+
+      var filaBlanco =
+          '<tr style="height:28px;">'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;"></td>'
+          + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;width:22px;"></td>'
+          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-left:2px solid #000;background:#fafafa;width:22px;"></td>'
+          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+          + '</tr>';
+
+      html +=
+        '<div style="margin-bottom:12px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);page-break-inside:avoid;break-inside:avoid;">'
+        + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
+        + '<tr style="background:#fff9c4;height:44px;">'
+        + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:12px;text-transform:uppercase;width:30%;color:#000;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:40%;color:#000;">Operador:</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:30%;color:#000;">Horario: <span style="border:2px solid #000;display:inline-block;width:60px;height:22px;vertical-align:middle;"></span> a <span style="border:2px solid #000;display:inline-block;width:60px;height:22px;vertical-align:middle;"></span></td>'
+        + '</tr>'
+        + '</table>'
+        + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
+        + '<thead>'
+        + '<tr style="background:#dde3f0;">'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Pedido</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Orden</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:8%">Producto</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">Diam.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">Long.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:7%">BARNIZ</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">CAJA</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Solic.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Prod.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Av.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Restan</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Ult.Lote</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">P.Ini</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">P.Fin</th>'
+        + '<th style="border:2px solid #000;border-left:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:3%">Lote</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Inicio</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Final</th>'
+        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Total</th>'
+        + '<th style="border:2px solid #000;border-left:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:3%">Lote</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Inicio</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Final</th>'
+        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Total</th>'
+        + '</tr>'
+        + '</thead>'
+        + '<tbody>'
+        + filasDatos
+        + filaBlanco
+        + '</tbody></table>'
+        + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:10px;font-weight:700;min-height:22px;color:#000;">Observaciones:</div>'
+        + '</div>';
+    });
+    return html;
+  }
+
   function tsupRenderPlan(lista) {
     var body = document.getElementById('tsup-planBody');
     if (body) body.innerHTML = tsupHtmlPlan(lista);
@@ -13566,7 +14136,8 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
 
   function tsupRenderTurno(lista) {
     var body = document.getElementById('tsup-turnoBody');
-    if (body) body.innerHTML = tsupHtmlTurno(lista);
+    var proceso = document.getElementById('tsup-turnoProceso') ? document.getElementById('tsup-turnoProceso').textContent : '';
+    if (body) body.innerHTML = tsupHtmlTurno(lista, proceso);
   }
   window.tsupRenderTurno = tsupRenderTurno;
 
@@ -13595,10 +14166,69 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     tsupAbrirVentanaImpresion('PLAN DE PRODUCCIÓN — ' + proceso, tsupHtmlPlan(window._tsupListaPlan || []));
   };
 
-  window.tsupImprimirTurno = function() {
+  window.tsupImprimirTurno = function(orientacion) {
+    orientacion = orientacion || 'horizontal';
     var proceso = document.getElementById('tsup-turnoProceso').textContent;
-    tsupAbrirVentanaImpresion('FORM. PRODUCCIÓN — ' + proceso, tsupHtmlTurno(window._tsupListaTurno || []));
+    if (proceso.toUpperCase().includes('COLATADO')) {
+      tsupImprimirColatado(proceso, window._tsupListaTurno || [], orientacion);
+    } else {
+      tsupAbrirVentanaImpresion('FORM. PRODUCCIÓN — ' + proceso, tsupHtmlTurno(window._tsupListaTurno || []));
+    }
   };
+
+  function tsupImprimirColatado(proceso, lista, orientacion) {
+    orientacion = orientacion || 'horizontal';
+    var esVertical = orientacion === 'vertical';
+    var htmlMaquinas = tsupHtmlTurnoColatado(lista);
+
+    var htmlFinal = htmlMaquinas.replace(/(<div style="margin-bottom:12px;)/g, '<div class="bloque-maq" style="margin-bottom:3px;');
+
+    var pageStyle = esVertical
+      ? '@page{size:letter portrait;margin:4mm 3mm;}'
+      : '@page{size:letter landscape;margin:4mm 3mm;}';
+
+    var escalaStyle = esVertical
+      ? '.bloque-maq{zoom:0.58;margin-bottom:3px;break-inside:avoid;page-break-inside:avoid;}'
+      : '.bloque-maq{break-inside:avoid;page-break-inside:avoid;}';
+
+    var win = window.open('', '_blank');
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>FORMATO DE PRODUCCIÓN — PROCESO COLATADO</title>'
+      + '<style>'
+      + pageStyle
+      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'table{border-collapse:collapse;}'
+      + escalaStyle
+      + '.no-print{position:fixed;top:10px;right:10px;z-index:9999;}'
+      + '@media print{.no-print{display:none!important;}}'
+      + '</style></head><body>'
+      + '<div class="no-print">'
+      + '<button onclick="window.print()" style="padding:8px 18px;background:#1565c0;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:4px;">🖨️ IMPRIMIR</button>'
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">'
+      + '<tr>'
+      + '<td style="width:80px;padding:0 8px 0 0;vertical-align:middle;">'
+      + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:60px;width:auto;display:block;" onerror="this.style.display=\'none\'">'
+      + '</td>'
+      + '<td style="vertical-align:middle;padding:0 10px;">'
+      + '<div style="font-size:22px;font-weight:900;text-transform:uppercase;line-height:1.1;letter-spacing:1px;">FORMATO DE PRODUCCIÓN</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#e65100;text-transform:uppercase;letter-spacing:2px;">PROCESO COLATADO</div>'
+      + '</td>'
+      + '<td style="width:220px;vertical-align:middle;text-align:right;">'
+      + '<table style="border-collapse:collapse;margin-left:auto;">'
+      + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;color:#000;">Fecha:</td>'
+      + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+      + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;color:#000;">Turno:</td>'
+      + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+      + '</table>'
+      + '</td>'
+      + '</tr>'
+      + '</table>'
+      + '<hr style="border:2px solid #000;margin:0 0 6px 0;">'
+      + htmlFinal
+      + '</body></html>');
+    win.document.close();
+  }
 
 // ── Volver a procesos ──
 function tsupVolverAProcesos() {
@@ -14545,6 +15175,142 @@ function muCambiarPassword(){
 }
 
 // ══ TRACKING MODULE JS ══════════════════════════════════════
+
+async function trkExportarProduccion() {
+  var fechaIni = document.getElementById('trk-expFechaIni').value;
+  var fechaFin = document.getElementById('trk-expFechaFin').value;
+  if (!fechaIni || !fechaFin) { sAlert('Selecciona fecha inicio y fecha fin','warning'); return; }
+  if (fechaIni > fechaFin)    { sAlert('La fecha inicio no puede ser mayor que la fecha fin','warning'); return; }
+
+  // Cargar ExcelJS si no está cargado
+  if (typeof ExcelJS === 'undefined') {
+    showLoader('Cargando librería...');
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  showLoader('Consultando datos de producción...');
+  try {
+    var res = await new Promise(function(resolve, reject) {
+      google.script.run
+        .withSuccessHandler(function(r) { resolve(typeof r === 'string' ? JSON.parse(r) : r); })
+        .withFailureHandler(function(e) { reject(new Error(e.message||String(e))); })
+        .rastreoExportarProduccion(fechaIni, fechaFin);
+    });
+    if (!res.success) { hideLoader(); sAlert('Error: ' + (res.msg||'Sin datos'), 'error'); return; }
+    var filas = res.filas || [];
+    if (!filas.length) { hideLoader(); sAlert('No hay registros en ese rango de fechas', 'warning'); return; }
+
+    showLoader('Generando Excel...');
+
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'ToolCN PCP';
+    wb.created = new Date();
+    var ws = wb.addWorksheet('Producción', { views:[{state:'frozen',ySplit:1}] });
+
+    // ── Definir columnas ──
+    var cols = [
+      {header:'FECHA',          key:'FECHA',          width:14},
+      {header:'TURNO',          key:'TURNO',          width:8},
+      {header:'PEDIDO',         key:'PEDIDO',         width:16},
+      {header:'SERIE',          key:'SERIE',          width:8},
+      {header:'ORDEN',          key:'ORDEN',          width:8},
+      {header:'CODIGO',         key:'CODIGO',         width:14},
+      {header:'DESCRIPCION',    key:'DESCRIPCION',    width:40},
+      {header:'PROCESO',        key:'PROCESO',        width:18},
+      {header:'PESO',           key:'PESO',           width:10},
+      {header:'TIPO',           key:'TIPO',           width:14},
+      {header:'DIAMETRO',       key:'DIAMETRO',       width:10},
+      {header:'LONGITUD',       key:'LONGITUD',       width:10},
+      {header:'CUERDA',         key:'CUERDA',         width:10},
+      {header:'CUERPO',         key:'CUERPO',         width:10},
+      {header:'ACERO',          key:'ACERO',          width:10},
+      {header:'LOTE',           key:'LOTE',           width:18},
+      {header:'MAQUINA',        key:'MAQUINA',        width:14},
+      {header:'PESO_I',         key:'PESO_I',         width:10},
+      {header:'PESO_F',         key:'PESO_F',         width:10},
+      {header:'PESO_TINA',      key:'PESO_TINA',      width:10},
+      {header:'PRODUCIDO',      key:'PRODUCIDO',      width:12},
+      {header:'SELLO',          key:'SELLO',          width:12},
+      {header:'OPERADOR',       key:'OPERADOR',       width:28},
+      {header:'USER',           key:'USER',           width:14},
+      {header:'CAMBIOS',        key:'CAMBIOS',        width:20},
+    ];
+    ws.columns = cols;
+
+    // ── Estilo encabezado ──
+    var headerRow = ws.getRow(1);
+    headerRow.height = 22;
+    headerRow.eachCell(function(cell) {
+      cell.fill   = {type:'pattern', pattern:'solid', fgColor:{argb:'FF0D2137'}};
+      cell.font   = {name:'Calibri', bold:true, size:11, color:{argb:'FF00D4FF'}};
+      cell.border = {
+        top:    {style:'thin', color:{argb:'FF00D4FF'}},
+        bottom: {style:'medium', color:{argb:'FF00D4FF'}},
+        left:   {style:'thin', color:{argb:'FF1E3A5F'}},
+        right:  {style:'thin', color:{argb:'FF1E3A5F'}}
+      };
+      cell.alignment = {vertical:'middle', horizontal:'center', wrapText:false};
+    });
+
+    // Columnas numéricas por key
+    var colsNum = ['PESO','PESO_I','PESO_F','PESO_TINA','PRODUCIDO'];
+
+    // ── Insertar filas de datos ──
+    filas.forEach(function(f, idx) {
+      var row = ws.addRow(f);
+      var isOdd = (idx % 2 === 0);
+      row.height = 18;
+      row.eachCell({includeEmpty:true}, function(cell, colNumber) {
+        var colKey = cols[colNumber-1] ? cols[colNumber-1].key : '';
+        var isNum  = colsNum.indexOf(colKey) >= 0;
+        cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb: isOdd ? 'FF0F1C2E' : 'FF142033'}};
+        cell.font = {name:'Calibri', size:10, color:{argb:'FFE2E8F0'}};
+        cell.border = {
+          top:    {style:'hair', color:{argb:'FF1E3A5F'}},
+          bottom: {style:'hair', color:{argb:'FF1E3A5F'}},
+          left:   {style:'thin', color:{argb:'FF1E3A5F'}},
+          right:  {style:'thin', color:{argb:'FF1E3A5F'}}
+        };
+        cell.alignment = {vertical:'middle', horizontal: isNum ? 'right' : 'left', wrapText:false};
+        if (isNum && cell.value !== null && cell.value !== '') {
+          cell.numFmt = '#,##0.00';
+        }
+      });
+      // Colorear columna PRODUCIDO en verde
+      var prodColIdx = cols.findIndex(function(c){return c.key==='PRODUCIDO';})+1;
+      if (prodColIdx > 0) {
+        var prodCell = row.getCell(prodColIdx);
+        prodCell.font = {name:'Calibri', size:10, color:{argb:'FF22C55E'}, bold:true};
+      }
+    });
+
+    // ── Autofilter en encabezado ──
+    ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:cols.length} };
+
+    // ── Descargar ──
+    var buffer = await wb.xlsx.writeBuffer();
+    var blob   = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url    = URL.createObjectURL(blob);
+    var a      = document.createElement('a');
+    var fi     = fechaIni.replace(/-/g,'');
+    var ff     = fechaFin.replace(/-/g,'');
+    a.href     = url;
+    a.download = 'Produccion_' + fi + '_' + ff + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    hideLoader();
+    sAlert('Archivo generado con ' + filas.length + ' registros', 'success');
+  } catch(e) {
+    hideLoader();
+    sAlert('Error al generar Excel: ' + e.message, 'error');
+  }
+}
 // ══════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════
@@ -14657,7 +15423,7 @@ function trkAddTab(key, label) {
   var bar = document.getElementById('trk-tabsBar');
   var btn = document.createElement('button');
   btn.className = 'tab-btn';
-  btn.id = 'tab-' + key;
+  btn.id = 'trk-tab-' + key;
   btn.innerHTML = '📋 ' + label + ' <span class="tab-close" onclick="trkCerrarTab(event,\'' + key + '\')">×</span>';
   btn.onclick = function(e) { if(!e.target.classList.contains('tab-close')) trkSwitchTab(key); };
   bar.appendChild(btn);
@@ -14787,7 +15553,7 @@ function trkRenderDetalle(key) {
   }
 
   // ── HTML ──
-  var html = '<div class="detail-pane" id="detail-' + key + '">';
+  var html = '<div class="trk-detail-pane" id="trk-detail-' + key + '">';
   html += '<div class="detail-back" onclick="trkSwitchTab(\'search\')">← Volver a búsqueda</div>';
 
   // Pedido Hero
@@ -14812,8 +15578,8 @@ function trkRenderDetalle(key) {
   // Stats — valores ya convertidos a unidad del pedido
   html += '<div class="pedido-stats">';
   html += trkStatBox(pctGlobal + '%', 'AVANCE');
-  html += trkStatBox(fmt(totalProdConv) + ' ' + uniGlobal, 'PRODUCIDO');
-  html += trkStatBox(fmt(totalSolConv)  + ' ' + uniGlobal, 'SOLICITADO');
+  html += trkStatBox(trkFmt(totalProdConv) + ' ' + uniGlobal, 'PRODUCIDO');
+  html += trkStatBox(trkFmt(totalSolConv)  + ' ' + uniGlobal, 'SOLICITADO');
   html += trkStatBox(enviados.length, 'ENVÍOS');
   html += '</div></div>';
 

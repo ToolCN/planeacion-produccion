@@ -1743,9 +1743,11 @@ function rastreoDetalle(pedidoNom, partida) {
     if (idxOrd >= 0) {
       ordenes[idxOrd].produccion.push({
         fecha: pr[5], turno: pr[6],
+        lote: pr[3]||'—',
         operador: pr[17]||pr[7],
         producido: pr[10],
-        comentario: pr[15]
+        comentario: pr[15],
+        sello: pr[16]||''
       });
     }
   }
@@ -1764,6 +1766,83 @@ function rastreoDetalle(pedidoNom, partida) {
   }
 
   return { ordenes: ordenes, enviados: enviados };
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+// EXPORTAR PRODUCCION POR RANGO DE FECHAS (MENU TRACKING)
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd   = ss.getSheetByName('ORDENES');
+    var shProd  = ss.getSheetByName('PRODUCCION');
+    var dataOrd  = shOrd.getDataRange().getValues();
+    var dataProd = shProd.getDataRange().getValues();
+    var tz = ss.getSpreadsheetTimeZone();
+
+    // Construir mapa id → fila de ORDENES  (col A = índice 0)
+    var mapaOrdenes = {};
+    for (var i = 1; i < dataOrd.length; i++) {
+      var r = dataOrd[i];
+      var idOrd = String(r[0]).trim();
+      if (idOrd) mapaOrdenes[idOrd] = r;
+    }
+
+    // Rango de fechas (inclusive)
+    var dIni = new Date(fechaIniStr + 'T00:00:00');
+    var dFin = new Date(fechaFinStr + 'T23:59:59');
+
+    var filas = [];
+    for (var p = 1; p < dataProd.length; p++) {
+      var pr = dataProd[p];
+      // Col F (índice 5) = FECHA
+      var fProd = pr[5] ? new Date(pr[5]) : null;
+      if (!fProd || isNaN(fProd)) continue;
+      if (fProd < dIni || fProd > dFin) continue;
+
+      // Buscar orden enlazada — Col C (índice 2) de PRODUCCION = ID de ORDEN
+      var idOrden = String(pr[2]).trim();
+      var ord     = mapaOrdenes[idOrden] || [];
+
+      // Formatear fecha como texto dd/mm/yyyy
+      var fechaTxt = Utilities.formatDate(fProd, tz, 'dd/MM/yyyy');
+
+      filas.push({
+        // De PRODUCCION
+        FECHA:      fechaTxt,
+        TURNO:      pr[6]  || '',
+        // De ORDENES
+        PEDIDO:     ord[1]  || '',
+        SERIE:      ord[4]  || '',
+        ORDEN:      ord[5]  || '',
+        CODIGO:     ord[6]  || '',
+        DESCRIPCION:ord[7]  || '',
+        PROCESO:    ord[11] || '',
+        PESO:       Number(ord[18]) || '',
+        TIPO:       ord[19] || '',
+        DIAMETRO:   ord[20] || '',
+        LONGITUD:   ord[21] || '',
+        CUERDA:     ord[22] || '',
+        CUERPO:     ord[23] || '',
+        ACERO:      ord[24] || '',
+        // De PRODUCCION (continuación)
+        LOTE:       pr[3]  || '',
+        MAQUINA:    pr[4]  || '',
+        PESO_I:     Number(pr[8])  || '',
+        PESO_F:     Number(pr[9])  || '',
+        PESO_TINA:  Number(pr[22]) || '',
+        PRODUCIDO:  Number(pr[10]) || '',
+        SELLO:      pr[14] || '',
+        OPERADOR:   pr[17] || '',
+        USER:       pr[24] || '',
+        CAMBIOS:    pr[26] || ''
+      });
+    }
+
+    return JSON.stringify({ success: true, filas: filas });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.toString() });
+  }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -7117,12 +7196,14 @@ function guardarProduccionCompleta(payload) {
     registros.forEach(r => {
        var horas = (r.turno == "2") ? 7.0 : (r.turno == "3" ? 8.0 : 7.5);
        var rowProd = [
-          Utilities.getUuid(), r.serie, r.ordenID, r.loteFull, r.maquina,
-          new Date(r.fecha + "T12:00:00"), r.turno, r.op1_id, r.pesoI, r.pesoF,
-          r.producido, "", "", horas, r.sello || "", r.comentarios || "",
-          r.numLote, r.op1_txt, r.op2_id, r.op2_txt, r.proceso || "", "", r.pesoTina, "",
+          Utilities.getUuid(), r.serie, r.ordenID, r.loteFull, r.maquina,    // A-E
+          new Date(r.fecha + "T12:00:00"), r.turno, r.op1_id, r.pesoI, r.pesoF, // F-J
+          r.producido, "", "", horas, r.sello || "", r.comentarios || "",    // K-P
+          r.numLote, r.op1_txt, r.op2_id, r.op2_txt, "", "", r.pesoTina, "", // Q-X (U queda vacía)
           r.usuario || "",          // Y: USER
-          new Date()                // Z: FECHA_REG
+          new Date(),               // Z: FECHA_REG
+          "",                       // AA: (vacío)
+          r.proceso || ""           // AB: PROCESO
        ];
        nuevasFilasProd.push(rowProd);
        ordenesAfectadas.add(r.ordenID);
@@ -9548,6 +9629,7 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
   var getIdxO    = function(n) { return headersOrd.indexOf(n); };
   var idxO = {
     id: 0, orden: getIdxO("ORDEN"), serie: getIdxO("SERIE"),
+    pedido: getIdxO("PEDIDO"),
     codigo: getIdxO("CODIGO"), tipo: getIdxO("TIPO"),
     dia: getIdxO("DIAMETRO"), long: getIdxO("LONGITUD"),
     cuerda: getIdxO("CUERDA"), cuerpo: getIdxO("CUERPO"),
@@ -9604,9 +9686,12 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
     var last = ultimosDatos[String(row[0])] || { lote: "-", pIni: "", pFin: "" };
     listaMaquinas[maquina].ordenes.push({
       ordenFull: nombreOrden,
+      pedido:    String(row[idxO.pedido] || ""),
       producto:  String(row[idxO.tipo] || ""),
       medidas:   String(row[idxO.dia] || "") + " x " + String(row[idxO.long] || ""),
       detalle:   (String(row[idxO.cuerda]||"") + " " + String(row[idxO.cuerpo]||"")).trim(),
+      cuerda:    String(row[idxO.cuerda] || ""),
+      cuerpo:    String(row[idxO.cuerpo] || ""),
       acero:     String(row[idxO.acero] || ""),
       sol: sol, prod: prod, avance: pct, restan: sol - prod,
       ultimoLote: last.lote,
