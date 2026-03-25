@@ -7020,7 +7020,8 @@ function obtenerTodoElProcesoNvo(nombreProceso) {
         prod:      Number(r[14]) || 0,
         prioridad: Number(r[26]) || 999,
         maq:       maqOrden,
-        estado:    estado // útil para mostrar badge en el HTML si se quiere
+        estado:    estado, // útil para mostrar badge en el HTML si se quiere
+        codigo:    String(r[6]).trim().toUpperCase()
       });
     }
 
