@@ -10824,6 +10824,56 @@ function loadCaptura() {
     capAdjT(oid, boxIdx, 0);
   };
 
+  window.capVerificarSobreproduccion = function(oid, boxIdx) {
+    var box = document.getElementById('cap-box-' + oid + '-' + boxIdx);
+    if (!box || box.dataset.sobrepChecked) return;
+    box.dataset.sobrepChecked = '1';
+    var row = document.getElementById('cap-row-' + oid);
+    if (!row) return;
+    var estadoOrd = (row.dataset.estado || '').toUpperCase().trim();
+    if (estadoOrd !== 'SOBREPRODUCCION' && estadoOrd !== 'TERMINADO') return;
+    var codigoOrd = (row.dataset.codigo || '').toUpperCase().trim();
+    var maqOrd    = (row.dataset.maq    || '').toUpperCase().trim();
+    var ordenesRaw = capDb.ordenesRaw || [];
+    var estadosVivos = ['ABIERTO', 'ACTIVE', 'EN PROCESO'];
+    var siguienteOrden = null;
+    for (var i = 0; i < ordenesRaw.length; i++) {
+      var o = ordenesRaw[i];
+      if (String(o.id) === String(oid)) continue;
+      var oCodigo = String(o.codigo || '').toUpperCase().trim();
+      var oMaq    = String(o.maq    || '').toUpperCase().trim();
+      var oEstado = String(o.estado || '').toUpperCase().trim();
+      if (oCodigo === codigoOrd && oMaq === maqOrd && estadosVivos.indexOf(oEstado) > -1) {
+        siguienteOrden = { nombre: String(o.serie||'') + '.' + String(o.num||'') };
+        break;
+      }
+    }
+    if (!siguienteOrden) return;
+    Swal.fire({
+      icon: 'warning',
+      title: '⚠️ Orden ' + estadoOrd,
+      html: 'Esta orden ya tiene estado <b>' + estadoOrd + '</b> y se cerrará.<br>'
+          + '⚠️ Recuerda <b>cambiar las identificaciones del producto</b>.<br><br>'
+          + '📋 Usa la siguiente orden: <b style="font-size:18px;">(' + siguienteOrden.nombre + ')</b>',
+      confirmButtonText: 'ENTENDIDO',
+      confirmButtonColor: '#1565c0',
+      allowOutsideClick: false
+    });
+    row.style.opacity = '0.45';
+    row.style.pointerEvents = 'none';
+    row.style.background = '#cfd8dc';
+    if (box) {
+      box.classList.remove('editing', 'complete');
+      box.classList.add('locked');
+    }
+    if (estadoOrd === 'SOBREPRODUCCION') {
+      google.script.run
+        .withSuccessHandler(function() { console.log('[CAP] → TERMINADO OK'); })
+        .withFailureHandler(function(e) { console.warn('[CAP] Error TERMINADO:', e); })
+        .cambiarEstadoOrdenProg(oid, 'TERMINADO');
+    }
+  };
+
   window.capAbrirCambioMaq = function(oid, boxIdx) {
     var row = document.getElementById('cap-row-'+oid);
     var maqActual = row ? row.dataset.maq.toUpperCase().trim() : '';
@@ -10867,68 +10917,6 @@ function loadCaptura() {
     var entry = capLocalEntries.find(function(e){ return e.ordenID==oid && String(e.numLote)==String(document.getElementById('cap-num-'+oid+'-'+boxIdx) ? document.getElementById('cap-num-'+oid+'-'+boxIdx).innerText : ''); });
     if(entry) entry.maquina = capMaqModal.maqSeleccionada;
     capMaqSelCancelar();
-  };
-
-  window.capVerificarSobreproduccion = function(oid, boxIdx) {
-    var box = document.getElementById('cap-box-' + oid + '-' + boxIdx);
-    if (!box || box.dataset.sobrepChecked) return;
-    box.dataset.sobrepChecked = '1';
-
-    var row = document.getElementById('cap-row-' + oid);
-    if (!row) return;
-
-    var estadoOrd = (row.dataset.estado || '').toUpperCase().trim();
-    if (estadoOrd !== 'SOBREPRODUCCION' && estadoOrd !== 'TERMINADO') return;
-
-    // Buscar siguiente orden viva con mismo codigo en la misma maquina
-    var codigoOrd = (row.dataset.codigo || '').toUpperCase().trim();
-    var maqOrd    = (row.dataset.maq    || '').toUpperCase().trim();
-    var ordenesRaw = capDb.ordenesRaw || [];
-    var estadosVivos = ['ABIERTO', 'ACTIVE', 'EN PROCESO'];
-    var siguienteOrden = null;
-    for (var i = 0; i < ordenesRaw.length; i++) {
-      var o = ordenesRaw[i];
-      if (String(o.id) === String(oid)) continue;
-      var oCodigo = String(o.codigo || '').toUpperCase().trim();
-      var oMaq    = String(o.maq    || '').toUpperCase().trim();
-      var oEstado = String(o.estado || '').toUpperCase().trim();
-      if (oCodigo === codigoOrd && oMaq === maqOrd && estadosVivos.indexOf(oEstado) > -1) {
-        siguienteOrden = { nombre: String(o.serie||'') + '.' + String(o.num||'') };
-        break;
-      }
-    }
-
-    var msgSiguiente = siguienteOrden
-      ? '<br><br>📋 Usa la siguiente orden en la fila: <b style="font-size:18px;">(' + siguienteOrden.nombre + ')</b>'
-      : '';
-
-    Swal.fire({
-      icon: 'warning',
-      title: '⚠️ Orden ' + estadoOrd,
-      html: 'Esta orden ya tiene estado <b>' + estadoOrd + '</b>.<br>'
-          + '⚠️ Recuerda <b>cambiar las identificaciones del producto</b> al cambiar de orden.'
-          + msgSiguiente,
-      confirmButtonText: 'ENTENDIDO',
-      confirmButtonColor: '#1565c0',
-      allowOutsideClick: false
-    });
-
-    // Bloquear fila visualmente
-    row.style.opacity = '0.45';
-    row.style.pointerEvents = 'none';
-    row.style.background = '#cfd8dc';
-    if (box) {
-      box.classList.remove('editing', 'complete');
-      box.classList.add('locked');
-    }
-
-    // Cambiar a TERMINADO en segundo plano solo si estaba SOBREPRODUCCION
-    if (estadoOrd === 'SOBREPRODUCCION') {
-      google.script.run
-        .withSuccessHandler(function() { console.log('[CAP] Orden ' + oid + ' → TERMINADO OK'); })
-        .withFailureHandler(function(e) { console.warn('[CAP] Error TERMINADO:', e); })
-        .cambiarEstadoOrdenProg(oid, 'TERMINADO');
-    }
   };
 
   window.capValLote = function(oid, boxIdx) {
