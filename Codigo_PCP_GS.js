@@ -7100,12 +7100,12 @@ function _getLotesExistentes(sheetLotes) {
 }
 
 
-// 3. BUSCADOR DE ÓRDENES TERMINADAS (Historial 60 días)
+// 3. BUSCADOR DE ÓRDENES TERMINADAS (Historial 90 días)
 function buscarTerminadasNvo(proceso, texto) {
   var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
   var data = ss.getSheetByName("ORDENES").getRange(1,1,ss.getSheetByName("ORDENES").getLastRow(), 27).getDisplayValues();
   var res = [];
-  var limite = new Date(); limite.setDate(limite.getDate() - 60);
+  var limite = new Date(); limite.setDate(limite.getDate() - 90);
   for(var i=1; i<data.length; i++) {
     var est = data[i][15].toUpperCase();
     var f = new Date(data[i][3]);

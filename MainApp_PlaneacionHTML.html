@@ -10244,7 +10244,7 @@ function loadCaptura() {
         <button onclick="capGoHome()" style="background:#d32f2f;color:white;border:none;padding:12px 25px;border-radius:8px;font-weight:900;cursor:pointer;">ÁREA ⬅</button>
       </div>
       <div id="cap-filterBar" class="cap-filter-bar"></div>
-      <input type="text" id="cap-searchHuge" class="cap-search-huge" placeholder="🔍 TECLEAR LOTE O CÓDIGO..." oninput="capEjecutarFiltroLocal(this.value)">
+      <input type="text" id="cap-searchHuge" class="cap-search-huge" placeholder="🔍 TECLEAR LOTE O DIAMETRO..." oninput="capEjecutarFiltroLocal(this.value)">
     </div>
     <div id="cap-mainContent"></div>
   </div>
@@ -10654,6 +10654,8 @@ function loadCaptura() {
       row.dataset.nombre = o.nombre;
       row.dataset.estado = String(o.estado || '').toUpperCase().trim();
       row.dataset.codigo = String(o.codigo || '').toUpperCase().trim();
+      row.dataset.tipo = String(o.tipo || '').toUpperCase().trim();
+      row.dataset.medidas = String(o.medidas || '').toUpperCase().trim();
       row.innerHTML = '<div class="cap-order-info">'
         +'<div class="cap-info-name">'+o.nombre+'</div>'
         +'<div class="cap-info-type">'+o.tipo+'</div>'
@@ -11144,11 +11146,17 @@ function loadCaptura() {
       return;
     }
     var foundAny = false;
-    capAllRows.forEach(function(row){ var nombre=row.dataset.nombre||""; if(nombre.includes(txt)){ row.style.display='flex'; row.parentElement.style.display='block'; row.closest('.cap-machine-section').style.display='block'; foundAny=true; }else{ row.style.display='none'; } });
+    capAllRows.forEach(function(row){
+      var nombre  = row.dataset.nombre  || '';
+      var tipo    = row.dataset.tipo    || '';
+      var medidas = row.dataset.medidas || '';
+      var match = nombre.includes(txt) || tipo.includes(txt) || medidas.includes(txt);
+      if(match){ row.style.display='flex'; row.parentElement.style.display='block'; row.closest('.cap-machine-section').style.display='block'; foundAny=true; }else{ row.style.display='none'; }
+    });
     document.querySelectorAll('#cap-panel .cap-machine-section').forEach(function(sec){ var visibleRows=sec.querySelectorAll('.cap-order-row[style*="flex"]').length; if(visibleRows>0){ sec.style.display='block'; sec.querySelector('.cap-ords-container').style.display='block'; sec.querySelector('.cap-machine-header span:last-child').innerText="▲"; }else{ sec.style.display='none'; } });
     if(!foundAny&&txt.length>3){
       var container=document.getElementById('cap-mainContent');
-      if(!document.getElementById('cap-msgNo')){ container.insertAdjacentHTML('afterbegin','<div id="cap-msgNo" style="text-align:center;padding:30px;background:white;border-radius:12px;margin:10px;border:3px dashed #d32f2f;"><h2 style="color:#d32f2f;font-size:28px;font-weight:900;">LA ORDEN NO ESTÁ VIVA EN ESTE PROCESO</h2><p style="font-size:18px;color:#555;">¿Desea buscarla en los registros terminados de los últimos 60 días?</p><button style="background:#1565c0;color:white;width:auto;font-size:20px;cursor:pointer;height:60px;padding:0 40px;border:none;border-radius:8px;font-weight:900;" onclick="capBuscarTerminadasServer()">🔍 BUSCAR EN TERMINADAS (60 DÍAS)</button></div>'); }
+      if(!document.getElementById('cap-msgNo')){ container.insertAdjacentHTML('afterbegin','<div id="cap-msgNo" style="text-align:center;padding:30px;background:white;border-radius:12px;margin:10px;border:3px dashed #d32f2f;"><h2 style="color:#d32f2f;font-size:28px;font-weight:900;">LA ORDEN NO ESTÁ VIVA EN ESTE PROCESO</h2><p style="font-size:18px;color:#555;">¿Desea buscarla en los registros terminados de los últimos 90 días?</p><button style="background:#1565c0;color:white;width:auto;font-size:20px;cursor:pointer;height:60px;padding:0 40px;border:none;border-radius:8px;font-weight:900;" onclick="capBuscarTerminadasServer()">🔍 BUSCAR EN TERMINADAS (90 DÍAS)</button></div>'); }
     } else { if(msgNo) msgNo.remove(); }
   };
 
@@ -11168,7 +11176,7 @@ function loadCaptura() {
         });
         var msgNo=document.getElementById('cap-msgNo'); if(msgNo)msgNo.remove();
         capEjecutarFiltroLocal(textoBusqueda);
-      } else { sAlert("No se encontraron registros de '"+textoBusqueda+"' en los últimos 60 días."); }
+      } else { sAlert("No se encontraron registros de '"+textoBusqueda+"' en los últimos 90 días."); }
     }).buscarTerminadasNvo(capCurrentProceso, textoBusqueda);
   };
 
