@@ -6594,6 +6594,439 @@ function calcularActualizacionEjecucion() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// SINCRONIZAR INVENTARIO — COLATADO
+// Calcula qué códigos de línea COLATADO necesitan fabricarse
+// basado en MIN - EXIST de INVENTARIO_EXTERNO
+// ══════════════════════════════════════════════════════════════════
+function calcularSincronizarColatado() {
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shInv   = ss.getSheetByName("INVENTARIO_EXTERNO");
+    var shOrd   = ss.getSheetByName("ORDENES");
+    var shPed   = ss.getSheetByName("PEDIDOS");
+    var shRutas = ss.getSheetByName("RUTAS");
+    var shCod   = ss.getSheetByName("CODIGOS");
+
+    var dataInv = shInv.getDataRange().getValues();
+    var dataOrd = shOrd.getDataRange().getValues();
+    var dataPed = shPed.getDataRange().getValues();
+    var dataRut = shRutas.getDataRange().getValues();
+    var dataCod = shCod ? shCod.getDataRange().getValues() : [];
+
+    var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var oID   = hOrd.indexOf("ID");
+    var oCOD  = hOrd.indexOf("CODIGO");
+    var oSOL  = hOrd.indexOf("SOLICITADO");
+    var oPROD = hOrd.indexOf("PRODUCIDO");
+    var oEST  = hOrd.indexOf("ESTADO");
+    var oPED  = hOrd.indexOf("PEDIDO");
+    var oMAQ  = hOrd.indexOf("MAQUINA");
+    var oSERIE= hOrd.indexOf("SERIE");
+    var oORD  = hOrd.indexOf("ORDEN");
+    var oCOD2 = hOrd.indexOf("CODIGO");
+    var oDESC = hOrd.indexOf("DESCRIPCION");
+    var oUNI  = hOrd.indexOf("UNIDAD");
+    var oPESO = hOrd.indexOf("PESO");
+    var oLONG = hOrd.indexOf("LONGITUD");
+    var oCANT = hOrd.indexOf("CANTIDAD");
+    var oTIPO = hOrd.indexOf("TIPO");
+    var oDIA  = hOrd.indexOf("DIAMETRO");
+    var oCUERDA = hOrd.indexOf("CUERDA");
+    var oCUERPO = hOrd.indexOf("CUERPO");
+    var oACERO  = hOrd.indexOf("ACERO");
+    var oPROC   = hOrd.indexOf("PROCESO");
+    var oPRIO   = hOrd.indexOf("PRIORIDAD");
+
+    var hPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var pdID   = hPed.indexOf("ID");
+    var pdFOL  = hPed.indexOf("FOLIO"); if (pdFOL === -1) pdFOL = 1;
+    var pdCOD  = hPed.indexOf("CODIGO");
+    var pdCANT = hPed.indexOf("CANTIDAD");
+    var pdUNI  = hPed.indexOf("UNIDAD");
+    var pdDESC = hPed.indexOf("DESCRIPCION");
+    var pdPESO = hPed.indexOf("PESO");
+    var pdLONG = hPed.indexOf("LONGITUD");
+    var pdEST  = hPed.indexOf("ESTADO");
+    var pdSOL  = hPed.indexOf("SOLICITADO");
+
+    // Mapa código→venta desde CODIGOS (col A=fab, col F=venta)
+    var codigoVentaMap = {};
+    for (var cv = 1; cv < dataCod.length; cv++) {
+      var cvF = String(dataCod[cv][0]||'').trim().toUpperCase();
+      var cvV = String(dataCod[cv][5]||'').trim().toUpperCase();
+      if (cvF && cvV) codigoVentaMap[cvF] = cvV;
+    }
+
+    // Mapa inventario externo: código → {exist, min, max}
+    var invMap = {};
+    for (var i = 1; i < dataInv.length; i++) {
+      var ic = String(dataInv[i][0]||'').trim().toUpperCase();
+      if (ic) invMap[ic] = {
+        exist: Number(dataInv[i][1])||0,
+        min:   Number(dataInv[i][2])||0,
+        max:   Number(dataInv[i][3])||0
+      };
+    }
+
+    // Función: obtener datos inventario por código de orden (igual que obtenerOrdenesPlanificador)
+    function getInv(codigoOrden) {
+      var cUp = String(codigoOrden||'').trim().toUpperCase();
+      if (cUp.charAt(0) === '7') {
+        var cV = codigoVentaMap[cUp] || '';
+        if (cV && invMap[cV]) return invMap[cV];
+      }
+      return invMap[cUp] || null;
+    }
+
+    // Mapa ruta: codigo → pasos (solo COLATADO)
+    var rutaMap = {};
+    for (var r = 1; r < dataRut.length; r++) {
+      var rCod  = String(dataRut[r][1]||'').trim();
+      var rProc = String(dataRut[r][4]||'').trim().toUpperCase();
+      if (rProc === 'COLATADO') {
+        if (!rutaMap[rCod]) rutaMap[rCod] = [];
+        rutaMap[rCod].push({
+          sec:    dataRut[r][3],
+          proceso: rProc,
+          maquinas: String(dataRut[r][5]||'').split(',').map(function(m){ return m.trim(); }),
+          cantLote: parseFloat(dataRut[r][22])||0,
+          pt:     dataRut[r][12],
+          venta:  dataRut[r][13],
+          peso:   Number(dataRut[r][15])||0,
+          tipo:   String(dataRut[r][6]||''),
+          diam:   String(dataRut[r][7]||''),
+          long:   String(dataRut[r][8]||''),
+          cuerda: String(dataRut[r][9]||''),
+          cuerpo: String(dataRut[r][10]||''),
+          acero:  String(dataRut[r][11]||''),
+          serie:  String(dataRut[r][14]||'P')
+        });
+      }
+    }
+
+    // Recolectar todos los códigos con órdenes COLATADO vivas
+    var VIVOS = ['ACTIVE','EN PROCESO','ABIERTO'];
+    var MUERTOS = ['CANCELADO','TERMINADO','SOBREPRODUCCION','CERRADO'];
+    var codigosColatado = {};  // codigo → [ordenesVivas]
+
+    for (var o = 1; o < dataOrd.length; o++) {
+      var proc = String(dataOrd[o][oPROC]||'').trim().toUpperCase();
+      if (proc !== 'COLATADO') continue;
+      var est = String(dataOrd[o][oEST]||'').trim().toUpperCase();
+      if (MUERTOS.indexOf(est) > -1) continue;
+      var cod = String(dataOrd[o][oCOD2]||'').trim();
+      if (!cod) continue;
+      if (!codigosColatado[cod]) codigosColatado[cod] = [];
+      codigosColatado[cod].push({
+        id:      String(dataOrd[o][oID]),
+        pedido:  String(dataOrd[o][oPED]||''),
+        serie:   String(dataOrd[o][oSERIE]||''),
+        orden:   Number(dataOrd[o][oORD])||0,
+        sol:     Number(dataOrd[o][oSOL])||0,
+        prod:    Number(dataOrd[o][oPROD])||0,
+        estado:  est,
+        maquina: String(dataOrd[o][oMAQ]||''),
+        cant:    Number(dataOrd[o][oCANT])||0,
+        unidad:  String(dataOrd[o][oUNI]||''),
+        desc:    String(dataOrd[o][oDESC]||''),
+        peso:    Number(dataOrd[o][oPESO])||0,
+        long:    Number(dataOrd[o][oLONG])||0,
+        tipo:    String(dataOrd[o][oTIPO]||''),
+        dia:     String(dataOrd[o][oDIA]||''),
+        cuerda:  String(dataOrd[o][oCUERDA]||''),
+        cuerpo:  String(dataOrd[o][oCUERPO]||''),
+        acero:   String(dataOrd[o][oACERO]||''),
+        prioridad: Number(dataOrd[o][oPRIO])||999
+      });
+    }
+
+    var resultados = [];
+
+    Object.keys(codigosColatado).forEach(function(cod) {
+      var inv = getInv(cod);
+      if (!inv) return;               // sin inventario, ignorar
+      if (inv.max > 500000) return;   // máximos > 500k: ignorar siempre
+
+      var necesario = inv.max - inv.exist;
+      if (necesario <= 0) return;     // inventario completo, no necesita fabricar
+
+      var ordenes = codigosColatado[cod];
+
+      // Suma total ya planeado en órdenes activas (sol de todas las órdenes vivas)
+      var totalSolOrdenes = 0;
+      ordenes.forEach(function(o) { totalSolOrdenes += o.sol || 0; });
+
+      // Lista de pedidos/órdenes agrupada para mostrar en la vista
+      var pedidosAgrupados = [];
+      ordenes.forEach(function(o) {
+        var key = o.pedido;
+        var existing = pedidosAgrupados.find(function(x){ return x.pedido === key; });
+        if (existing) {
+          existing.ordenes.push(o.serie + '.' + ('0000'+o.orden).slice(-4));
+          existing.sol += o.sol || 0;
+        } else {
+          pedidosAgrupados.push({
+            pedido: key,
+            ordenes: [o.serie + '.' + ('0000'+o.orden).slice(-4)],
+            sol: o.sol || 0
+          });
+        }
+      });
+
+      // Buscar orden con avance ≤ 15% (basado en prod/sol)
+      var ordenCandidato = null;
+      for (var i = 0; i < ordenes.length; i++) {
+        var avance = ordenes[i].sol > 0 ? (ordenes[i].prod / ordenes[i].sol) : 0;
+        if (avance <= 0.15) {
+          ordenCandidato = ordenes[i];
+          break;
+        }
+      }
+
+      // Datos de la primera orden para mostrar info
+      var ord0 = ordenes[0];
+
+      if (ordenCandidato) {
+        // CASO A: Aumentar orden existente (inyectar cantidad)
+        resultados.push({
+          tipo:              'ACTUALIZAR',
+          codigo:            cod,
+          desc:              ord0.desc,
+          maquina:           ordenCandidato.maquina,
+          exist:             inv.exist,
+          min:               inv.min,
+          max:               inv.max,
+          necesario:         necesario,
+          totalSolOrdenes:   totalSolOrdenes,
+          pedidosAgrupados:  pedidosAgrupados,
+          idOrden:           ordenCandidato.id,
+          pedido:            ordenCandidato.pedido,
+          serie:             ordenCandidato.serie,
+          ordenNum:          ordenCandidato.orden,
+          solActual:         ordenCandidato.sol,
+          solNuevo:          ordenCandidato.sol + necesario,
+          cantActual:        ordenCandidato.cant,
+          cantNuevo:         ordenCandidato.cant + necesario,
+          unidad:            ordenCandidato.unidad,
+          peso:              ordenCandidato.peso,
+          avance:            ordenCandidato.sol > 0 ? Math.round((ordenCandidato.prod/ordenCandidato.sol)*100) : 0,
+          tipo_prod:         ord0.tipo,
+          dia:               ord0.dia,
+          long:              ord0.long,
+          cuerda:            ord0.cuerda,
+          cuerpo:            ord0.cuerpo,
+          acero:             ord0.acero,
+          seleccionado:      true
+        });
+      } else {
+        // CASO B: Crear nuevo pedido TEM + orden
+        var maxTem = 0;
+        for (var p = 1; p < dataPed.length; p++) {
+          var fol = String(dataPed[p][pdFOL]||'');
+          if (fol.toUpperCase().indexOf('TEM-') === 0) {
+            var n = parseInt(fol.split('-')[1]||'0');
+            if (!isNaN(n) && n > maxTem) maxTem = n;
+          }
+        }
+        var folioTEM = 'TEM-' + ('0000'+(maxTem+1)).slice(-4);
+        var ruta = rutaMap[cod] || [];
+        var serie = ruta.length > 0 ? ruta[0].serie : 'P';
+
+        resultados.push({
+          tipo:              'NUEVA_ORDEN',
+          codigo:            cod,
+          desc:              ord0.desc,
+          maquina:           ord0.maquina,
+          exist:             inv.exist,
+          min:               inv.min,
+          max:               inv.max,
+          necesario:         necesario,
+          totalSolOrdenes:   totalSolOrdenes,
+          pedidosAgrupados:  pedidosAgrupados,
+          folioTEM:          folioTEM,
+          cantNuevo:         necesario,
+          unidad:            ord0.unidad,
+          peso:              ord0.peso,
+          serie:             serie,
+          ruta:              ruta,
+          tipo_prod:         ord0.tipo,
+          dia:               ord0.dia,
+          long:              ord0.long,
+          cuerda:            ord0.cuerda,
+          cuerpo:            ord0.cuerpo,
+          acero:             ord0.acero,
+          ordenRef:          ord0.serie + '.' + ('0000'+ord0.orden).slice(-4),
+          seleccionado:      true
+        });
+      }
+    });
+
+    return JSON.stringify({ success: true, items: resultados });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.message });
+  }
+}
+
+// ── Aplicar Sincronizar Colatado ──────────────────────────────────────────────
+function aplicarSincronizarColatado(items) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return JSON.stringify({ success: false, msg: 'Servidor ocupado.' });
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd   = ss.getSheetByName("ORDENES");
+    var shPed   = ss.getSheetByName("PEDIDOS");
+    var shLot   = ss.getSheetByName("LOTES");
+
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hOrd    = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var oID     = hOrd.indexOf("ID");
+    var oSOL    = hOrd.indexOf("SOLICITADO");
+    var oCANT   = hOrd.indexOf("CANTIDAD");
+    var oSERIE  = hOrd.indexOf("SERIE");
+    var oORDN   = hOrd.indexOf("ORDEN");
+
+    var dataPed = shPed.getDataRange().getValues();
+    var hPed    = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var pdFOL   = hPed.indexOf("FOLIO"); if (pdFOL === -1) pdFOL = 1;
+    var pdCANT  = hPed.indexOf("CANTIDAD");
+    var pdSOL   = hPed.indexOf("SOLICITADO");
+
+    var log = [];
+    var hoySoloFecha = new Date(); hoySoloFecha.setHours(0,0,0,0);
+
+    items.forEach(function(item) {
+      if (item.tipo === 'ACTUALIZAR') {
+        // A. Actualizar SOLICITADO y CANTIDAD en todos los procesos de esa orden
+        for (var o = 1; o < dataOrd.length; o++) {
+          if (String(dataOrd[o][oSERIE]) === String(item.serie) &&
+              Number(dataOrd[o][oORDN])  === Number(item.ordenNum)) {
+            shOrd.getRange(o+1, oSOL+1).setValue(item.solNuevo);
+            shOrd.getRange(o+1, oCANT+1).setValue(item.cantNuevo);
+          }
+        }
+        // B. Actualizar CANTIDAD en PEDIDOS (buscar por folio = item.pedido)
+        for (var p = 1; p < dataPed.length; p++) {
+          if (String(dataPed[p][pdFOL]) === String(item.pedido)) {
+            var cantPedActual = Number(dataPed[p][pdCANT])||0;
+            shPed.getRange(p+1, pdCANT+1).setValue(cantPedActual + item.necesario);
+            break;
+          }
+        }
+        log.push('ACTUALIZADO: ' + item.codigo + ' +' + item.necesario);
+
+      } else if (item.tipo === 'NUEVA_ORDEN') {
+        // A. Crear pedido TEM en PEDIDOS
+        shPed.appendRow([
+          Utilities.getUuid().substring(0,8),
+          item.folioTEM,
+          hoySoloFecha,
+          "'" + String(item.codigo).padStart(9,'0'),
+          item.desc,
+          1,
+          item.cantNuevo,
+          item.unidad || 'KG',
+          'PLANEADO'
+        ]);
+
+        // B. Crear órdenes en ORDENES (una por paso de la ruta)
+        var ruta = item.ruta || [];
+        if (ruta.length === 0) {
+          log.push('SIN RUTA: ' + item.codigo + ' — no se creó orden');
+          return;
+        }
+        var nOrden = getSiguienteNumeroOrden(item.serie);
+        ruta.forEach(function(paso, idx) {
+          var idProc = Utilities.getUuid().substring(0,8);
+          var sol = item.cantNuevo;
+          var uni = String(item.unidad||'KG').toUpperCase();
+          if (uni === 'PZA' || uni === 'CTO') {
+            sol = item.cantNuevo * (paso.peso || item.peso || 0);
+          }
+          shOrd.appendRow([
+            idProc,
+            item.folioTEM,
+            1,
+            hoySoloFecha,
+            item.serie,
+            nOrden,
+            "'" + String(item.codigo).padStart(9,'0'),
+            item.desc,
+            item.cantNuevo,
+            item.unidad || 'KG',
+            paso.sec,
+            paso.proceso,
+            paso.maquinas[0] || '',
+            sol,
+            0,
+            'ABIERTO',
+            paso.pt,
+            paso.venta,
+            paso.peso || item.peso,
+            paso.tipo || item.tipo_prod,
+            "'" + String(paso.diam || item.dia),
+            "'" + String(paso.long || ''),
+            paso.cuerda || item.cuerda,
+            paso.cuerpo || item.cuerpo,
+            paso.acero  || item.acero,
+            new Date(),
+            '', '', '', ''
+          ]);
+        });
+
+        // C. Crear LOTES para el primer proceso
+        var paso0 = ruta[0];
+        var cantLoteBase = paso0.cantLote || item.cantNuevo;
+        var nLotes = Math.max(1, Math.ceil(item.cantNuevo / cantLoteBase));
+        var dataLotesActual = shLot.getDataRange().getValues();
+        // Buscar último consecutivo de esta serie+orden
+        var maxConsec = 0;
+        for (var l = 1; l < dataLotesActual.length; l++) {
+          var nomL = String(dataLotesActual[l][4]||'');
+          var partes = nomL.split('.');
+          if (partes[0] === item.serie && Number(partes[1]) === nOrden) {
+            var cs = Number(partes[2])||0;
+            if (cs > maxConsec) maxConsec = cs;
+          }
+        }
+        // Buscar idOrdenPrimerProc (ya recién insertada — re-leer ORDENES)
+        var dataOrdFresh = shOrd.getDataRange().getValues();
+        var idRef = '';
+        var minSecTem = Infinity;
+        for (var ox = 1; ox < dataOrdFresh.length; ox++) {
+          if (String(dataOrdFresh[ox][4]) === item.serie && Number(dataOrdFresh[ox][5]) === nOrden) {
+            var secTem = Number(dataOrdFresh[ox][10]);
+            if (secTem < minSecTem) { minSecTem = secTem; idRef = String(dataOrdFresh[ox][0]); }
+          }
+        }
+        var pesoLote = paso0.cantLote || item.cantNuevo;
+        var nuevosLotes = [];
+        for (var lt = 1; lt <= nLotes; lt++) {
+          var consec = maxConsec + lt;
+          var numOrdStr  = ('0000'+nOrden).slice(-4);
+          var consecStr  = consec < 100 ? ('00'+consec).slice(-2) : String(consec);
+          var nombreLote = item.serie + '.' + numOrdStr + '.' + consecStr;
+          var cantEste   = (lt < nLotes) ? pesoLote : (item.cantNuevo - pesoLote*(nLotes-1));
+          nuevosLotes.push([
+            Utilities.getUuid(), item.serie, idRef, consec,
+            nombreLote, cantEste, 0, 'ABIERTO', hoySoloFecha,
+            '', '', '', '', '', 'NADA'
+          ]);
+        }
+        if (nuevosLotes.length > 0) {
+          shLot.getRange(shLot.getLastRow()+1, 1, nuevosLotes.length, nuevosLotes[0].length).setValues(nuevosLotes);
+        }
+        log.push('NUEVA ORDEN TEM: ' + item.folioTEM + ' — ' + item.codigo);
+      }
+    });
+
+    SpreadsheetApp.flush();
+    return JSON.stringify({ success: true, msg: log.join(' | '), count: log.length });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.message });
+  }
+}
+
 // ── 15. aplicarActualizacionEjecucion — aplica los cambios AUTO seleccionados ──
 function aplicarActualizacionEjecucion(seleccionados) {
   try {

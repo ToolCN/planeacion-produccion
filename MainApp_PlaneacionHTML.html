@@ -1229,6 +1229,23 @@ function tienePermiso(perm){if(!currentUser)return false;var p=(currentUser.perm
 
 // ══ NAVEGACIÓN ════════════════════════════════════════════════════════════════
 function loadModule(id){
+  // Guardia: si hay cambios de prioridad pendientes en el Planificador, advertir antes de salir
+  if (typeof planif_tablaCambiosPendientes !== 'undefined' && planif_tablaCambiosPendientes) {
+    var nCambios = 0;
+    if (typeof planif_tablaOrdenLocal !== 'undefined') {
+      Object.keys(planif_tablaOrdenLocal).forEach(function(k) { nCambios += planif_tablaOrdenLocal[k].length; });
+    }
+    sConfirm(
+      'Tienes ' + nCambios + ' orden(es) con cambios de prioridad sin guardar. Si sales perderás los cambios. ¿Deseas continuar?',
+      'Cambios pendientes sin guardar',
+      'Sí, salir'
+    ).then(function(r) {
+      if (!r.isConfirmed) return;
+      planif_tablaCambiosPendientes = false;
+      loadModule(id);
+    });
+    return;
+  }
   currentModule=id;
   document.querySelectorAll('.nav-link-custom').forEach(function(el){el.classList.remove('active');});
   var mod=MODULOS.find(function(m){return m.id===id;});
@@ -5175,6 +5192,38 @@ function loadPlanificador() {
 #planif-panel .btn-refresh:active { transform: scale(0.95); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 #planif-panel .btn-refresh.refreshing { animation: planif-spin 1s linear; pointer-events: none; }
 @keyframes planif-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes planif-pulse-yellow { 0%,100% { box-shadow: 0 0 0 0 rgba(255,214,0,0.7); background:#fdd835; } 50% { box-shadow: 0 0 0 10px rgba(255,214,0,0); background:#f9a825; } }
+@keyframes sinc-blink { 0%,100% { background:#fff3e0; } 50% { background:#ffe0b2; } }
+.sinc-fila-nueva td { animation: sinc-blink 1.2s ease-in-out infinite; }
+.sinc-badge-nueva { background:#e65100; color:white; font-size:10px; font-weight:900; padding:2px 6px; border-radius:4px; margin-left:4px; }
+/* ── Tabla modo sincronización única ── */
+#planif-sinc-wrap { width:100%; overflow:auto; padding:0; box-sizing:border-box; }
+#planif-sinc-wrap table { width:100%; border-collapse:collapse; font-size:12px; }
+#planif-sinc-wrap thead th { background:#004d40; color:white; padding:0; position:sticky; top:0; z-index:10; white-space:nowrap; }
+#planif-sinc-wrap thead th .th-inner { display:flex; align-items:center; gap:4px; padding:6px 8px; cursor:pointer; user-select:none; }
+#planif-sinc-wrap thead th .th-inner:hover { background:rgba(255,255,255,0.12); }
+#planif-sinc-wrap thead th .th-inner .th-arrow { font-size:9px; opacity:0.7; }
+#planif-sinc-wrap td { padding:5px 8px; border-bottom:1px solid #e0e0e0; vertical-align:middle; white-space:nowrap; }
+#planif-sinc-wrap tr:hover td { background:#e8f5e9; }
+#planif-sinc-wrap tr.sinc-fila-nueva td { animation:sinc-blink 1.2s ease-in-out infinite; }
+/* ── Dropdown filtro tipo Excel ── */
+.sinc-filter-dropdown { position:fixed; background:white; border:1px solid #bdbdbd; border-radius:6px; box-shadow:0 6px 20px rgba(0,0,0,0.18); z-index:9999; min-width:200px; max-height:320px; display:flex; flex-direction:column; }
+.sinc-filter-dropdown .sfd-search { padding:8px; border-bottom:1px solid #eee; }
+.sinc-filter-dropdown .sfd-search input { width:100%; padding:5px 8px; border:1px solid #ccc; border-radius:4px; font-size:12px; box-sizing:border-box; }
+.sinc-filter-dropdown .sfd-list { overflow-y:auto; flex:1; padding:4px 0; }
+.sinc-filter-dropdown .sfd-item { display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer; font-size:12px; }
+.sinc-filter-dropdown .sfd-item:hover { background:#f5f5f5; }
+.sinc-filter-dropdown .sfd-item input { cursor:pointer; }
+.sinc-filter-dropdown .sfd-footer { padding:8px; border-top:1px solid #eee; display:flex; gap:6px; justify-content:flex-end; }
+.sinc-filter-dropdown .sfd-footer button { padding:4px 12px; border-radius:4px; border:none; cursor:pointer; font-size:12px; font-weight:700; }
+.sinc-filter-dropdown .sfd-footer .sfd-ok { background:#00695c; color:white; }
+.sinc-filter-dropdown .sfd-footer .sfd-clear { background:#f5f5f5; color:#333; }
+/* ── Barra inferior modo sinc ── */
+#planif-sinc-bar { display:none; position:fixed; bottom:0; left:0; right:0; background:#004d40; color:white; padding:10px 24px; display:none; align-items:center; gap:12px; z-index:1500; box-shadow:0 -4px 12px rgba(0,0,0,0.25); }
+#planif-sinc-bar.visible { display:flex; }
+#planif-panel th.sinc-th-filtered .th-inner { background:rgba(255,235,59,0.25); }
+#planif-panel th.sinc-th-filtered .th-inner::after { content:'▼'; font-size:8px; color:#fdd835; margin-left:2px; }
+
 #planif-panel .maq-item {
   padding: 15px; border-bottom: 1px solid #eee; display: flex;
   align-items: center; gap: 15px; cursor: pointer; transition: 0.2s;
@@ -5194,8 +5243,21 @@ function loadPlanificador() {
 #planif-panel .proc-card.selected { border-color: #1a237e; background: #e8eaf6; color: #1a237e; box-shadow: 0 4px 16px rgba(26,35,126,.2); }
 #planif-panel .proc-card svg { width: 52px; height: 52px; }
 #planif-panel .proc-card .proc-label { font-size: 0.78rem; font-weight: 900; letter-spacing: 0.03em; line-height: 1.2; }
-#planif-panel .search-bar { padding: 10px 20px; background: #1a237e; display: flex; gap: 15px; align-items: center; color: white; flex-shrink:0; }
-#planif-panel .search-input { width: 30%; padding: 8px; border-radius: 6px; border: none; font-size: 14px; font-weight: 900; }
+#planif-panel .search-bar { padding: 8px 16px; background: #1a237e; display: flex; gap: 10px; align-items: center; color: white; flex-shrink:0; }
+#planif-panel .search-input { width: 28%; padding: 8px 12px; border-radius: 6px; border: none; font-size: 13px; font-weight: 700; }
+#planif-panel .planif-toolbar-group { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px; }
+#planif-panel .planif-tb-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; border: none; font-weight: 800; font-size: 12px; cursor: pointer; letter-spacing: 0.04em; transition: filter 0.15s, transform 0.1s; white-space: nowrap; }
+#planif-panel .planif-tb-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+#planif-panel .planif-tb-btn:active { transform: scale(0.96); }
+#planif-panel .planif-tb-secondary { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+#planif-panel .planif-tb-secondary:hover { background: rgba(255,255,255,0.25); }
+#planif-panel .planif-tb-dark { background: #37474f; color: #eceff1; }
+#planif-panel .planif-tb-green { background: #2e7d32; color: #fff; }
+#planif-panel .planif-tb-green.activo { background: #f9a825; color: #1a1a1a; }
+#planif-panel .planif-tb-vista { background: #546e7a; color: #fff; border: 1px solid #78909c; }
+#planif-panel .planif-tb-vista.en-tablero { background: #c62828; border-color: #ef9a9a; }
+#planif-panel .planif-tb-refresh { background: #1565c0; color: #fff; }
+#planif-panel .planif-tb-refresh.refreshing { animation: planif-spin 1s linear; pointer-events: none; }
 #planif-panel .machine-filter-bar { padding: 8px 20px; background: white; display: flex; gap: 10px; overflow-x: auto; border-bottom: 1px solid #ddd; align-items: center; flex-shrink:0; }
 #planif-panel .btn-filter-maq { padding: 5px 12px; border-radius: 15px; border: 1px solid #ccc; font-size: 10px; font-weight: 900; cursor: pointer; white-space: nowrap; }
 #planif-panel .btn-filter-maq.active { background: #1a237e; color: white; border-color: #1a237e; }
@@ -5293,18 +5355,30 @@ function loadPlanificador() {
 
   <div id="planif-step2" class="step-view">
     <div class="search-bar">
-      <input type="text" id="planif-txtBuscar" class="search-input" placeholder="BUSCAR..." onkeyup="planifFiltrarTablero()">
-      <button onclick="planifIrAStep(1)" style="background:#fff; color:#1a237e; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:900;">Cambiar Procesos</button>
-      <button id="planif-btnZoomGlobal" class="btn-zoom" onclick="planifToggleZoomGlobal()" style="margin-left:auto;">
-        <span id="planif-zoomIconGlobal">&#128269;</span>
-        <span id="planif-zoomTextGlobal">100%</span>
-      </button>
-      <button id="planif-btnFiltro98" class="btn-zoom" onclick="planifToggleFiltro98()" title="Mostrar solo órdenes con producción ≥ 98%" style="background:#1b5e20; color:white;">
-        <span>&#9989;</span>
-        <span id="planif-texto98">≥98%</span>
-      </button>
-      <button id="planif-btnPrioridad" onclick="planifToggleVistaPrioridad()" style="background:#546e7a;color:white;border:2px solid #b0bec5;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:900;font-size:13px;margin-right:4px;">PRIORIDAD</button>
-      <button id="planif-btnRefresh" class="btn-refresh" onclick="planifRefrescarConAnimacion()" title="Refrescar datos">REFRESCAR</button>
+      <input type="text" id="planif-txtBuscar" class="search-input" placeholder="🔍 BUSCAR..." onkeyup="planifFiltrarTablero()">
+      <div class="planif-toolbar-group">
+        <button class="planif-tb-btn planif-tb-secondary" onclick="planifIrAStep(1)">
+          ← Procesos
+        </button>
+      </div>
+      <div class="planif-toolbar-group" style="margin-left:auto;">
+        <button id="planif-btnZoomGlobal" class="planif-tb-btn planif-tb-dark" onclick="planifToggleZoomGlobal()" title="Zoom tarjetas (solo vista tablero)">
+          <span id="planif-zoomIconGlobal">⊕</span>
+          <span id="planif-zoomTextGlobal">100%</span>
+        </button>
+        <button id="planif-btnFiltro98" class="planif-tb-btn planif-tb-green" onclick="planifToggleFiltro98()" title="Mostrar solo órdenes con producción ≥ 98%">
+          <span>≥98%</span>
+        </button>
+        <button id="planif-btnPrioridad" class="planif-tb-btn planif-tb-vista" onclick="planifToggleVistaPrioridad()">
+          📋 VER TABLERO
+        </button>
+        <button id="planif-btnRefresh" class="planif-tb-btn planif-tb-refresh" onclick="planifRefrescarConAnimacion()" title="Refrescar datos">
+          ↻ Refresh
+        </button>
+        <button id="planif-btnSincInv" class="planif-tb-btn" onclick="planifAbrirSincronizarInventario()" title="Sincronizar Inventario con INVENTARIO_EXTERNO" style="display:none;background:#00695c;color:#fff;border:1px solid #4db6ac;">
+          🔄 Sincronizar Inv.
+        </button>
+      </div>
     </div>
     <div class="machine-filter-bar">
       <button class="btn-filter-maq" onclick="planifToggleTodasMaqs(true)">TODAS</button>
@@ -5314,7 +5388,7 @@ function loadPlanificador() {
     <div id="planif-board" class="board-container"></div>
     <div id="planif-board-tabla" style="display:none;width:100%;overflow-y:auto;padding:12px;box-sizing:border-box;"></div>
     <button id="planif-btnSaveAll" class="btn-fab-planif" onclick="planifAbrirPrevisualizacion()">GUARDAR CAMBIOS (<span id="planif-countChanges">0</span>)</button>
-    <button id="planif-btnSaveTabla" style="display:none;position:fixed;bottom:24px;right:24px;z-index:3000;background:#1a237e;color:white;border:none;padding:14px 28px;border-radius:8px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);" onclick="planifGuardarPrioridadTabla()">GUARDAR PRIORIDADES</button>
+    <button id="planif-btnSaveTabla" style="display:none;position:fixed;bottom:80px;right:30px;background:#fdd835;color:#1a1a1a;padding:14px 28px;border-radius:50px;font-weight:900;box-shadow:0 6px 20px rgba(0,0,0,0.35);border:2px solid #f9a825;cursor:pointer;z-index:1001;animation:planif-pulse-yellow 1.4s ease-in-out infinite;" onclick="planifGuardarPrioridadTabla()">💾 GUARDAR PRIORIDADES</button>
   </div>
 
   <div id="planif-step3" class="step-view">
@@ -5348,6 +5422,41 @@ function loadPlanificador() {
       <div style="margin-top:20px; text-align:right;">
         <button onclick="planifCerrarModal('planif-modalPreview')" style="padding:12px 25px; background:#777; color:white; border:none; border-radius:8px; cursor:pointer;">Cerrar</button>
         <button onclick="planifConfirmarGuardado()" style="padding:12px 40px; background:#1a237e; color:white; border:none; border-radius:8px; font-weight:900; cursor:pointer;">SINCRONIZAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BARRA INFERIOR MODO SINCRONIZAR -->
+  <div id="planif-sinc-bar">
+    <span id="planif-sinc-bar-info" style="flex:1;font-size:13px;"></span>
+    <button onclick="planifSincToggleTodos(true)" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;">☑ Todos</button>
+    <button onclick="planifSincToggleTodos(false)" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;">☐ Ninguno</button>
+    <button onclick="planifSincAplicar()" style="background:#fdd835;color:#1a1a1a;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-weight:900;font-size:13px;">💾 GUARDAR TODO</button>
+    <button onclick="planifSalirModoSinc()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;">✕ Cancelar</button>
+  </div>
+
+  <!-- MODAL SINCRONIZAR INVENTARIO (eliminado — ahora es vista inline) -->
+  <div id="planif-modalSincInv" class="planif-modal" style="z-index:9000;display:none!important;">
+    <div class="planif-modal-content" style="max-width:95vw;width:1100px;max-height:90vh;display:flex;flex-direction:column;padding:0;border-radius:12px;overflow:hidden;">
+      <div style="background:#00695c;color:white;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:18px;font-weight:900;">🔄 SINCRONIZAR INVENTARIO — COLATADO</div>
+          <div style="font-size:12px;opacity:0.85;margin-top:2px;">Órdenes con necesidad de fabricación según MIN - EXIST de Inventario Externo</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="sinc-buscar" placeholder="🔍 Filtrar..." oninput="planifSincFiltrar(this.value)"
+            style="padding:6px 12px;border-radius:6px;border:none;font-size:13px;width:200px;">
+          <button onclick="planifCerrarModal('planif-modalSincInv')" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:700;">✕ Cerrar</button>
+        </div>
+      </div>
+      <div style="overflow:auto;flex:1;padding:16px;">
+        <div id="sinc-tabla-wrap"></div>
+      </div>
+      <div style="padding:12px 24px;background:#f5f5f5;border-top:1px solid #ddd;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+        <span id="sinc-resumen" style="font-size:13px;color:#555;flex:1;"></span>
+        <button onclick="planifSincToggleTodos(true)" style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;">☑ Todos</button>
+        <button onclick="planifSincToggleTodos(false)" style="background:#fafafa;color:#555;border:1px solid #ccc;padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:12px;">☐ Ninguno</button>
+        <button onclick="planifSincAplicar()" style="background:#00695c;color:white;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;">✔ APLICAR SELECCIONADOS</button>
       </div>
     </div>
   </div>
@@ -5410,7 +5519,7 @@ function loadPlanificador() {
   <!-- MODAL CANTIDAD -->
   <div id="planif-modalCantidad" class="planif-modal">
     <div class="planif-modal-content" style="max-width: 700px;">
-      <h2 style="margin-top:0; color:#1a237e;">MODIFICAR CANTIDAD</h2>
+      <h2 style="margin-top:0; color:#1a237e;">MODIFICAR CANTIDAD — <span id="planif-lblPedidoCantidad" style="color:#546e7a;font-size:18px;"></span></h2>
       <p id="planif-lblOrdenCantidad" style="font-weight:bold; font-size:16px;"></p>
       <div style="margin:20px 0; padding:15px; background:#e3f2fd; border-radius:8px;">
         <label style="font-weight:bold; display:block; margin-bottom:10px;">Nueva Cantidad:</label>
@@ -5572,7 +5681,9 @@ function planifInit() {
         return;
       }
       html += '<div class="proc-card" id="planif-proc-' + item.key + '"'
-        + ' onclick="planifToggleProc(\'' + item.key.replace(/'/g,"\\'") + '\')">'
+        + ' onclick="planifToggleProc(\'' + item.key.replace(/'/g,"\\'") + '\')"'
+        + ' ondblclick="planifSeleccionarSoloProceso(\'' + item.key.replace(/'/g,"\\'") + '\')"'
+        + ' title="Clic: seleccionar | Doble clic: avanzar directamente">'
         + item.svg
         + '<span class="proc-label">' + item.label + '</span>'
         + '</div>';
@@ -5587,6 +5698,20 @@ function planifToggleProc(p) {
   var idx = planif_seleccionProcesos.indexOf(p);
   if (idx > -1) { planif_seleccionProcesos.splice(idx, 1); document.getElementById('planif-proc-'+p).classList.remove('selected'); }
   else { planif_seleccionProcesos.push(p); document.getElementById('planif-proc-'+p).classList.add('selected'); }
+}
+
+function planifSeleccionarSoloProceso(p) {
+  // Deseleccionar todos los demás
+  planif_seleccionProcesos = [];
+  document.querySelectorAll('#planif-procContainer .proc-card').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+  // Seleccionar solo este
+  planif_seleccionProcesos = [p];
+  var card = document.getElementById('planif-proc-' + p);
+  if (card) card.classList.add('selected');
+  // Avanzar directo
+  planifCargarOrdenes();
 }
 
 function planifCargarOrdenes(silent) {
@@ -5614,6 +5739,20 @@ function planifCargarOrdenes(silent) {
     // Resetear orden local de tabla para que se recalcule con datos frescos
     planif_tablaOrdenLocal = {};
     planifRenderBoard();
+    // Activar vista PRIORIDAD por default al cargar
+    if (!silent) {
+      planif_vistaTablaActiva = true;
+      var btnP  = document.getElementById('planif-btnPrioridad');
+      var btnZ  = document.getElementById('planif-btnZoomGlobal');
+      var btnSI = document.getElementById('planif-btnSincInv');
+      var board  = document.getElementById('planif-board');
+      var boardT = document.getElementById('planif-board-tabla');
+      if (btnP)  { btnP.classList.add('en-tablero'); btnP.innerHTML = '📊 VER TABLERO'; }
+      if (btnZ)  btnZ.style.display = 'none';
+      if (btnSI) btnSI.style.display = '';
+      if (board)  board.style.display = 'none';
+      if (boardT) boardT.style.display = 'block';
+    }
     if (planif_vistaTablaActiva) planifRenderBoardTabla();
     if (!silent) hideLoader();
   }).withFailureHandler(function(e) { sAlert(e); hideLoader(); }).obtenerOrdenesPlanificador(planif_seleccionProcesos);
@@ -5621,26 +5760,32 @@ function planifCargarOrdenes(silent) {
 
 function planifRefrescarConAnimacion() {
   var btn = document.getElementById('planif-btnRefresh');
-  btn.classList.add('refreshing');
+  if (btn) btn.classList.add('refreshing');
   setTimeout(function() {
     planifCargarOrdenes(true);
-    setTimeout(function() { btn.classList.remove('refreshing'); }, 1000);
+    setTimeout(function() { if (btn) btn.classList.remove('refreshing'); }, 1000);
   }, 100);
 }
 
 function planifToggleVistaPrioridad() {
   planif_vistaTablaActiva = !planif_vistaTablaActiva;
-  var btn = document.getElementById('planif-btnPrioridad');
-  var board = document.getElementById('planif-board');
+  var btn    = document.getElementById('planif-btnPrioridad');
+  var btnZ   = document.getElementById('planif-btnZoomGlobal');
+  var btnSI  = document.getElementById('planif-btnSincInv');
+  var board  = document.getElementById('planif-board');
   var boardT = document.getElementById('planif-board-tabla');
   if (planif_vistaTablaActiva) {
-    if (btn) { btn.style.background = '#e53935'; btn.style.border = '2px solid #ef9a9a'; btn.textContent = 'VER TABLERO'; }
-    if (board) board.style.display = 'none';
+    if (btn)  { btn.classList.add('en-tablero'); btn.innerHTML = '📊 VER TABLERO'; }
+    if (btnZ) btnZ.style.display = 'none';
+    if (btnSI) btnSI.style.display = '';
+    if (board)  board.style.display = 'none';
     if (boardT) boardT.style.display = 'block';
     planifRenderBoardTabla();
   } else {
-    if (btn) { btn.style.background = '#546e7a'; btn.style.border = '2px solid #b0bec5'; btn.textContent = 'PRIORIDAD'; }
-    if (board) board.style.display = '';
+    if (btn)  { btn.classList.remove('en-tablero'); btn.innerHTML = '📋 PRIORIDAD'; }
+    if (btnZ) btnZ.style.display = '';
+    if (btnSI) btnSI.style.display = 'none';
+    if (board)  board.style.display = '';
     if (boardT) boardT.style.display = 'none';
     var btnST = document.getElementById('planif-btnSaveTabla');
     if (btnST) btnST.style.display = 'none';
@@ -5692,6 +5837,7 @@ function planifRenderBoardTabla() {
       html += '<div style="overflow-x:auto;"><table id="pt-table-' + maqSafe + '" style="width:100%;border-collapse:collapse;font-size:12px;" data-maqkey="' + maqKey + '" data-maqsafe="' + maqSafe + '">';
       html += '<thead><tr style="background:#e8eaf6;">';
       html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;width:32px;"><input type="checkbox" onchange="planifTablaToggleTodos(\'' + maqSafe + '\',this)"></th>';
+      html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;white-space:nowrap;font-weight:700;cursor:pointer;" onclick="planifTablaOrdenarCol(\'' + maqKey + '\',\'' + maqSafe + '\',\'pedido\')">Pedido</th>';
       html += '<th style="padding:6px 4px;border-bottom:2px solid #9fa8da;width:20px;"></th>';
       html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;text-align:center;width:50px;">#</th>';
       html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;text-align:center;">Orden</th>';
@@ -5710,7 +5856,8 @@ function planifRenderBoardTabla() {
         {key:'long',        label:'Long.'},
         {key:'cuerpo',      label:'Esp.1'},
         {key:'cuerda',      label:'Esp.2'},
-        {key:'acero',       label:'SAE', noClick:true},
+        {key:'_drag3',      label:''},
+        {key:'acero',       label:'Acero', noClick:true},
         {key:'invMin',      label:'Min'},
         {key:'invMax',      label:'Max'},
         {key:'invExist',    label:'Exist'},
@@ -5720,7 +5867,7 @@ function planifRenderBoardTabla() {
         {key:'prod',        label:'Prod.'}
       ];
       cols.forEach(function(c) {
-        if (c.key === '_drag2') {
+        if (c.key === '_drag2' || c.key === '_drag3') {
           html += '<th style="padding:6px 4px;border-bottom:2px solid #9fa8da;width:20px;"></th>';
           return;
         }
@@ -5744,6 +5891,20 @@ function planifRenderBoardTabla() {
         if (!o) return;
         html += planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7);
       });
+      // ── Fila de totales (tfoot) ──
+      var totalSol = 0, totalProd = 0;
+      planif_tablaOrdenLocal[maqKey].forEach(function(id) {
+        var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
+        if (o) { totalSol += Number(o.sol)||0; totalProd += Number(o.prod)||0; }
+      });
+      var totalCols = 6 + cols.filter(function(c){ return !(c.soloC7 && !tieneC7); }).length + 1;
+      var colspanPrev = totalCols - 3;
+      html += '<tfoot><tr style="background:#e8eaf6;font-weight:900;border-top:2px solid #9fa8da;">';
+      html += '<td colspan="' + colspanPrev + '" style="padding:5px 10px;text-align:right;font-size:12px;color:#1a237e;">TOTALES:</td>';
+      html += '<td id="pt-total-sol-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#1565c0;font-size:12px;">' + planifFormatN(totalSol) + '</td>';
+      html += '<td id="pt-total-prod-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#880e4f;font-size:12px;">' + planifFormatN(totalProd) + '</td>';
+      html += '<td style="padding:5px 8px;"></td>';
+      html += '</tr></tfoot>';
       html += '</tbody></table></div></div>';
     });
   });
@@ -5832,6 +5993,7 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
   var estadoExtraClass = estadoUp === 'SOBREPRODUCCION' ? ' pt-btn-sobrep' : '';
   return '<tr id="pt-row-' + o.id + '" data-id="' + o.id + '" tabindex="0" style="border-bottom:1px solid #e0e0e0;cursor:pointer;" onclick="planifTablaToggleSeleccion(this)">' +
     '<td style="padding:4px 8px;text-align:center;"><input type="checkbox" ' + checked + ' onchange="planifTablaCheckRow(\'' + maqKey + '\',\'' + o.id + '\',this)"></td>' +
+    '<td style="padding:4px 8px;white-space:nowrap;font-size:11px;font-weight:700;color:#546e7a;">' + (o.pedido||'—') + '</td>' +
     '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>' +
     '<td style="padding:2px 4px;text-align:center;">' +
       '<input type="number" min="1" class="pt-num-input" value="' + (rowIdx+1) + '" ' +
@@ -5857,10 +6019,13 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
     '<td style="padding:4px 8px;white-space:nowrap;">' + (o.long||'') + '</td>' +
     '<td style="padding:4px 8px;white-space:nowrap;">' + (o.cuerpo||'') + '</td>' +
     '<td style="padding:4px 8px;white-space:nowrap;">' + (o.cuerda||'') + '</td>' +
-    '<td style="padding:4px 6px;text-align:center;cursor:pointer;" onclick="planifAbrirEditAcero(\'' + idE + '\',\'' + (o.acero||'').replace(/'/g,"\\'") + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" title="Clic para editar SAE" id="pt-acerobadge-' + o.id + '">' + planifGetAceroBadge(o.acero||'', o.id) + '</td>' +
+    '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>' +
+    '<td style="padding:4px 6px;text-align:center;cursor:pointer;" onclick="planifAbrirEditAcero(\'' + idE + '\',\'' + (o.acero||'').replace(/'/g,"\\'") + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" title="Clic para editar Acero" id="pt-acerobadge-' + o.id + '">' + planifGetAceroBadge(o.acero||'', o.id) + '</td>' +
     planifInvCeldas(o, tieneC7) +
     '<td onclick="planifAbrirEditCantidad(\'' + idE + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#1565c0;font-weight:700;text-decoration:underline;" title="Click para editar cantidad">' + planifFormatN(o.sol) + '</td>' +
-    '<td style="padding:4px 8px;text-align:right;">' + planifFormatN(o.prod) + '</td>' +
+    (Number(o.prod) > 0
+      ? '<td onclick="planifAbrirModalProdPlanif(\'' + idE + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#880e4f;font-weight:900;text-decoration:underline;" title="Click para ver producción">' + planifFormatN(o.prod) + '</td>'
+      : '<td style="padding:4px 8px;text-align:right;color:#999;">' + planifFormatN(o.prod) + '</td>') +
     '<td style="padding:4px 8px;text-align:center;"><button onclick="planifTablaToggleEstado(\'' + idE + '\')" class="' + estadoExtraClass + '" style="background:' + estadoColor + ';color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;" id="pt-estbtn-' + o.id + '">' + estadoLabel + '</button></td>' +
     '</tr>';
 }
@@ -6182,13 +6347,14 @@ function planifTablaOrdenarCol(maqKey, maqSafe, colKey) {
 function planifTablaRefrescarEncabezados(maqKey, maqSafe) {
   var tabla = document.getElementById('pt-table-' + maqSafe);
   if (!tabla) return;
-  var colsKeys = ['codigo','tipo','_drag2','dia','long','cuerpo','cuerda','acero','invMin','invMax','invExist','invPct','sol','prod'];
-  var colsLabels = ['Código','Tipo','','Diam.','Long.','Esp.1','Esp.2','SAE','Min','Max','Exist','%','Solic.','Prod.'];
+  // COLUMNAS FIJAS: [0]=check, [1]=Pedido, [2]=drag1, [3]=#, [4]=Orden, [5]=🏭 → offset=6
+  var colsKeys   = ['codigo','tipo','_drag2','dia','long','cuerpo','cuerda','_drag3','acero','invMin','invMax','invExist','invPct','sol','prod'];
+  var colsLabels = ['Código','Tipo','','Diam.','Long.','Esp.1','Esp.2','','Acero','Min','Max','Exist','%','Solic.','Prod.'];
   var ths = tabla.querySelectorAll('thead th');
-  // ths[0]=check, [1]=#, [2..9]=cols, [10]=Solic, [11]=Estado
   colsKeys.forEach(function(key, i) {
-    var th = ths[i+4];
+    var th = ths[i+6];
     if (!th) return;
+    if (key === '_drag2' || key === '_drag3') return; // sin flecha en separadores drag
     var sortInfo = planif_tablaOrdenColumnas.find(function(s){ return s.col === key && s.maqKey === maqKey; });
     var arrow = sortInfo ? (sortInfo.dir === 'asc' ? ' <span style="color:#388e3c;font-size:11px;">▲</span>' : ' <span style="color:#d32f2f;font-size:11px;">▼</span>') : '';
     th.innerHTML = colsLabels[i] + arrow;
@@ -6331,16 +6497,47 @@ function planifGuardarPrioridadTabla() {
 }
 
 function planifIrAStep(n) {
+  if (n === 1 && planif_tablaCambiosPendientes) {
+    var nCambios = 0;
+    Object.keys(planif_tablaOrdenLocal).forEach(function(k) { nCambios += planif_tablaOrdenLocal[k].length; });
+    sConfirm(
+      'Tienes cambios de prioridad sin guardar. Si sales perderás los cambios. ¿Deseas continuar?',
+      'Cambios pendientes (' + nCambios + ' órdenes)',
+      'Sí, salir'
+    ).then(function(r) {
+      if (!r.isConfirmed) return;
+      planif_tablaCambiosPendientes = false;
+      document.querySelectorAll('#planif-panel .step-view').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById('planif-step' + n).classList.add('active');
+    });
+    return;
+  }
   document.querySelectorAll('#planif-panel .step-view').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById('planif-step' + n).classList.add('active');
 }
 
 function planifRenderFiltrosMaq() {
+  // Calcular qué máquinas tienen al menos una orden asignada
+  var maqsConCarga = new Set();
+  planif_ordenesVivas.forEach(function(o) {
+    var key = String(o.maquina || '').trim().toUpperCase() + '||' + String(o.proceso || '').trim().toUpperCase();
+    maqsConCarga.add(key);
+  });
+
   var html = "";
   planif_seleccionProcesos.forEach(function(p) {
+    var pUpper = String(p).trim().toUpperCase();
     (planif_catalogo[p] || []).forEach(function(m) {
+      var mUpper = String(m).trim().toUpperCase();
+      var tieneCarga = maqsConCarga.has(mUpper + '||' + pUpper);
+      // Sincronizar planif_maqsVisibles: quitar las que no tienen carga si aún están
+      var idxVisible = planif_maqsVisibles.indexOf(m);
+      if (!tieneCarga && idxVisible > -1) {
+        planif_maqsVisibles.splice(idxVisible, 1);
+      }
       var act = planif_maqsVisibles.indexOf(m) > -1 ? "active" : "";
-      html += '<button class="btn-filter-maq ' + act + '" id="planif-fmaq-' + m.replace(/ /g,'-') + '" onclick="planifToggleMaqVisible(\'' + m.replace(/'/g,"\\'") + '\')">' + m + '</button>';
+      var estiloSinCarga = !tieneCarga ? ' style="opacity:0.45;"' : '';
+      html += '<button class="btn-filter-maq ' + act + '" id="planif-fmaq-' + m.replace(/ /g,'-') + '" onclick="planifToggleMaqVisible(\'' + m.replace(/'/g,"\\'") + '\')"' + estiloSinCarga + '>' + m + '</button>';
     });
   });
   document.getElementById('planif-maqFilters').innerHTML = html;
@@ -6580,6 +6777,23 @@ function planifFiltrarTablero() {
     var visibles = Array.from(bloque.querySelectorAll('[id^="pt-body-"] tr')).filter(function(tr){ return tr.style.display !== 'none'; }).length;
     bloque.style.display = visibles > 0 ? '' : 'none';
   });
+  // Recalcular totales de Solic. y Prod. por cada tabla visible tras filtro
+  document.querySelectorAll('[id^="pt-body-"]').forEach(function(tbody) {
+    var maqSafe = tbody.dataset.maqsafe;
+    if (!maqSafe) return;
+    var totalSol = 0, totalProd = 0;
+    Array.from(tbody.querySelectorAll('tr')).forEach(function(tr) {
+      if (tr.style.display === 'none') return;
+      var id = tr.dataset.id;
+      if (!id) return;
+      var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
+      if (o) { totalSol += Number(o.sol)||0; totalProd += Number(o.prod)||0; }
+    });
+    var elSol  = document.getElementById('pt-total-sol-'  + maqSafe);
+    var elProd = document.getElementById('pt-total-prod-' + maqSafe);
+    if (elSol)  elSol.textContent  = planifFormatN(totalSol);
+    if (elProd) elProd.textContent = planifFormatN(totalProd);
+  });
   // Bloquear/desbloquear handles de drag según filtro activo
   document.querySelectorAll('[id^="pt-body-"] .pt-drag-handle').forEach(function(h) {
     if (v) {
@@ -6597,17 +6811,17 @@ function planifFiltrarTablero() {
 function planifToggleFiltro98() {
   planif_modoFiltro98 = !planif_modoFiltro98;
   var btn = document.getElementById('planif-btnFiltro98');
-  var txt = document.getElementById('planif-texto98');
-  if (planif_modoFiltro98) {
-    btn.style.background = '#f9a825';
-    btn.style.color = '#000';
-    txt.textContent = '≥98% ON';
-  } else {
-    btn.style.background = '#1b5e20';
-    btn.style.color = 'white';
-    txt.textContent = '≥98%';
+  if (btn) {
+    if (planif_modoFiltro98) {
+      btn.classList.add('activo');
+      btn.innerHTML = '≥98% ✔';
+    } else {
+      btn.classList.remove('activo');
+      btn.innerHTML = '≥98%';
+    }
   }
   planifRenderBoard();
+  if (planif_vistaTablaActiva) planifRenderBoardTabla();
 }
 
 function planifToggleZoomGlobal() {
@@ -7232,6 +7446,362 @@ function planifAbrirImprimirPlan() {
   window.open(BASE_URL + "?tipo=PLAN&opcion=" + encodeURIComponent(proceso), '_blank');
 }
 
+// ══════════════════════════════════════════════════════
+// SINCRONIZAR INVENTARIO — Frontend (vista inline)
+// ══════════════════════════════════════════════════════
+var planif_sincData = [];
+var planif_modoSinc = false;
+var planif_sincFiltros = {};
+var planif_sincFiltroAbierto = null;
+
+// Columnas de la tabla sinc — espejo de vista PRIORIDAD + columnas sinc
+var SINC_COLS = [
+  { key:'_chk',             label:'✔',            noFilter:true },
+  { key:'codigo',           label:'Código' },
+  { key:'tipo_prod',        label:'Tipo' },
+  { key:'dia',              label:'Diám.' },
+  { key:'long',             label:'Long.' },
+  { key:'cuerpo',           label:'Esp.1' },
+  { key:'cuerda',           label:'Esp.2' },
+  { key:'acero',            label:'Acero' },
+  { key:'maquina',          label:'Máquina' },
+  { key:'_inv',             label:'Min / Max / Exist / %', noFilter:true },
+  { key:'_pedidos',         label:'Pedidos / Órdenes',     noFilter:true },
+  { key:'_planeado',        label:'Total Planeado',        noFilter:true },
+  { key:'_delta',           label:'→ Nuevo Total',         noFilter:true }
+];
+
+function planifAbrirSincronizarInventario() {
+  var tieneColatado = planif_seleccionProcesos.some(function(p) {
+    return String(p).toUpperCase().trim() === 'COLATADO';
+  });
+  if (!tieneColatado) {
+    sAlert('Sincronizar Inventario solo está disponible con proceso COLATADO seleccionado.', 'warning', 'Proceso no activo');
+    return;
+  }
+  showLoader('Analizando inventario COLATADO...');
+  google.script.run
+    .withSuccessHandler(function(raw) {
+      hideLoader();
+      var res = JSON.parse(raw);
+      if (!res.success) { sAlert('Error: ' + res.msg, 'error'); return; }
+      planif_sincData = res.items;
+      planif_sincFiltros = {};
+      planif_modoSinc = true;
+      // Quitar filtros de máquinas y ocultar barra de filtros
+      var maqBar = document.querySelector('#planif-panel .machine-filter-bar');
+      if (maqBar) maqBar.style.display = 'none';
+      // Mostrar en el mismo contenedor planif-board-tabla
+      planifSincRenderVista();
+      // Mostrar barra inferior
+      var bar = document.getElementById('planif-sinc-bar');
+      if (bar) bar.classList.add('visible');
+      // Añadir padding inferior para que la barra no tape filas
+      var boardT = document.getElementById('planif-board-tabla');
+      if (boardT) boardT.style.paddingBottom = '60px';
+    })
+    .withFailureHandler(function(e) {
+      hideLoader();
+      sAlert('Error al calcular: ' + e, 'error');
+    })
+    .calcularSincronizarColatado();
+}
+
+function planifSincRenderVista() {
+  var container = document.getElementById('planif-board-tabla');
+  if (!container) return;
+  container.style.display = 'block';
+
+  var items = planifSincItemsFiltrados();
+
+  if (planif_sincData.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#388e3c;font-size:16px;font-weight:700;">✔ Todo el inventario COLATADO está dentro de rango.</div>';
+    planifSincActualizarBarra();
+    return;
+  }
+
+  var html = '<div id="planif-sinc-wrap">';
+  html += '<div style="background:#e0f2f1;padding:8px 16px;font-size:12px;color:#00695c;font-weight:700;border-bottom:2px solid #80cbc4;display:flex;align-items:center;gap:16px;">';
+  html += '<span>🔄 MODO SINCRONIZACIÓN INVENTARIO — COLATADO</span>';
+  html += '<span style="color:#555;font-weight:400;">' + items.length + ' registro(s) mostrados de ' + planif_sincData.length + ' totales</span>';
+  html += '</div>';
+  html += '<table><thead><tr>';
+
+  SINC_COLS.forEach(function(col) {
+    var isFilt = !col.noFilter && planif_sincFiltros[col.key] && planif_sincFiltros[col.key].size > 0;
+    var thClass = isFilt ? 'sinc-th-filtered' : '';
+    html += '<th class="' + thClass + '">';
+    if (col.noFilter) {
+      html += '<div class="th-inner" style="cursor:default;">' + col.label + '</div>';
+    } else {
+      html += '<div class="th-inner" onclick="planifSincAbrirFiltro(\'' + col.key + '\',this)">';
+      html += col.label;
+      html += '<span class="th-arrow">' + (isFilt ? '▼' : '⊿') + '</span>';
+      html += '</div>';
+    }
+    html += '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  items.forEach(function(item) {
+    var idx = planif_sincData.indexOf(item);
+    var esNueva = item.tipo === 'NUEVA_ORDEN';
+    var trClass = esNueva ? 'sinc-fila-nueva' : '';
+
+    // ── Celda de inventario (Min / Max / Exist / %) ──
+    var exist  = Number(item.exist||0);
+    var minv   = Number(item.min||0);
+    var maxv   = Number(item.max||0);
+    var pct    = maxv > 0 ? Math.round((exist / maxv) * 100) : null;
+    var pctBg  = pct === null ? '#ccc' : pct <= 25 ? '#ef5350' : pct <= 60 ? '#ff9800' : pct <= 90 ? '#fdd835' : '#2e7d32';
+    var pctTxt = pct !== null ? pct + '%' : '—';
+    var invCell = '<span style="font-size:11px;color:#555;">' + planifFormatN(minv) + ' / ' + planifFormatN(maxv) + ' / ' + planifFormatN(exist) + '</span>'
+      + ' <span style="display:inline-block;background:' + pctBg + ';color:white;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:900;">' + pctTxt + '</span>';
+
+    // ── Celda de pedidos/órdenes agrupados ──
+    var grupos = item.pedidosAgrupados || [];
+    var pedCell = '';
+    if (grupos.length === 0) {
+      pedCell = esNueva ? '<span class="sinc-badge-nueva">NUEVA</span> ' + (item.folioTEM||'—') : '—';
+    } else {
+      pedCell = grupos.map(function(g) {
+        return '<div style="font-size:11px;line-height:1.4;">'
+          + '<b style="color:#1a237e;">' + g.pedido + '</b>'
+          + ' <span style="color:#555;">' + g.ordenes.join(', ') + '</span>'
+          + ' <span style="color:#388e3c;font-weight:700;">(' + planifFormatN(g.sol) + ')</span>'
+          + '</div>';
+      }).join('');
+      if (esNueva) pedCell += '<div style="margin-top:2px;"><span class="sinc-badge-nueva">+NUEVA</span> <b>' + (item.folioTEM||'') + '</b></div>';
+    }
+
+    // ── Columna Total Planeado ──
+    var totalSol = Number(item.totalSolOrdenes||0);
+    var planeadoCell = '<span style="font-weight:700;color:#1565c0;">' + planifFormatN(totalSol) + '</span>';
+
+    // ── Columna delta → Nuevo Total ──
+    var delta     = Number(item.necesario||0);
+    var nuevoTot  = totalSol + delta;
+    var signo     = delta >= 0 ? '+' : '';
+    var deltaColor = delta >= 0 ? '#1b5e20' : '#c62828';
+    var deltaCell = '<span style="color:' + deltaColor + ';font-weight:900;">'
+      + signo + planifFormatN(delta)
+      + '</span>'
+      + ' <span style="font-size:10px;color:#555;">→</span> '
+      + '<span style="font-weight:900;color:#004d40;">' + planifFormatN(nuevoTot) + '</span>';
+    if (esNueva) {
+      deltaCell += ' <button onclick="planifSincInyectarEnOrdenRef(' + idx + ')" '
+        + 'style="background:#1565c0;color:white;border:none;padding:1px 8px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:700;margin-left:4px;" '
+        + 'title="Inyectar en orden ref. en lugar de crear nueva">Inyectar (' + (item.ordenRef||'—') + ')</button>';
+    }
+
+    html += '<tr class="' + trClass + '" data-idx="' + idx + '" data-search="' +
+      (item.codigo + ' ' + (item.tipo_prod||'') + ' ' + (item.dia||'') + ' ' + (item.acero||'') + ' ' + (item.maquina||'')).toLowerCase() + '">';
+    html += '<td style="text-align:center;"><input type="checkbox" class="sinc-chk" data-idx="' + idx + '" '
+      + (item.seleccionado ? 'checked' : '')
+      + ' onchange="planif_sincData[' + idx + '].seleccionado=this.checked;planifSincActualizarBarra();"></td>';
+    html += '<td style="font-family:monospace;font-size:11px;white-space:nowrap;">' + (item.codigo||'') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.tipo_prod||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.dia||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.long||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.cuerpo||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.cuerda||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.acero||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + (item.maquina||'—') + '</td>';
+    html += '<td style="white-space:nowrap;">' + invCell + '</td>';
+    html += '<td style="min-width:180px;">' + pedCell + '</td>';
+    html += '<td style="text-align:right;white-space:nowrap;">' + planeadoCell + '</td>';
+    html += '<td style="white-space:nowrap;min-width:160px;">' + deltaCell + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+  planifSincActualizarBarra();
+}
+
+function planifSincItemsFiltrados() {
+  return planif_sincData.filter(function(item) {
+    var pasa = true;
+    Object.keys(planif_sincFiltros).forEach(function(col) {
+      var vals = planif_sincFiltros[col];
+      if (!vals || vals.size === 0) return;
+      var v = String(item[col]||'').trim();
+      if (!vals.has(v)) pasa = false;
+    });
+    return pasa;
+  });
+}
+
+function planifSincAbrirFiltro(colKey, thInnerEl) {
+  var existente = document.getElementById('sinc-filter-dd');
+  if (existente) existente.remove();
+  if (planif_sincFiltroAbierto === colKey) { planif_sincFiltroAbierto = null; return; }
+  planif_sincFiltroAbierto = colKey;
+
+  var todosVals = [];
+  planif_sincData.forEach(function(item) {
+    var v = String(item[colKey]||'').trim();
+    if (todosVals.indexOf(v) === -1) todosVals.push(v);
+  });
+  todosVals.sort();
+
+  var activos = planif_sincFiltros[colKey] || new Set(todosVals);
+
+  var rect = thInnerEl.getBoundingClientRect();
+  var dd = document.createElement('div');
+  dd.id = 'sinc-filter-dd';
+  dd.className = 'sinc-filter-dropdown';
+  dd.style.top  = (rect.bottom + 2) + 'px';
+  dd.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+
+  var ddHTML = '<div class="sfd-search"><input id="sfd-search-inp" type="text" placeholder="Buscar..." oninput="planifSincFiltrarDd(this.value)"></div>';
+  ddHTML += '<div class="sfd-list" id="sfd-list">';
+  ddHTML += '<div class="sfd-item"><input type="checkbox" id="sfd-all" ' + (activos.size === todosVals.length ? 'checked' : '') + ' onchange="planifSincDdToggleTodos(this.checked)"> <label for="sfd-all" style="cursor:pointer;font-weight:700;">(Seleccionar todo)</label></div>';
+  todosVals.forEach(function(v) {
+    var chk = activos.has(v) ? 'checked' : '';
+    var vid = 'sfd-v-' + v.replace(/[^a-zA-Z0-9]/g,'_');
+    ddHTML += '<div class="sfd-item sfd-opt" data-val="' + v + '"><input type="checkbox" id="' + vid + '" ' + chk + ' data-val="' + v + '"> <label for="' + vid + '" style="cursor:pointer;">' + (v||'(vacío)') + '</label></div>';
+  });
+  ddHTML += '</div>';
+  ddHTML += '<div class="sfd-footer"><button class="sfd-clear" onclick="planifSincLimpiarFiltroCol(\'' + colKey + '\')">Limpiar</button><button class="sfd-ok" onclick="planifSincAplicarFiltroCol(\'' + colKey + '\')">OK</button></div>';
+
+  dd.innerHTML = ddHTML;
+  document.body.appendChild(dd);
+
+  setTimeout(function() {
+    document.addEventListener('click', function handler(e) {
+      if (!dd.contains(e.target) && !thInnerEl.contains(e.target)) {
+        dd.remove();
+        planif_sincFiltroAbierto = null;
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 50);
+}
+
+function planifSincFiltrarDd(txt) {
+  var q = (txt||'').toLowerCase();
+  document.querySelectorAll('#sfd-list .sfd-opt').forEach(function(el) {
+    el.style.display = (!q || el.dataset.val.toLowerCase().indexOf(q) > -1) ? '' : 'none';
+  });
+}
+
+function planifSincDdToggleTodos(checked) {
+  document.querySelectorAll('#sfd-list .sfd-opt input[type=checkbox]').forEach(function(cb) {
+    cb.checked = checked;
+  });
+}
+
+function planifSincAplicarFiltroCol(colKey) {
+  var seleccionados = new Set();
+  document.querySelectorAll('#sfd-list .sfd-opt input[type=checkbox]:checked').forEach(function(cb) {
+    seleccionados.add(cb.dataset.val);
+  });
+  var todosVals = planif_sincData.map(function(i){ return String(i[colKey]||'').trim(); });
+  var unicos = todosVals.filter(function(v,i,a){ return a.indexOf(v)===i; });
+  if (seleccionados.size === unicos.length) {
+    delete planif_sincFiltros[colKey];
+  } else {
+    planif_sincFiltros[colKey] = seleccionados;
+  }
+  var dd = document.getElementById('sinc-filter-dd');
+  if (dd) dd.remove();
+  planif_sincFiltroAbierto = null;
+  showLoader('Filtrando...');
+  setTimeout(function() { planifSincRenderVista(); hideLoader(); }, 80);
+}
+
+function planifSincLimpiarFiltroCol(colKey) {
+  delete planif_sincFiltros[colKey];
+  var dd = document.getElementById('sinc-filter-dd');
+  if (dd) dd.remove();
+  planif_sincFiltroAbierto = null;
+  showLoader('Filtrando...');
+  setTimeout(function() { planifSincRenderVista(); hideLoader(); }, 80);
+}
+
+function planifSincToggleTodos(val) {
+  document.querySelectorAll('.sinc-chk').forEach(function(chk) {
+    chk.checked = val;
+    var idx = parseInt(chk.dataset.idx);
+    if (!isNaN(idx) && planif_sincData[idx]) planif_sincData[idx].seleccionado = val;
+  });
+  planifSincActualizarBarra();
+}
+
+function planifSincActualizarBarra() {
+  var sel = planif_sincData.filter(function(i){ return i.seleccionado; }).length;
+  var info = document.getElementById('planif-sinc-bar-info');
+  if (info) info.innerText = sel + ' de ' + planif_sincData.length + ' acción(es) seleccionada(s)';
+}
+
+function planifSincInyectarEnOrdenRef(idx) {
+  var item = planif_sincData[idx];
+  if (!item || item.tipo !== 'NUEVA_ORDEN') return;
+  var partes = (item.ordenRef||'').split('.');
+  var serieRef = partes[0] || '';
+  var ordRef   = parseInt(partes[1]) || 0;
+  var ordViva = planif_ordenesVivas.find(function(o) {
+    return String(o.serie) === serieRef && Number(o.orden) === ordRef;
+  });
+  if (!ordViva) { sAlert('No se encontró la orden de referencia en las órdenes activas.', 'warning'); return; }
+  item.tipo      = 'ACTUALIZAR';
+  item.idOrden   = ordViva.id;
+  item.pedido    = ordViva.pedido;
+  item.serie     = serieRef;
+  item.ordenNum  = ordRef;
+  item.solActual = ordViva.sol;
+  item.solNuevo  = ordViva.sol + item.necesario;
+  item.cantActual= ordViva.sol;
+  item.cantNuevo = ordViva.sol + item.necesario;
+  item.avance    = ordViva.avance || 0;
+  showLoader('Actualizando vista...');
+  setTimeout(function() { planifSincRenderVista(); hideLoader(); }, 80);
+  sAlert('Se usará la orden ' + item.ordenRef + ' en lugar de crear una nueva.', 'success', 'Listo');
+}
+
+function planifSincAplicar() {
+  var seleccionados = planif_sincData.filter(function(i){ return i.seleccionado; });
+  if (seleccionados.length === 0) { sAlert('No hay acciones seleccionadas.', 'warning'); return; }
+  sConfirm(
+    '¿Aplicar ' + seleccionados.length + ' acción(es)? Se actualizarán órdenes y/o crearán pedidos TEM.',
+    'Confirmar Sincronización',
+    'Sí, guardar todo'
+  ).then(function(r) {
+    if (!r.isConfirmed) return;
+    showLoader('Aplicando cambios...');
+    google.script.run
+      .withSuccessHandler(function(raw) {
+        hideLoader();
+        var res = JSON.parse(raw);
+        if (res.success) {
+          sAlert('✔ ' + res.msg, 'success', res.count + ' acción(es) aplicada(s)');
+          planifSalirModoSinc();
+          planifCargarOrdenes(true);
+        } else {
+          sAlert('Error: ' + res.msg, 'error');
+        }
+      })
+      .withFailureHandler(function(e) { hideLoader(); sAlert('Error: ' + e, 'error'); })
+      .aplicarSincronizarColatado(seleccionados);
+  });
+}
+
+function planifSalirModoSinc() {
+  planif_modoSinc = false;
+  planif_sincData = [];
+  planif_sincFiltros = {};
+  var dd = document.getElementById('sinc-filter-dd');
+  if (dd) dd.remove();
+  var maqBar = document.querySelector('#planif-panel .machine-filter-bar');
+  if (maqBar) maqBar.style.display = '';
+  var boardT = document.getElementById('planif-board-tabla');
+  if (boardT) boardT.style.paddingBottom = '';
+  var bar = document.getElementById('planif-sinc-bar');
+  if (bar) bar.classList.remove('visible');
+  planifRenderBoardTabla();
+}
+
 function planifAbrirEditCantidad(id) {
   planif_idCantidadEditando = id;
   showLoader("Cargando datos...");
@@ -7239,7 +7809,12 @@ function planifAbrirEditCantidad(id) {
     planif_datosCantidadOrden = JSON.parse(resRaw);
     if (planif_datosCantidadOrden.length === 0) { hideLoader(); { sAlert("No se encontraron datos"); return; } }
     var primerProceso = planif_datosCantidadOrden[0];
-    document.getElementById('planif-lblOrdenCantidad').innerText = "Orden: " + primerProceso.serie + "." + String(primerProceso.orden).padStart(4, '0') + " - " + primerProceso.descripcion;
+    var ordActual = planif_ordenesVivas.find(function(x){ return String(x.id) === String(id); });
+    var pedidoTxt = (ordActual && ordActual.pedido) ? ordActual.pedido : '';
+    var lblPed = document.getElementById('planif-lblPedidoCantidad');
+    if (lblPed) lblPed.innerText = pedidoTxt;
+    document.getElementById('planif-lblOrdenCantidad').innerText = "Orden: " + primerProceso.serie + "."
+    + String(primerProceso.orden).padStart(4, '0') + " - " + primerProceso.descripcion;
     document.getElementById('planif-txtNuevaCantidad').value = primerProceso.cantidad;
     var tabla = '<table style="width:100%; border-collapse:collapse; font-size:12px;">';
     tabla += '<thead style="background:#1a237e; color:white;"><tr>';
