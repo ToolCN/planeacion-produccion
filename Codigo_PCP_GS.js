@@ -2153,7 +2153,7 @@ function crearPedidoInternoCompleto(payload) {
     hoySoloFecha.setHours(0, 0, 0, 0);
 
     // A. PEDIDOS — Estado: PLANEADO
-    var folioINT = getSiguienteFolio("INT");
+    var folioINT = getSiguienteFolio("TEM");
     sheetPed.appendRow([
       Utilities.getUuid().substring(0, 8),
       folioINT,
@@ -3889,7 +3889,8 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
         invExtMap[invCod] = {
           exist: parseFloat(dInvExt[ie][1]) || 0,
           min:   parseFloat(dInvExt[ie][2]) || 0,
-          max:   parseFloat(dInvExt[ie][3]) || 0
+          max:   parseFloat(dInvExt[ie][3]) || 0,
+          back:  parseFloat(dInvExt[ie][4]) || 0
         };
       }
     }
@@ -3912,26 +3913,39 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
       var esC7 = cUp.charAt(0) === "7";
       if (esC7) {
         var cVenta = codigoVentaMap[cUp] || "";
-        if (cVenta) {
-          var datoVenta = invExtMap[cVenta];
-          var datoOriginal = invExtMap[cUp] || null;
+        // Varilla con código_venta diferente: usa datos del código venta + existNeg del código negro
+        if (cVenta && cVenta !== cUp) {
+          var datoVenta    = invExtMap[cVenta] || null;
+          var datoOriginal = invExtMap[cUp]    || null;
           if (datoVenta) {
             return {
-              exist: datoVenta.exist,
-              min:   datoVenta.min,
-              max:   datoVenta.max,
-              existNeg: datoOriginal ? datoOriginal.exist : null
+              exist:    datoVenta.exist,
+              min:      datoVenta.min,
+              max:      datoVenta.max,
+              back:     datoVenta.back,
+              existNeg: datoOriginal ? datoOriginal.exist : 0,
+              esVarilla: true,
+              codigoVenta: cVenta
             };
           }
         }
-        // Si no hay CODIGO_VENTA o no existe en inventario, buscar con el código 7 directo
+        // Varilla con codigo = codigo_venta (sin código negro diferente): solo datos del propio código
+        if (cVenta && cVenta === cUp) {
+          var datoPropio = invExtMap[cUp] || null;
+          return datoPropio
+            ? { exist: datoPropio.exist, min: datoPropio.min, max: datoPropio.max, back: datoPropio.back, existNeg: null, esVarilla: true, codigoVenta: cUp }
+            : { exist: null, min: null, max: null, back: 0, existNeg: null, esVarilla: false, codigoVenta: '' };
+        }
+        // Código 7 sin entrada en CODIGOS: busca directo
         var datoDirecto = invExtMap[cUp] || null;
         return datoDirecto
-          ? { exist: datoDirecto.exist, min: datoDirecto.min, max: datoDirecto.max, existNeg: datoDirecto.exist }
-          : { exist: null, min: null, max: null, existNeg: null };
+          ? { exist: datoDirecto.exist, min: datoDirecto.min, max: datoDirecto.max, back: datoDirecto.back, existNeg: datoDirecto.exist, esVarilla: false, codigoVenta: '' }
+          : { exist: null, min: null, max: null, back: 0, existNeg: null, esVarilla: false, codigoVenta: '' };
       }
       var dato = invExtMap[cUp];
-      return dato ? { exist: dato.exist, min: dato.min, max: dato.max, existNeg: null } : { exist: null, min: null, max: null, existNeg: null };
+      return dato
+        ? { exist: dato.exist, min: dato.min, max: dato.max, back: dato.back, existNeg: null, esVarilla: false, codigoVenta: '' }
+        : { exist: null, min: null, max: null, back: 0, existNeg: null, esVarilla: false, codigoVenta: '' };
     };
 
     var planif_invTmp = null;
@@ -3975,7 +3989,8 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
             invExist:    (function(){ var _d=getInvExt(row[idx.COD]); planif_invTmp=_d; return _d.exist; })(),
             invMin:      planif_invTmp ? planif_invTmp.min : null,
             invMax:      planif_invTmp ? planif_invTmp.max : null,
-            invExistNeg: planif_invTmp ? (planif_invTmp.existNeg !== undefined ? planif_invTmp.existNeg : null) : null
+            invExistNeg: planif_invTmp ? (planif_invTmp.existNeg !== undefined ? planif_invTmp.existNeg : null) : null,
+            invBack:     planif_invTmp ? (planif_invTmp.back !== undefined ? planif_invTmp.back : 0) : 0
           });
         }
       }
@@ -4100,6 +4115,106 @@ function guardarPlanificacion(listaCambios) {
 
   SpreadsheetApp.flush();
   return true;
+}
+
+function terminarPedidoColatado(folioPedido) {
+  try {
+    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shPed = ss.getSheetByName("PEDIDOS");
+    var shOrd = ss.getSheetByName("ORDENES");
+    var dataPed = shPed.getDataRange().getValues();
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var pdFOL = hPed.indexOf("FOLIO"); if (pdFOL === -1) pdFOL = 1;
+    var pdEST = hPed.indexOf("ESTADO"); if (pdEST === -1) pdEST = 8;
+    var oID   = hOrd.indexOf("ID");
+    var oPED  = hOrd.indexOf("PEDIDO");
+    var oEST  = hOrd.indexOf("ESTADO");
+    var ordenesCanceladas = 0, ordenesTerminadas = 0;
+    // 1. Pasar pedido a TERMINADO
+    for (var p = 1; p < dataPed.length; p++) {
+      if (String(dataPed[p][pdFOL]).trim() === String(folioPedido).trim()) {
+        shPed.getRange(p+1, pdEST+1).setValue('TERMINADO');
+        break;
+      }
+    }
+    // 2. Pasar todas sus órdenes a TERMINADO excepto las CANCELADAS
+    for (var o = 1; o < dataOrd.length; o++) {
+      if (String(dataOrd[o][oPED]).trim() !== String(folioPedido).trim()) continue;
+      var estActual = String(dataOrd[o][oEST]||'').toUpperCase().trim();
+      if (estActual === 'CANCELADO') { ordenesCanceladas++; continue; }
+      shOrd.getRange(o+1, oEST+1).setValue('TERMINADO');
+      ordenesTerminadas++;
+    }
+    SpreadsheetApp.flush();
+    return JSON.stringify({ success: true, msg: ordenesTerminadas + ' orden(es) terminadas, ' + ordenesCanceladas + ' canceladas conservadas.' });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.message });
+  }
+}
+
+function obtenerDetallePedidoAlerta(codigo) {
+  try {
+    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shPed = ss.getSheetByName("PEDIDOS");
+    var shOrd = ss.getSheetByName("ORDENES");
+    var dataPed = shPed.getDataRange().getValues();
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var pdFOL  = hPed.indexOf("FOLIO");       if (pdFOL  < 0) pdFOL  = 1;
+    var pdCOD  = hPed.indexOf("CODIGO");      if (pdCOD  < 0) pdCOD  = 3;
+    var pdEST  = hPed.indexOf("ESTADO");      if (pdEST  < 0) pdEST  = 8;
+    var pdDESC = hPed.indexOf("DESCRIPCION"); if (pdDESC < 0) pdDESC = 4;
+    var pdCAN  = hPed.indexOf("CANTIDAD");    if (pdCAN  < 0) pdCAN  = 6;
+    var oPED   = hOrd.indexOf("PEDIDO");
+    var oCOD   = hOrd.indexOf("CODIGO");
+    var oEST   = hOrd.indexOf("ESTADO");
+    var oPROC  = hOrd.indexOf("PROCESO");
+    var oSOL   = hOrd.indexOf("SOLICITADO");
+    var oPROD  = hOrd.indexOf("PRODUCIDO");
+    var oMAQ   = hOrd.indexOf("MAQUINA");
+    var oSERIE = hOrd.indexOf("SERIE");
+    var oORDEN = hOrd.indexOf("ORDEN");
+    // Buscar pedidos vivos con ese código
+    var PED_MUERTOS = ['TERMINADO','CANCELADO','CERRADO','SOBREPRODUCCION','ENTREGADO'];
+    var pedidosVivos = [];
+    for (var p = 1; p < dataPed.length; p++) {
+      var pCod = String(dataPed[p][pdCOD]||'').trim().toUpperCase();
+      var pEst = String(dataPed[p][pdEST]||'').trim().toUpperCase();
+      var pFol = String(dataPed[p][pdFOL]||'').trim();
+      if (pCod !== String(codigo).trim().toUpperCase()) continue;
+      if (PED_MUERTOS.indexOf(pEst) > -1) continue;
+      pedidosVivos.push({
+        folio:  pFol,
+        estado: pEst,
+        desc:   String(dataPed[p][pdDESC]||'').trim(),
+        cant:   Number(dataPed[p][pdCAN]||0)
+      });
+    }
+    // Para cada pedido vivo, obtener sus órdenes
+    pedidosVivos.forEach(function(ped) {
+      var ordenes = [];
+      for (var o = 1; o < dataOrd.length; o++) {
+        if (String(dataOrd[o][oPED]||'').trim() !== ped.folio) continue;
+        ordenes.push({
+          id:      String(dataOrd[o][0]||''),
+          orden:   String(dataOrd[o][oSERIE]||'') + '.' + ('0000'+String(dataOrd[o][oORDEN]||'')).slice(-4),
+          proceso: String(dataOrd[o][oPROC]||'').trim(),
+          maquina: String(dataOrd[o][oMAQ]||'').trim(),
+          sol:     Number(dataOrd[o][oSOL]||0),
+          prod:    Number(dataOrd[o][oPROD]||0),
+          estado:  String(dataOrd[o][oEST]||'').trim().toUpperCase()
+        });
+      }
+      ordenes.sort(function(a,b){ return a.proceso.localeCompare(b.proceso); });
+      ped.ordenes = ordenes;
+    });
+    return JSON.stringify({ success: true, pedidos: pedidosVivos });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.message });
+  }
 }
 
 function ejecutarCambioEstadoDirecto(id, nuevoEstado) {
@@ -6705,38 +6820,52 @@ function calcularSincronizarColatado() {
       }
     }
 
-    // Recolectar todos los códigos con órdenes COLATADO vivas
-    var VIVOS = ['ACTIVE','EN PROCESO','ABIERTO'];
-    var MUERTOS = ['CANCELADO','TERMINADO','SOBREPRODUCCION','CERRADO'];
-    var codigosColatado = {};  // codigo → [ordenesVivas]
+    // Fecha de pedido: mapa folio → fecha
+    var oPEDFECHA = hPed.indexOf("FECHA"); if (oPEDFECHA === -1) oPEDFECHA = 2;
+    var mapFechaPed = {};
+    for (var fp = 1; fp < dataPed.length; fp++) {
+      var folK = String(dataPed[fp][pdFOL]||'');
+      var fVal = dataPed[fp][oPEDFECHA];
+      var fStr = '';
+      if (fVal instanceof Date) {
+        fStr = ('0'+fVal.getDate()).slice(-2) + '/' + ('0'+(fVal.getMonth()+1)).slice(-2) + '/' + fVal.getFullYear();
+      } else if (fVal) { fStr = String(fVal); }
+      mapFechaPed[folK] = fStr;
+    }
+
+    // Recolectar TODOS los códigos con órdenes COLATADO (cualquier estado, para mostrar historial completo)
+    var MUERTOS_SINC = ['CERRADO'];  // solo excluimos CERRADO; mostramos todos los demás
+    var codigosColatado = {};  // codigo → [ordenesDetalle]
 
     for (var o = 1; o < dataOrd.length; o++) {
       var proc = String(dataOrd[o][oPROC]||'').trim().toUpperCase();
       if (proc !== 'COLATADO') continue;
       var est = String(dataOrd[o][oEST]||'').trim().toUpperCase();
-      if (MUERTOS.indexOf(est) > -1) continue;
+      if (MUERTOS_SINC.indexOf(est) > -1) continue;
       var cod = String(dataOrd[o][oCOD2]||'').trim();
       if (!cod) continue;
       if (!codigosColatado[cod]) codigosColatado[cod] = [];
+      var pedFolio = String(dataOrd[o][oPED]||'');
       codigosColatado[cod].push({
-        id:      String(dataOrd[o][oID]),
-        pedido:  String(dataOrd[o][oPED]||''),
-        serie:   String(dataOrd[o][oSERIE]||''),
-        orden:   Number(dataOrd[o][oORD])||0,
-        sol:     Number(dataOrd[o][oSOL])||0,
-        prod:    Number(dataOrd[o][oPROD])||0,
-        estado:  est,
-        maquina: String(dataOrd[o][oMAQ]||''),
-        cant:    Number(dataOrd[o][oCANT])||0,
-        unidad:  String(dataOrd[o][oUNI]||''),
-        desc:    String(dataOrd[o][oDESC]||''),
-        peso:    Number(dataOrd[o][oPESO])||0,
-        long:    Number(dataOrd[o][oLONG])||0,
-        tipo:    String(dataOrd[o][oTIPO]||''),
-        dia:     String(dataOrd[o][oDIA]||''),
-        cuerda:  String(dataOrd[o][oCUERDA]||''),
-        cuerpo:  String(dataOrd[o][oCUERPO]||''),
-        acero:   String(dataOrd[o][oACERO]||''),
+        id:        String(dataOrd[o][oID]),
+        pedido:    pedFolio,
+        fechaPed:  mapFechaPed[pedFolio] || '',
+        serie:     String(dataOrd[o][oSERIE]||''),
+        orden:     Number(dataOrd[o][oORD])||0,
+        sol:       Number(dataOrd[o][oSOL])||0,
+        prod:      Number(dataOrd[o][oPROD])||0,
+        estado:    est,
+        maquina:   String(dataOrd[o][oMAQ]||''),
+        cant:      Number(dataOrd[o][oCANT])||0,
+        unidad:    String(dataOrd[o][oUNI]||''),
+        desc:      String(dataOrd[o][oDESC]||''),
+        peso:      Number(dataOrd[o][oPESO])||0,
+        long:      String(dataOrd[o][oLONG]||'').trim(),
+        tipo:      String(dataOrd[o][oTIPO]||''),
+        dia:       String(dataOrd[o][oDIA]||''),
+        cuerda:    String(dataOrd[o][oCUERDA]||''),
+        cuerpo:    String(dataOrd[o][oCUERPO]||''),
+        acero:     String(dataOrd[o][oACERO]||''),
         prioridad: Number(dataOrd[o][oPRIO])||999
       });
     }
@@ -6753,42 +6882,74 @@ function calcularSincronizarColatado() {
 
       var ordenes = codigosColatado[cod];
 
-      // Suma total ya planeado en órdenes activas (sol de todas las órdenes vivas)
-      var totalSolOrdenes = 0;
-      ordenes.forEach(function(o) { totalSolOrdenes += o.sol || 0; });
+      // ── Mapa estado de pedidos para este código ──
+      var PED_MUERTOS = ['TERMINADO','CANCELADO','CERRADO'];
+      var mapEstPedLocal = {};
+      for (var fp2 = 1; fp2 < dataPed.length; fp2++) {
+        var fol2 = String(dataPed[fp2][pdFOL]||'');
+        var est2 = String(dataPed[fp2][pdEST]||'').toUpperCase().trim();
+        if (fol2) mapEstPedLocal[fol2] = est2;
+      }
 
-      // Lista de pedidos/órdenes agrupada para mostrar en la vista
+      // Backorder = Σsol - Σprod SOLO de órdenes pertenecientes a pedidos VIVOS
+      var totalSolOrdenes  = 0;
+      var totalProdOrdenes = 0;
+      ordenes.forEach(function(o) {
+        var estPed = mapEstPedLocal[o.pedido] || '';
+        if (PED_MUERTOS.indexOf(estPed) > -1) return; // excluir pedidos muertos del backorder
+        totalSolOrdenes  += Number(o.sol)  || 0;
+        totalProdOrdenes += Number(o.prod) || 0;
+      });
+      var backorder = totalSolOrdenes - totalProdOrdenes;
+
+      // Ajuste correcto = lo que falta fabricar - lo que ya está en backorder de órdenes
+      var ajuste = necesario - backorder;
+
+      // COLATADO: si |ajuste| < 1500 → está OK, no mostrar
+      if (Math.abs(ajuste) < 1500) return;
+
+      // pedidosAgrupados: SOLO pedidos VIVOS; pero todas sus órdenes se muestran (cualquier estado)
       var pedidosAgrupados = [];
       ordenes.forEach(function(o) {
+        var estPed = mapEstPedLocal[o.pedido] || '';
+        if (PED_MUERTOS.indexOf(estPed) > -1) return; // excluir pedidos muertos de la lista
         var key = o.pedido;
         var existing = pedidosAgrupados.find(function(x){ return x.pedido === key; });
+        var ordenKey = o.serie + '.' + ('0000'+o.orden).slice(-4);
         if (existing) {
-          existing.ordenes.push(o.serie + '.' + ('0000'+o.orden).slice(-4));
-          existing.sol += o.sol || 0;
+          var yaEsta = existing.detOrdenes.find(function(d){ return d.ordenKey === ordenKey; });
+          if (!yaEsta) {
+            existing.detOrdenes.push({ id: o.id, ordenKey: ordenKey, sol: o.sol, prod: o.prod, estado: o.estado, maquina: o.maquina, unidad: o.unidad });
+            existing.sol  += Number(o.sol)  || 0;
+            existing.prod += Number(o.prod) || 0;
+          }
         } else {
           pedidosAgrupados.push({
-            pedido: key,
-            ordenes: [o.serie + '.' + ('0000'+o.orden).slice(-4)],
-            sol: o.sol || 0
+            pedido:     key,
+            fechaPed:   o.fechaPed || '',
+            detOrdenes: [{ id: o.id, ordenKey: ordenKey, sol: o.sol, prod: o.prod, estado: o.estado, maquina: o.maquina, unidad: o.unidad }],
+            sol:        Number(o.sol)  || 0,
+            prod:       Number(o.prod) || 0
           });
         }
       });
 
-      // Buscar orden con avance ≤ 15% (basado en prod/sol)
+      // Buscar orden candidato con avance ≤ 15% solo entre pedidos VIVOS
       var ordenCandidato = null;
       for (var i = 0; i < ordenes.length; i++) {
-        var avance = ordenes[i].sol > 0 ? (ordenes[i].prod / ordenes[i].sol) : 0;
-        if (avance <= 0.15) {
-          ordenCandidato = ordenes[i];
-          break;
-        }
+        var estPedOrd = mapEstPedLocal[ordenes[i].pedido] || '';
+        if (PED_MUERTOS.indexOf(estPedOrd) > -1) continue;
+        var avanceOrd = ordenes[i].sol > 0 ? (ordenes[i].prod / ordenes[i].sol) : 0;
+        if (avanceOrd <= 0.15) { ordenCandidato = ordenes[i]; break; }
       }
 
-      // Datos de la primera orden para mostrar info
-      var ord0 = ordenes[0];
+      // Datos de la primera orden (de pedido vivo) para info de especificaciones
+      var ord0 = ordenes.find(function(o){
+        return PED_MUERTOS.indexOf(mapEstPedLocal[o.pedido]||'') === -1;
+      }) || ordenes[0];
 
       if (ordenCandidato) {
-        // CASO A: Aumentar orden existente (inyectar cantidad)
+        // CASO A: Aumentar orden existente con el ajuste (no necesario completo)
         resultados.push({
           tipo:              'ACTUALIZAR',
           codigo:            cod,
@@ -6798,16 +6959,19 @@ function calcularSincronizarColatado() {
           min:               inv.min,
           max:               inv.max,
           necesario:         necesario,
+          ajuste:            ajuste,
           totalSolOrdenes:   totalSolOrdenes,
+          totalProdOrdenes:  totalProdOrdenes,
+          backorder:         backorder,
           pedidosAgrupados:  pedidosAgrupados,
           idOrden:           ordenCandidato.id,
           pedido:            ordenCandidato.pedido,
           serie:             ordenCandidato.serie,
           ordenNum:          ordenCandidato.orden,
           solActual:         ordenCandidato.sol,
-          solNuevo:          ordenCandidato.sol + necesario,
+          solNuevo:          ordenCandidato.sol + ajuste,
           cantActual:        ordenCandidato.cant,
-          cantNuevo:         ordenCandidato.cant + necesario,
+          cantNuevo:         ordenCandidato.cant + ajuste,
           unidad:            ordenCandidato.unidad,
           peso:              ordenCandidato.peso,
           avance:            ordenCandidato.sol > 0 ? Math.round((ordenCandidato.prod/ordenCandidato.sol)*100) : 0,
@@ -6820,16 +6984,24 @@ function calcularSincronizarColatado() {
           seleccionado:      true
         });
       } else {
-        // CASO B: Crear nuevo pedido TEM + orden
-        var maxTem = 0;
-        for (var p = 1; p < dataPed.length; p++) {
-          var fol = String(dataPed[p][pdFOL]||'');
-          if (fol.toUpperCase().indexOf('TEM-') === 0) {
-            var n = parseInt(fol.split('-')[1]||'0');
-            if (!isNaN(n) && n > maxTem) maxTem = n;
+        // CASO B: Crear nuevo pedido TEM — folio único por código (maxTem se busca globalmente incluyendo los ya creados en este lote)
+        // maxTem se recalcula aquí para incluir los TEM ya agregados en resultados de este ciclo
+        var maxTemLocal = 0;
+        for (var pt = 1; pt < dataPed.length; pt++) {
+          var folT = String(dataPed[pt][pdFOL]||'');
+          if (folT.toUpperCase().indexOf('TEM-') === 0) {
+            var nT = parseInt(folT.replace(/[^0-9]/g,''))||0;
+            if (nT > maxTemLocal) maxTemLocal = nT;
           }
         }
-        var folioTEM = 'TEM-' + ('0000'+(maxTem+1)).slice(-4);
+        // También contar los TEM ya generados en este ciclo (resultados previos tipo NUEVA_ORDEN)
+        resultados.forEach(function(r) {
+          if (r.tipo === 'NUEVA_ORDEN' && r.folioTEM) {
+            var nR = parseInt(r.folioTEM.replace(/[^0-9]/g,''))||0;
+            if (nR > maxTemLocal) maxTemLocal = nR;
+          }
+        });
+        var folioTEM = 'TEM-' + (maxTemLocal + 1); // sin padding para TEM-9, TEM-10, TEM-11...
         var ruta = rutaMap[cod] || [];
         var serie = ruta.length > 0 ? ruta[0].serie : 'P';
 
@@ -6842,10 +7014,13 @@ function calcularSincronizarColatado() {
           min:               inv.min,
           max:               inv.max,
           necesario:         necesario,
+          ajuste:            ajuste,
           totalSolOrdenes:   totalSolOrdenes,
+          totalProdOrdenes:  totalProdOrdenes,
+          backorder:         backorder,
           pedidosAgrupados:  pedidosAgrupados,
           folioTEM:          folioTEM,
-          cantNuevo:         necesario,
+          cantNuevo:         ajuste,
           unidad:            ord0.unidad,
           peso:              ord0.peso,
           serie:             serie,
@@ -6862,9 +7037,377 @@ function calcularSincronizarColatado() {
       }
     });
 
+    // ── Códigos sin pedidos/órdenes vivas COLATADO pero por debajo del 75% de Exist/Max ──
+    // Iterar invMap buscando códigos que tengan ruta COLATADO y no aparezcan ya en resultados
+    var codsProcesados = {};
+    resultados.forEach(function(r){ codsProcesados[r.codigo] = true; });
+
+    Object.keys(invMap).forEach(function(codInv) {
+      if (codsProcesados[codInv]) return;
+      if (!rutaMap[codInv]) return;
+      var inv2 = invMap[codInv];
+      if (!inv2 || inv2.max > 500000 || inv2.max <= 0) return;
+      var pctInv = inv2.exist / inv2.max;
+      if (pctInv >= 0.75) return;
+      var ruta2 = rutaMap[codInv];
+      var ord2  = ruta2[0] || {};
+      // Calcular folio TEM incremental igual que en NUEVA_ORDEN
+      var maxTemSP = 0;
+      for (var pts = 1; pts < dataPed.length; pts++) {
+        var folTS = String(dataPed[pts][pdFOL]||'');
+        if (folTS.toUpperCase().indexOf('TEM-') === 0) {
+          var nTS = parseInt(folTS.replace(/[^0-9]/g,''))||0;
+          if (nTS > maxTemSP) maxTemSP = nTS;
+        }
+      }
+      resultados.forEach(function(r) {
+        if (r.tipo === 'NUEVA_ORDEN' || r.tipo === 'SIN_PEDIDO') {
+          var nR = parseInt((r.folioTEM||'').replace(/[^0-9]/g,''))||0;
+          if (nR > maxTemSP) maxTemSP = nR;
+        }
+      });
+      var folioTEMsp = 'TEM-' + (maxTemSP + 1);
+      var necesarioSP = inv2.max - inv2.exist;
+      resultados.push({
+        tipo:              'SIN_PEDIDO',
+        codigo:            codInv,
+        desc:              '',
+        maquina:           '',
+        exist:             inv2.exist,
+        min:               inv2.min,
+        max:               inv2.max,
+        necesario:         necesarioSP,
+        ajuste:            necesarioSP,
+        backorder:         0,
+        totalSolOrdenes:   0,
+        totalProdOrdenes:  0,
+        pedidosAgrupados:  [],
+        folioTEM:          folioTEMsp,
+        cantNuevo:         necesarioSP,
+        unidad:            'KG',
+        peso:              ord2.peso || 0,
+        serie:             ord2.serie || 'P',
+        ruta:              ruta2,
+        tipo_prod:         ord2.tipo || '',
+        dia:               ord2.diam || '',
+        long:              String(ord2.long || '').trim(),
+        cuerda:            ord2.cuerda || '',
+        cuerpo:            ord2.cuerpo || '',
+        acero:             ord2.acero || '',
+        ordenRef:          '',
+        seleccionado:      false
+      });
+    });
+
     return JSON.stringify({ success: true, items: resultados });
   } catch(e) {
     return JSON.stringify({ success: false, msg: e.message });
+  }
+}
+
+// ── SIN PEDIDO + BAJO STOCK genérico (campanita PRIORIDAD) ───────────────────
+// Reutiliza la misma lógica que calcularSincronizarColatado pero para cualquier proceso.
+// Devuelve solo los ítems tipo SIN_PEDIDO (exist/max <= 0.75, sin pedido activo, con ruta en el proceso).
+function obtenerSinPedidoBajoStock(proceso) {
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shInv   = ss.getSheetByName("INVENTARIO_EXTERNO");
+    var shOrd   = ss.getSheetByName("ORDENES");
+    var shPed   = ss.getSheetByName("PEDIDOS");
+    var shRutas = ss.getSheetByName("RUTAS");
+    var shCod   = ss.getSheetByName("CODIGOS");
+    var shEst   = ss.getSheetByName("ESTANDARES");
+
+    if (!shInv || !shOrd || !shPed || !shRutas) return JSON.stringify({ success: false, msg: "Hojas no encontradas", items: [] });
+
+    var PROC = String(proceso).toUpperCase().trim();
+    var PED_MUERTOS = ['TERMINADO','CANCELADO','CERRADO','SOBREPRODUCCION','ENTREGADO'];
+    var ORD_MUERTOS = ['CERRADO'];
+
+    // ── 1. Máquinas del proceso (ESTANDARES) ──
+    var dataEst = shEst.getDataRange().getValues();
+    var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var ePROC   = hEst.indexOf("PROCESO");
+    var eMAQ    = hEst.indexOf("MAQUINA");
+    var maqsDelProceso = [];
+    for (var e = 1; e < dataEst.length; e++) {
+      if (String(dataEst[e][ePROC]||"").toUpperCase().trim() === PROC) {
+        var mn = String(dataEst[e][eMAQ]||"").trim().toUpperCase();
+        if (mn) maqsDelProceso.push(mn);
+      }
+    }
+
+    // ── 2. Mapa código→venta (CODIGOS col A fab, col F venta) ──
+    var dataCod = shCod ? shCod.getDataRange().getValues() : [];
+    var codigoVentaMap = {};
+    for (var cv = 1; cv < dataCod.length; cv++) {
+      var cvF = String(dataCod[cv][0]||'').trim().toUpperCase();
+      var cvV = String(dataCod[cv][5]||'').trim().toUpperCase();
+      if (cvF && cvV) codigoVentaMap[cvF] = cvV;
+    }
+
+    // ── 3. Mapa inventario: código → {exist, min, max, back, existNeg} ──
+    // Col A=CODIGO, B=EXIST, C=MIN, D=MAX, E=BACKORDER(Galva)
+    var dataInv = shInv.getDataRange().getValues();
+    var invMap = {};
+    for (var i = 1; i < dataInv.length; i++) {
+      var ic = String(dataInv[i][0]||'').trim().toUpperCase();
+      if (ic) invMap[ic] = {
+        exist: Number(dataInv[i][1])||0,
+        min:   Number(dataInv[i][2])||0,
+        max:   Number(dataInv[i][3])||0,
+        back:  Number(dataInv[i][4])||0   // col E = BACKORDER = Galva
+      };
+    }
+    // getInv: para código negro (no empieza en 7) busca si tiene codigoVenta asociado con max>0
+    // Devuelve {exist, min, max, back, existNeg, codigoVenta, esVarilla}
+    var esProcesoVarilla = (PROC === 'ROSCADO');
+
+    function getInv(cod) {
+      var cUp = String(cod||'').trim().toUpperCase();
+      var cVenta = codigoVentaMap[cUp] || '';
+      // Lógica especial de varilla SOLO para proceso ROSCADO
+      if (esProcesoVarilla && cUp.charAt(0) === '7' && cVenta && invMap[cVenta] && invMap[cVenta].max > 0) {
+        var invNegro = invMap[cUp]    || { exist: 0, back: 0 };
+        var invVenta = invMap[cVenta];
+        return {
+          exist:       invVenta.exist,
+          min:         invVenta.min,
+          max:         invVenta.max,
+          back:        invVenta.back,
+          existNeg:    invNegro.exist,
+          codigoVenta: cVenta,
+          esVarilla:   true
+        };
+      }
+      // Para todos los procesos: código 7 busca su venta si existe
+      if (cUp.charAt(0) === '7') {
+        if (cVenta && invMap[cVenta]) return Object.assign({}, invMap[cVenta], { existNeg: null, codigoVenta: cVenta, esVarilla: false });
+        return invMap[cUp] ? Object.assign({}, invMap[cUp], { existNeg: null, codigoVenta: '', esVarilla: false }) : null;
+      }
+      // Código normal (no empieza en 7)
+      return invMap[cUp] ? Object.assign({}, invMap[cUp], { existNeg: null, codigoVenta: '', esVarilla: false }) : null;
+    }
+
+    // ── 4. Mapa ruta: código → TODOS los pasos (igual que calcularSincronizarColatado) ──
+    var dataRut = shRutas.getDataRange().getValues();
+    var rutaMap    = {};  // codigo → [pasos completos]
+    var rutaInfoMap = {}; // codigo → info visual (primer paso del PROC)
+    for (var r = 1; r < dataRut.length; r++) {
+      var rCod  = String(dataRut[r][1]||'').trim();
+      var rProc = String(dataRut[r][4]||'').trim().toUpperCase();
+      if (!rCod) continue;
+      // Guardar todos los pasos de la ruta completa
+      if (!rutaMap[rCod]) rutaMap[rCod] = [];
+      rutaMap[rCod].push({
+        sec:              Number(dataRut[r][3])||0,
+        proceso:          rProc,
+        maquinas:         String(dataRut[r][5]||'').split(',').map(function(m){ return m.trim(); }),
+        maquinaSeleccionada: String(dataRut[r][5]||'').split(',')[0].trim(),
+        cantLote:         parseFloat(dataRut[r][22])||0,
+        pt:               dataRut[r][12],
+        venta:            dataRut[r][13],
+        peso:             Number(dataRut[r][15])||0,
+        tipo:             String(dataRut[r][6]||''),
+        diam:             String(dataRut[r][7]||''),
+        long:             String(dataRut[r][8]||''),
+        cuerda:           String(dataRut[r][9]||''),
+        cuerpo:           String(dataRut[r][10]||''),
+        acero:            String(dataRut[r][11]||''),
+        serie:            String(dataRut[r][14]||'P'),
+        unidad:           String(dataRut[r][16]||'KG'),
+        mp:               String(dataRut[r][29]||'')
+      });
+      // Info visual: solo del proceso activo (primer paso encontrado)
+      if (rProc === PROC && !rutaInfoMap[rCod]) {
+        rutaInfoMap[rCod] = {
+          tipo: String(dataRut[r][6]||''), dia: String(dataRut[r][7]||''),
+          long: String(dataRut[r][8]||''), cuerda: String(dataRut[r][9]||''),
+          cuerpo: String(dataRut[r][10]||''), acero: String(dataRut[r][11]||''),
+          maquinas: String(dataRut[r][5]||'').split(',').map(function(m){ return m.trim(); }),
+          serie: String(dataRut[r][14]||'P'),
+          unidad: String(dataRut[r][16]||'KG'),
+          cantLote: parseFloat(dataRut[r][22])||0,
+          peso: Number(dataRut[r][15])||0
+        };
+      }
+    }
+
+    // ── 5. Estado de pedidos: código → tiene pedido activo? ──
+    var dataPed = shPed.getDataRange().getValues();
+    var hPed    = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var pdFOL   = hPed.indexOf("FOLIO");   if (pdFOL  < 0) pdFOL  = 1;
+    var pdCOD   = hPed.indexOf("CODIGO");  if (pdCOD  < 0) pdCOD  = 3;
+    var pdEST   = hPed.indexOf("ESTADO");  if (pdEST  < 0) pdEST  = 8;
+    var pdDESC  = hPed.indexOf("DESCRIPCION"); if (pdDESC < 0) pdDESC = 4;
+
+    var codigosConPedidoVivo = {};
+    var descPorCodigo = {};
+    for (var p = 1; p < dataPed.length; p++) {
+      var pCod = String(dataPed[p][pdCOD]||'').trim().toUpperCase();
+      var pEst = String(dataPed[p][pdEST]||'').trim().toUpperCase();
+      if (!pCod) continue;
+      if (!descPorCodigo[pCod]) descPorCodigo[pCod] = String(dataPed[p][pdDESC]||'').trim();
+      if (PED_MUERTOS.indexOf(pEst) === -1) codigosConPedidoVivo[pCod] = true;
+    }
+
+    // ── 6. Leer TODAS las órdenes para análisis de proceso crítico ──
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hOrd    = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var oCOD    = hOrd.indexOf("CODIGO");
+    var oEST    = hOrd.indexOf("ESTADO");
+    var oPROC   = hOrd.indexOf("PROCESO");
+    var oMAQ    = hOrd.indexOf("MAQUINA");
+    var oDESC   = hOrd.indexOf("DESCRIPCION");
+    var oPED    = hOrd.indexOf("PEDIDO");
+    var oSEC    = hOrd.indexOf("SEC");
+
+    var ESTADOS_MUERTOS_ORD = ['TERMINADO','CANCELADO','SOBREPRODUCCION','CERRADO'];
+
+    var codigosConOrdenViva = {};
+
+    // Mapa: codigo → { pedidos: Set, ordenesPorPedidoYProc: {pedido: {proc: [estados]}} }
+    var mapaOrdenesPorCodigo = {};
+    for (var o = 1; o < dataOrd.length; o++) {
+      var cod  = String(dataOrd[o][oCOD] ||'').trim().toUpperCase();
+      var est  = String(dataOrd[o][oEST] ||'').toUpperCase().trim();
+      var proc = String(dataOrd[o][oPROC]||'').toUpperCase().trim();
+      var ped  = String(dataOrd[o][oPED] ||'').trim();
+      var sec  = Number(dataOrd[o][oSEC] ||0);
+      if (!cod) continue;
+      if (!mapaOrdenesPorCodigo[cod]) mapaOrdenesPorCodigo[cod] = {};
+      if (!mapaOrdenesPorCodigo[cod][ped]) mapaOrdenesPorCodigo[cod][ped] = {};
+      if (!mapaOrdenesPorCodigo[cod][ped][proc]) mapaOrdenesPorCodigo[cod][ped][proc] = { estados: [], secMin: 999 };
+      mapaOrdenesPorCodigo[cod][ped][proc].estados.push(est);
+      if (sec < mapaOrdenesPorCodigo[cod][ped][proc].secMin) mapaOrdenesPorCodigo[cod][ped][proc].secMin = sec;
+      // Para el proceso activo: registrar órdenes vivas
+      if (proc === PROC) {
+        var maqsOrden = String(dataOrd[o][oMAQ]||'').toUpperCase().split(',').map(function(m){return m.trim();});
+        var tieneMAQ  = maqsOrden.some(function(m){ return maqsDelProceso.indexOf(m) > -1; });
+        if (tieneMAQ && ESTADOS_MUERTOS_ORD.indexOf(est) === -1) {
+          codigosConOrdenViva[cod] = true;
+          if (!descPorCodigo[cod]) descPorCodigo[cod] = String(dataOrd[o][oDESC]||'').trim();
+        }
+      }
+      if (!descPorCodigo[cod] && dataOrd[o][oDESC]) descPorCodigo[cod] = String(dataOrd[o][oDESC]||'').trim();
+    }
+
+    // ── Determinar proceso crítico por código ──
+    // Varilla (ROSCADO): proceso crítico = ROSCADO
+    // Resto: proceso crítico = el de menor SEC en RUTAS
+    function getProcesoCritico(cod) {
+      if (esProcesoVarilla) return 'ROSCADO';
+      var pasos = rutaMap[cod] || [];
+      if (pasos.length === 0) return PROC;
+      var minSec = pasos[0].sec, minProc = pasos[0].proceso;
+      pasos.forEach(function(p){ if(p.sec < minSec){ minSec = p.sec; minProc = p.proceso; } });
+      return minProc.toUpperCase().trim();
+    }
+
+    // ── Detectar códigos con pedido vivo pero proceso crítico completamente muerto ──
+    var codigosAlerta = {}; // codigo → true si pedido vivo pero proceso crítico terminado
+    Object.keys(codigosConPedidoVivo).forEach(function(cod) {
+      var pedidos = mapaOrdenesPorCodigo[cod];
+      if (!pedidos) return;
+      var procCrit = getProcesoCritico(cod);
+      // Verificar si TODOS los pedidos vivos tienen el proceso crítico terminado/cancelado
+      var todosCriticosTerminados = true;
+      Object.keys(pedidos).forEach(function(ped) {
+        // Solo considerar pedidos vivos (ya sabemos cod tiene pedido vivo)
+        var procData = pedidos[ped][procCrit];
+        if (!procData) { todosCriticosTerminados = false; return; }
+        var algunaViva = procData.estados.some(function(e){
+          return ESTADOS_MUERTOS_ORD.indexOf(e) === -1;
+        });
+        if (algunaViva) todosCriticosTerminados = false;
+      });
+      if (todosCriticosTerminados) codigosAlerta[cod] = true;
+    });
+
+    // ── 7. Construir resultado: bajo stock sin pedido vivo, + alertas ──
+    var resultados = [];
+    var resultadosAlerta = [];
+    Object.keys(rutaInfoMap).forEach(function(cod) {
+      var codU = cod.trim().toUpperCase();
+      // Caso alerta: pedido vivo pero proceso crítico terminado
+      if (codigosConPedidoVivo[codU] && codigosAlerta[codU]) {
+        var inv2 = getInv(codU); if (!inv2 || inv2.max <= 0 || inv2.max > 500000) return;
+        var pct2, pedir2;
+        if (inv2.esVarilla) {
+          var g2=inv2.back||0, en2=inv2.existNeg||0, tot2=inv2.exist+g2+en2;
+          pct2=inv2.max>0?tot2/inv2.max:0; pedir2=Math.max(0,Math.round(inv2.max-inv2.exist-g2-en2));
+        } else { pct2=inv2.exist/inv2.max; pedir2=Math.max(0,Math.round(inv2.max-inv2.exist)); }
+        if (pct2 >= 0.75) return;
+        var rInfo2=rutaInfoMap[cod]||{}, ruta2=rutaMap[cod]||[];
+        resultadosAlerta.push({
+          codigo:codU, desc:descPorCodigo[codU]||codU,
+          exist:inv2.exist, min:inv2.min, max:inv2.max,
+          back:inv2.back||0, existNeg:inv2.esVarilla?(inv2.existNeg||0):null,
+          esVarilla:inv2.esVarilla||false, codigoVenta:inv2.codigoVenta||'',
+          pct:Math.round(pct2*100), pedirCalc:pedir2,
+          tipo_prod:rInfo2.tipo||'', dia:rInfo2.dia||'', long:rInfo2.long||'',
+          cuerda:rInfo2.cuerda||'', cuerpo:rInfo2.cuerpo||'', acero:rInfo2.acero||'',
+          maquinas:rInfo2.maquinas||[], serie:rInfo2.serie||'P',
+          unidad:rInfo2.unidad||'KG', cantLote:rInfo2.cantLote||0, peso:rInfo2.peso||0,
+          ruta:ruta2, alerta:true
+        });
+        return;
+      }
+      if (codigosConPedidoVivo[codU]) return;
+      var inv = getInv(codU);
+      if (!inv || inv.max <= 0 || inv.max > 500000) return;
+
+      // Calcular pct y pedir según tipo
+      var pct, pedir;
+      if (inv.esVarilla) {
+        // Varilla: (exist_venta + galva + exis_neg) / max_venta
+        var galva    = inv.back    || 0;
+        var existNeg = inv.existNeg|| 0;
+        var total    = inv.exist + galva + existNeg;
+        pct   = inv.max > 0 ? total / inv.max : 0;
+        pedir = Math.max(0, Math.round(inv.max - inv.exist - galva - existNeg));
+      } else {
+        pct   = inv.exist / inv.max;
+        pedir = Math.max(0, Math.round(inv.max - inv.exist));
+      }
+      if (pct >= 0.75) return;
+
+      var rInfo = rutaInfoMap[cod] || {};
+      var rutaCompleta = rutaMap[cod] || [];
+      resultados.push({
+        codigo:      codU,
+        desc:        descPorCodigo[codU] || codU,
+        exist:       inv.exist,
+        min:         inv.min,
+        max:         inv.max,
+        back:        inv.back    || 0,
+        existNeg:    inv.esVarilla ? (inv.existNeg || 0) : null,
+        esVarilla:   inv.esVarilla || false,
+        codigoVenta: inv.codigoVenta || '',
+        pct:         Math.round(pct * 100),
+        pedirCalc:   pedir,
+        tipo_prod:   rInfo.tipo    || '',
+        dia:         rInfo.dia     || '',
+        long:        rInfo.long    || '',
+        cuerda:      rInfo.cuerda  || '',
+        cuerpo:      rInfo.cuerpo  || '',
+        acero:       rInfo.acero   || '',
+        maquinas:    rInfo.maquinas || [],
+        serie:       rInfo.serie   || 'P',
+        unidad:      rInfo.unidad  || 'KG',
+        cantLote:    rInfo.cantLote|| 0,
+        peso:        rInfo.peso    || 0,
+        ruta:        rutaCompleta
+      });
+    });
+
+
+    resultados.sort(function(a, b){ return a.pct - b.pct; });
+    resultadosAlerta.sort(function(a, b){ return a.pct - b.pct; });
+    return JSON.stringify({ success: true, items: resultadosAlerta.concat(resultados) });
+  } catch(e) {
+    Logger.log("obtenerSinPedidoBajoStock ERROR: " + e.message);
+    return JSON.stringify({ success: false, msg: e.message, items: [] });
   }
 }
 
@@ -6897,23 +7440,29 @@ function aplicarSincronizarColatado(items) {
 
     items.forEach(function(item) {
       if (item.tipo === 'ACTUALIZAR') {
-        // A. Actualizar SOLICITADO y CANTIDAD en todos los procesos de esa orden
+        // Usar idOrden del item (puede ser el seleccionado en el dropdown)
+        var idOrdenTarget = item.idOrden || '';
+        var serieTarget = item.serie || '';
+        var ordenNumTarget = Number(item.ordenNum)||0;
+        // A. Actualizar SOLICITADO y CANTIDAD: buscar por idOrden primero, si no por serie+ordenNum
         for (var o = 1; o < dataOrd.length; o++) {
-          if (String(dataOrd[o][oSERIE]) === String(item.serie) &&
-              Number(dataOrd[o][oORDN])  === Number(item.ordenNum)) {
+          var matchId    = idOrdenTarget && String(dataOrd[o][oID]) === String(idOrdenTarget);
+          var matchSerie = !idOrdenTarget && String(dataOrd[o][oSERIE]) === serieTarget && Number(dataOrd[o][oORDN]) === ordenNumTarget;
+          if (matchId || matchSerie) {
             shOrd.getRange(o+1, oSOL+1).setValue(item.solNuevo);
             shOrd.getRange(o+1, oCANT+1).setValue(item.cantNuevo);
           }
         }
-        // B. Actualizar CANTIDAD en PEDIDOS (buscar por folio = item.pedido)
+        // B. Actualizar CANTIDAD en PEDIDOS sumando el ajuste (no el necesario completo)
+        var ajusteVal = Number(item.ajuste || item.necesario || 0);
         for (var p = 1; p < dataPed.length; p++) {
           if (String(dataPed[p][pdFOL]) === String(item.pedido)) {
             var cantPedActual = Number(dataPed[p][pdCANT])||0;
-            shPed.getRange(p+1, pdCANT+1).setValue(cantPedActual + item.necesario);
+            shPed.getRange(p+1, pdCANT+1).setValue(cantPedActual + ajusteVal);
             break;
           }
         }
-        log.push('ACTUALIZADO: ' + item.codigo + ' +' + item.necesario);
+        log.push('ACTUALIZADO: ' + item.codigo + ' ajuste:' + ajusteVal);
 
       } else if (item.tipo === 'NUEVA_ORDEN') {
         // A. Crear pedido TEM en PEDIDOS
@@ -8893,6 +9442,61 @@ function obtenerLotesDeOrden(idOrden) {
   var resultado = {};
   resultado[idOrden] = lotes;
   return resultado;
+}
+
+function obtenerLotesDeOrdenDetalle(idOrden) {
+  // Busca lotes por Serie.Orden derivado del nombre del lote (igual que Tablero Supervisor)
+  // idOrden puede ser el ID de cualquier orden del grupo — se busca su Serie.Orden en ORDENES
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd   = ss.getSheetByName('ORDENES');
+    var shLotes = ss.getSheetByName('LOTES');
+    if (!shLotes || shLotes.getLastRow() < 2) return [];
+
+    // Obtener Serie y Orden de la orden para construir el prefijo P.XXXX
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hOrd    = dataOrd[0].map(function(c){ return String(c).toUpperCase().trim(); });
+    var iID    = hOrd.indexOf('ID');     if (iID    < 0) iID    = 0;
+    var iSerie = hOrd.indexOf('SERIE');  if (iSerie < 0) iSerie = 7;
+    var iOrden = hOrd.indexOf('ORDEN');  if (iOrden < 0) iOrden = 8;
+    var serie = '', orden = '';
+    for (var r = 1; r < dataOrd.length; r++) {
+      if (String(dataOrd[r][iID]).trim() === String(idOrden).trim()) {
+        serie = String(dataOrd[r][iSerie]||'').trim();
+        orden = String(dataOrd[r][iOrden]||'').trim();
+        break;
+      }
+    }
+    if (!serie || !orden) return [];
+    // Prefijo del lote: Serie.OrdenPadded — ej: P.0469
+    var prefijo = serie + '.' + ('0000' + orden).slice(-4);
+
+    // Leer lotes y filtrar por prefijo en nombre
+    var data = shLotes.getDataRange().getValues();
+    var h    = data[0].map(function(c){ return String(c).toUpperCase().trim(); });
+    var iNom = h.indexOf('NOMBRE'); if (iNom < 0) iNom = 4;
+    var iPes = h.indexOf('PESO');   if (iPes < 0) iPes = 5;
+    var iEst = h.indexOf('ESTADO'); if (iEst < 0) iEst = 7;
+    var lotes = [];
+    for (var i = 1; i < data.length; i++) {
+      var nom = String(data[i][iNom]||'').trim();
+      if (!nom) continue;
+      var partes = nom.split('.');
+      if (partes.length < 2) continue;
+      var serieOrd = partes[0] + '.' + partes[1];
+      if (serieOrd !== prefijo) continue;
+      lotes.push({
+        lote:   nom,
+        estado: String(data[i][iEst]||'ABIERTO').trim().toUpperCase(),
+        peso:   Number(data[i][iPes])||0
+      });
+    }
+    lotes.sort(function(a,b){ return a.lote.localeCompare(b.lote); });
+    return lotes;
+  } catch(e) {
+    Logger.log('obtenerLotesDeOrdenDetalle ERROR: ' + e.message);
+    return [];
+  }
 }
 
 function obtenerMaquinasDeOrden(ordenRef) {
