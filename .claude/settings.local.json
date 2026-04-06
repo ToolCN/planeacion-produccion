@@ -7,7 +7,9 @@
       "Bash(code:*)",
       "Bash(C:\\\\Users\\\\rcdga\\\\Deploy-Prod.bat:*)",
       "Bash(cd /c/Users/rcdga && cmd.exe //c Deploy-Prod.bat)",
-      "Bash(ls /c/Users/rcdga/Deploy-Prod*)"
+      "Bash(ls /c/Users/rcdga/Deploy-Prod*)",
+      "Bash(py --version)",
+      "Bash(python3.exe --version)"
     ]
   }
 }

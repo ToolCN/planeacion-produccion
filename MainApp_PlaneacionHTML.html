@@ -1667,15 +1667,65 @@ var tm_tempCalidadIndicador = "";
 var tm_diasSemanaTxt = ["LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO"];
 var tm_esPrimeraCarga = true;
 
+// ── DÍAS INHÁBILES 2026 ──────────────────────────────────────────────────
+// Formato MM/DD — valor: 0 = inhábil completo, 0.5 = medio día
+var tm_INHABILES = {
+  "01/01": 0,   // Año Nuevo
+  "02/02": 0,   // Constitución (puente)
+  "16/03": 0,   // Natalicio Juárez (puente)
+  "02/04": 0,   // Semana Santa (empresa)
+  "03/04": 0,   // Semana Santa (empresa)
+  "04/04": 0,   // Semana Santa (empresa)
+  "01/05": 0,   // Día del Trabajo
+  "15/09": 0.5, // Grito de Independencia (medio día)
+  "16/09": 0,   // Independencia
+  "02/11": 0,   // Día de Muertos (empresa)
+  "16/11": 0,   // Revolución (puente)
+  "12/12": 0,   // Virgen de Guadalupe (empresa)
+  "24/12": 0.5, // Nochebuena (medio día)
+  "25/12": 0,   // Navidad
+  "31/12": 0.5  // Fin de año (medio día)
+};
+
+// Devuelve el peso laboral de una fecha ISO "YYYY-MM-DD"
+// Sábado normal = 0.5, L-V normal = 1, inhábil completo = 0, medio día = 0.5
+function tm_pesoLaboral(fechaISO) {
+  var d = new Date(fechaISO + 'T12:00:00');
+  var mesNum = d.getMonth() + 1;
+  var diaNum = d.getDate();
+  var mm = mesNum < 10 ? '0' + mesNum : '' + mesNum;
+  var dd = diaNum < 10  ? '0' + diaNum  : '' + diaNum;
+  var clave = mm + '/' + dd;
+  if(tm_INHABILES.hasOwnProperty(clave)) {
+    return tm_INHABILES[clave];
+  }
+  var dow = d.getDay();
+  if(dow === 0) return 0;
+  if(dow === 6) return 0.5;
+  return 1;
+}
+
+// Devuelve true si la fecha es inhábil total (peso = 0)
+function tm_esInhabil(fechaISO) {
+  return tm_pesoLaboral(fechaISO) === 0;
+}
+
 var tm_CONFIG = [
-  { id:1, nombre:"MATERIAL EMBARCADO",           meta:70000, tipo:1 },
-  { id:2, nombre:"MATERIAL ENVIADO CORRECTAMENTE",meta:100,   tipo:2 },
-  { id:3, nombre:"PRODUCCIÓN CLAVO",              meta:33500, tipo:3 },
-  { id:4, nombre:"PRODUCCIÓN COLATADO",           meta:13500, tipo:3 },
-  { id:5, nombre:"PRODUCCIÓN TORNILLO",           meta:18000, tipo:3 },
-  { id:6, nombre:"RATIO BOLETINES VS AVISOS",     meta:0,     tipo:6 },
-  { id:7, nombre:"PORCENTAJE DE MALA CALIDAD",    meta:0,     tipo:7 }
+  { id:1,  nombre:"MATERIAL EMBARCADO",        meta:70000, tipo:1 },
+  { id:2,  nombre:"MATERIAL ENVIADO OK",        meta:100,   tipo:2 },
+  { id:3,  nombre:"PRODUCCIÓN CLAVO",           meta:33500, tipo:3 },
+  { id:4,  nombre:"PRODUCCIÓN VARILLA",         meta:12000, tipo:3 },
+  { id:5,  nombre:"PRODUCCIÓN BARRA",           meta:8000,  tipo:3 },
+  { id:6,  nombre:"PRODUCCIÓN TORNILLO",        meta:18000, tipo:3 },
+  { id:7,  nombre:"PRODUCCIÓN COLATADO",        meta:13500, tipo:3 },
+  { id:8,  nombre:"PRODUCCIÓN TEMPLE",          meta:21000, tipo:3 },
+  { id:9,  nombre:"PRODUCCIÓN TREFILADO",       meta:58000, tipo:3 },
+  { id:10, nombre:"RATIO BOLETINES VS AVISOS",  meta:0,     tipo:6 },
+  { id:11, nombre:"% MALA CALIDAD", meta:0,     tipo:7 }
 ];
+// Metas activas del mes (se cargan desde backend al abrir el módulo)
+var tm_metasMes = {};
+var tm_expandedCats = {}; // Rastrea qué categorías están expandidas
 var tm_PROD_CATS = [
   "CLAVO CONCRETO","CLAVO MADERA","EMPAQUE CLAVO","VARILLA","BARRA","TREFILADO",
   "COLATADO","TRATAMIENTOS TÉRMICOS","TORNILLO - GRANDES","TORNILLO - FIDE",
@@ -1714,19 +1764,77 @@ function loadTableroMetricas() {
       #tm-panel th { background:#263238; color:white; padding:10px 5px; border:1px solid #37474f; font-weight:900; font-size:14px; text-transform:uppercase; height:60px; position:sticky; top:0; z-index:5; line-height:1.2; }
       #tm-panel .tm-th-date { display:block; font-size:11px; color:#90a4ae; font-weight:normal; margin-top:3px; }
       #tm-panel .tm-th-prom { background:#1565c0 !important; border-color:#0d47a1 !important; }
-      #tm-panel td { border:1px solid #ccc; padding:0; text-align:center; vertical-align:middle; height:90px; background:white; }
-      #tm-panel .tm-col-id { width:40px; background:#37474f; color:white; font-weight:bold; }
-      #tm-panel .tm-col-ind { text-align:left; padding:5px 15px; font-weight:900; width:220px; font-size:13px; background:#f5f5f5; }
-      #tm-panel .tm-col-meta { font-weight:900; color:#0d47a1; background:#e3f2fd; width:90px; font-size:14px; }
-      #tm-panel .tm-col-prom { background:#e3f2fd; width:120px; border-left:4px solid #1565c0; }
-      #tm-panel .tm-week-details { font-size:10px; color:#666; margin-top:5px; padding:5px; background:#fafafa; border-radius:3px; }
-      #tm-panel .tm-week-details-row { display:flex; justify-content:space-around; align-items:center; margin-bottom:2px; }
-      #tm-panel .tm-week-num { font-weight:bold; font-size:9px; }
-      #tm-panel .tm-week-val { font-weight:900; font-size:11px; }
-      #tm-panel .tm-cell-content { height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:5px; gap:4px; }
-      #tm-panel .tm-input-cell { width:100%; border:none; text-align:center; font-size:16px; font-weight:900; background:transparent; outline:none; color:#212121; border-bottom:1px dashed #bbb; margin-bottom:2px; }
-      #tm-panel .tm-pct-box { display:flex; align-items:center; justify-content:center; gap:8px; width:95%; padding:4px; border-radius:6px; font-weight:900; font-size:15px; box-shadow:0 1px 2px rgba(0,0,0,.1); color:black; }
+      #tm-panel td { border:1px solid #ccc; padding:0; text-align:center; vertical-align:middle; height:68px; background:white; }
+      #tm-panel .tm-col-id { width:36px; background:#37474f; color:white; font-weight:bold; font-size:12px; }
+      #tm-panel .tm-col-ind { text-align:left; padding:3px 10px; font-weight:900; width:180px; font-size:11px; background:#f5f5f5; }
+      #tm-panel .tm-col-meta { font-weight:900; color:#0d47a1; background:#e3f2fd; width:80px; font-size:12px; cursor:pointer; }
+      #tm-panel .tm-col-meta:hover { background:#bbdefb; }
+      #tm-panel .tm-col-prom { background:#e3f2fd; width:110px; border-left:4px solid #1565c0; }
+      #tm-panel .tm-week-details { font-size:9px; color:#666; margin-top:3px; padding:3px; background:#fafafa; border-radius:3px; }
+      #tm-panel .tm-week-details-row { display:flex; justify-content:space-around; align-items:center; margin-bottom:1px; }
+      #tm-panel .tm-week-num { font-weight:bold; font-size:8px; }
+      #tm-panel .tm-week-val { font-weight:900; font-size:9px; }
+      #tm-panel .tm-cell-content { height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:2px; gap:2px; }
+      #tm-panel .tm-input-cell { width:100%; border:none; text-align:center; font-size:14px; font-weight:900; background:transparent; outline:none; color:#212121; border-bottom:1px dashed #bbb; margin-bottom:1px; }
+      #tm-panel .tm-pct-box { display:flex; align-items:center; justify-content:center; gap:5px; width:95%; padding:2px 4px; border-radius:5px; font-weight:900; font-size:13px; box-shadow:0 1px 2px rgba(0,0,0,.1); color:black; }
+      #tm-panel .tm-prod-expand-tr td { padding:0 !important; border-top:none !important; }
+      #tm-panel .tm-expand-inner { padding:0; overflow-x:auto; border-top:3px solid #1565c0; }
+      /* ── Tabla máquinas ── */
+      #tm-panel .tm-maq-table { width:100%; border-collapse:collapse; font-size:11px; }
+      #tm-panel .tm-maq-table thead th {
+        background:#1e2a3a; color:#e0e0e0; padding:5px 4px;
+        text-align:center; font-size:9px; font-weight:800;
+        letter-spacing:.03em; white-space:nowrap; }
+      #tm-panel .tm-maq-table thead th.tm-th-maq {
+        background:#0d1b2a; text-align:left; padding-left:10px;
+        width:120px; min-width:120px; max-width:120px; }
+      /* Nombre de máquina */
+      #tm-panel .tm-maq-name-cell {
+        text-align:left !important; font-weight:900; font-size:10px;
+        color:#0d47a1; padding:6px 8px !important;
+        border-right:3px solid #9fa8da !important;
+        width:120px; min-width:120px; max-width:120px;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        vertical-align:middle; }
+      /* Celdas de datos: centradas, altura cómoda */
+      #tm-panel .tm-maq-table td {
+        padding:5px 3px; text-align:center; vertical-align:middle;
+        border-bottom:1px solid #e8ecf0; }
+      /* Cebra: filas alternas — más visible, cubre también PROM SEM */
+      #tm-panel .tm-maq-table tbody tr:nth-child(odd)  td { background:#e8eef7; }
+      #tm-panel .tm-maq-table tbody tr:nth-child(even) td { background:#ffffff; }
+      /* PROM SEM turnos: cebra superpuesta con tinte azul */
+      #tm-panel .tm-maq-table tbody tr:nth-child(odd)  td.bg-prom-t { background:#b8d4f5 !important; }
+      #tm-panel .tm-maq-table tbody tr:nth-child(even) td.bg-prom-t { background:#d6e9ff !important; }
+      /* Inhábil */
+      #tm-panel .tm-maq-table td.bg-inhab { background:#d5d5d5 !important; color:#999; }
+      /* DÍA total (oscuro) — siempre igual independiente de cebra */
+      #tm-panel .tm-maq-table td.bg-dia {
+        background:#263238 !important; color:white !important; }
+      /* PROM SEM total — siempre azul fuerte */
+      #tm-panel .tm-maq-table td.bg-prom-tot { background:#1565c0 !important; color:white !important; }
+      /* Bordes: grueso entre días, fino entre turnos */
+      #tm-panel .tm-maq-table td.bord-day  { border-left:3px solid #455a64 !important; }
+      #tm-panel .tm-maq-table td.bord-turn { border-left:1px solid #cfd8dc !important; }
+      #tm-panel .tm-maq-table td.bord-prom { border-left:4px solid #1565c0 !important; }
+      /* Cantidad arriba, % abajo — siempre en bloque */
+      #tm-panel .tm-maq-kil {
+        display:block; font-size:11px; font-weight:900;
+        line-height:1.2; color:inherit; }
+      #tm-panel .tm-maq-shift-chip {
+        display:block; font-size:9px; font-weight:900;
+        padding:1px 4px; border-radius:3px; margin:2px auto 0;
+        width:fit-content; }
+      #tm-panel .tm-maq-empty { color:#ccc; font-size:10px; line-height:2; }
+      #tm-panel .tm-prod-cat-clickable { cursor:pointer; }
+      #tm-panel .tm-prod-cat-clickable:hover { background:#dde8ff !important; }
+      #tm-panel .tm-cat-arrow { display:inline-block; margin-right:4px; font-size:9px; transition:transform .2s; }
+      #tm-panel .tm-cat-arrow.open { transform:rotate(90deg); }
       #tm-prodTable td { height:auto; padding:2px; font-size:11px; vertical-align:top; }
+      @keyframes tm-pulso-rojo { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.7);} 50%{box-shadow:0 0 0 6px rgba(220,38,38,0);} }
+      #tm-panel .tm-pct-skull { background:#1a1a1a !important; color:white !important; border:2px solid #dc2626 !important; animation:tm-pulso-rojo 1.2s ease-in-out infinite; }
+      #tm-panel td.tm-cel-inhabil { background:#e0e0e0 !important; }
+      #tm-panel th.tm-th-inhabil { background:#455a64 !important; color:#b0bec5 !important; }
       #tm-panel .tm-prod-cat { text-align:left; padding:10px; font-weight:900; background:#eceff1; font-size:12px; color:#37474f; }
       #tm-panel .tm-shift-row { display:flex; justify-content:space-between; padding:3px 5px; border-bottom:1px solid #eee; align-items:center; }
       #tm-panel .tm-shift-data { font-weight:900; font-size:11px; text-align:right; flex:1; }
@@ -1768,10 +1876,13 @@ function loadTableroMetricas() {
         <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" class="tm-logo-img">
         <div class="tm-title">📊 TABLERO DE SEGUIMIENTO DIARIO</div>
       </div>
-      <div class="tm-nav-week">
-        <button class="tm-nav-btn" onclick="tm_cambiarSemana(-1)">&#8592;</button>
-        <span class="tm-week-label" id="tm-lblSemana">---</span>
-        <button class="tm-nav-btn" onclick="tm_cambiarSemana(1)">&#8594;</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="tm_enviarReporte()" title="Enviar reporte a Telegram" style="background:#0088cc;color:white;border:none;padding:8px 16px;border-radius:50px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">✈️ Telegram</button>
+        <div class="tm-nav-week">
+          <button class="tm-nav-btn" onclick="tm_cambiarSemana(-1)">&#8592;</button>
+          <span class="tm-week-label" id="tm-lblSemana">---</span>
+          <button class="tm-nav-btn" onclick="tm_cambiarSemana(1)">&#8594;</button>
+        </div>
       </div>
     </div>
     <div class="tm-table-wrapper">
@@ -1820,7 +1931,6 @@ function loadTableroMetricas() {
   </div>
 
   <button class="tm-fab-update" id="tm-btnActualizar" onclick="tm_actualizarVistaActual()">🔄 ACTUALIZAR VISTA ACTUAL</button>
-  <button class="tm-fab" onclick="tm_enviarReporte()" title="Enviar Telegram">✈️</button>
 
   <!-- MODAL DETALLE MÁQUINAS -->
   <div id="tm-modalDetalle" class="tm-modal-overlay" style="display:none;">
@@ -1882,12 +1992,23 @@ function tm_getWeekNumber(d) {
 }
 
 function tm_cambiarSemana(delta) {
+  var mesAntes = tm_fechaReferencia.getMonth();
+  var anioAntes = tm_fechaReferencia.getFullYear();
   tm_fechaReferencia.setDate(tm_fechaReferencia.getDate() + (delta * 7));
   tm_esPrimeraCarga = false;
-  document.getElementById('tm-btnActualizar').style.display = 'block';
-  tm_actualizarEncabezados();
-  tm_renderizarTabla1();
-  tm_renderizarTabla2();
+  var mesDespues = tm_fechaReferencia.getMonth();
+  var anioDespues = tm_fechaReferencia.getFullYear();
+  var cambioDeMes = (mesAntes !== mesDespues || anioAntes !== anioDespues);
+  if(cambioDeMes) {
+    // Cambió el mes: recargar datos del nuevo mes desde backend
+    document.getElementById('tm-btnActualizar').style.display = 'block';
+  } else {
+    // Misma semana del mismo mes: solo re-renderizar con datos ya cargados
+    document.getElementById('tm-btnActualizar').style.display = 'none';
+    tm_actualizarEncabezados();
+    tm_renderizarTabla1();
+    tm_renderizarTabla2();
+  }
 }
 
 function tm_actualizarVistaActual() {
@@ -1914,10 +2035,15 @@ function tm_actualizarEncabezados() {
     d.setDate(lunes.getDate() + (i-3));
     var dateStr = formatISO(d);
     var displayDate = d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
-    h1.children[i].innerHTML = tm_diasSemanaTxt[i-3] + "<span class='tm-th-date'>" + displayDate + "</span>";
-    h1.children[i].setAttribute('data-date', dateStr);
-    h2.children[i-2].innerHTML = tm_diasSemanaTxt[i-3] + "<span class='tm-th-date'>" + displayDate + "</span>";
-    h2.children[i-2].setAttribute('data-date', dateStr);
+    var inhab = tm_esInhabil(dateStr);
+    var th1 = h1.children[i];
+    th1.innerHTML = tm_diasSemanaTxt[i-3] + "<span class='tm-th-date'>" + displayDate + "</span>";
+    th1.setAttribute('data-date', dateStr);
+    if(inhab) { th1.classList.add('tm-th-inhabil'); } else { th1.classList.remove('tm-th-inhabil'); }
+    var th2 = h2.children[i-2];
+    th2.innerHTML = tm_diasSemanaTxt[i-3] + "<span class='tm-th-date'>" + displayDate + "</span>";
+    th2.setAttribute('data-date', dateStr);
+    if(inhab) { th2.classList.add('tm-th-inhabil'); } else { th2.classList.remove('tm-th-inhabil'); }
   }
 }
 
@@ -1927,16 +2053,21 @@ function tm_actualizarSemana() {
   var distanceToMon = currentDay === 0 ? -6 : 1 - currentDay;
   var lunes = new Date(tm_fechaReferencia);
   lunes.setDate(tm_fechaReferencia.getDate() + distanceToMon);
+  var sabado = new Date(lunes);
+  sabado.setDate(lunes.getDate() + 5);
   var formatISO = function(date) {
     var d = new Date(date), month = '' + (d.getMonth()+1), day = '' + d.getDate(), year = d.getFullYear();
     if(month.length < 2) month = '0' + month;
     if(day.length < 2) day = '0' + day;
     return [year,month,day].join('-');
   };
+  // El mes de referencia lo define el LUNES (para el label y para el mes de metas)
   var mesActual = lunes.getMonth();
   var añoActual = lunes.getFullYear();
-  var fIniMes = formatISO(new Date(añoActual, mesActual, 1));
-  var fFinMes = formatISO(new Date(añoActual, mesActual + 1, 0));
+  // Pero el rango de datos debe cubrir TODA la semana lunes→sábado,
+  // aunque algún día caiga en otro mes
+  var fIniMes = formatISO(lunes);   // siempre desde el lunes
+  var fFinMes = formatISO(sabado);  // siempre hasta el sábado
   document.getElementById('tm-lblSemana').innerText = "SEMANA " + tm_getWeekNumber(lunes) + " (" + lunes.toLocaleString('es-MX',{month:'long'}).toUpperCase() + ")";
   tm_actualizarEncabezados();
 
@@ -1958,6 +2089,8 @@ function tm_actualizarSemana() {
           hideLoader();
         })
         .obtenerDatosTablero(fIniMes, fFinMes);
+  // Cargar metas del mes (o mes anterior como fallback)
+  tm_cargarMetasMes();
     })
     .withFailureHandler(function(err) {
       console.error('Error producción:', err);
@@ -1991,6 +2124,16 @@ function tm_renderizarTabla1() {
   var headers = document.getElementById('tm-headerRow').children;
   var fechaPrimeraColumna = headers[3].getAttribute('data-date');
   var semanasDelMes = tm_obtenerTodasLasSemanasDelMes(fechaPrimeraColumna);
+  // Marcar headers inhábiles
+  for(var hi=3; hi<=8; hi++) {
+    var fhd = headers[hi].getAttribute('data-date');
+    if(fhd && tm_esInhabil(fhd)) {
+      headers[hi].classList.add('tm-th-inhabil');
+    } else {
+      headers[hi].classList.remove('tm-th-inhabil');
+    }
+  }
+
   tm_CONFIG.forEach(function(conf, idx) {
     var tr = document.createElement('tr');
     var metaDisplay = conf.meta.toLocaleString();
@@ -1998,13 +2141,17 @@ function tm_renderizarTabla1() {
     if(conf.tipo == 6) metaDisplay = "<25%";
     if(conf.tipo == 7) metaDisplay = "<1%";
     var detalleSemanas = tm_generarDetalleSemanasIndicador(conf, semanasDelMes);
-    tr.innerHTML = '<td class="tm-col-id">'+conf.id+'</td><td class="tm-col-ind">'+conf.nombre+detalleSemanas+'</td><td class="tm-col-meta">'+metaDisplay+'</td>';
+    var metaOnclick = (conf.tipo !== 6 && conf.tipo !== 7)
+      ? ' onclick="tm_editarMeta('+idx+')" title="Clic para editar meta"'
+      : '';
+    tr.innerHTML = '<td class="tm-col-id">'+conf.id+'</td><td class="tm-col-ind">'+conf.nombre+detalleSemanas+'</td><td class="tm-col-meta"'+metaOnclick+'>'+metaDisplay+'</td>';
     for(var i=3; i<=8; i++) {
       var fechaCol = headers[i].getAttribute('data-date');
+      var esInhab = tm_esInhabil(fechaCol);
       var dato = tm_datosTablero.find(function(d){ return d.indicador == conf.nombre && d.fecha == fechaCol; });
       var val = dato ? dato.resultado : "";
       var dato1 = dato ? dato.dato1 : "";
-      tr.innerHTML += '<td>'+tm_generarHTMLCelda(val, conf, fechaCol, dato1)+'</td>';
+      tr.innerHTML += '<td'+(esInhab?' class="tm-cel-inhabil"':'')+'>'+tm_generarHTMLCelda(val, conf, fechaCol, dato1)+'</td>';
     }
     tr.innerHTML += '<td class="tm-col-prom" id="tm-prom-'+idx+'">'+tm_generarHTMLPromedio(conf)+'</td>';
     tbody.appendChild(tr);
@@ -2012,10 +2159,8 @@ function tm_renderizarTabla1() {
 }
 
 function tm_generarDetalleSemanasIndicador(conf, semanas) {
-  var html = '<div class="tm-week-details">';
-  var linea1 = '<div class="tm-week-details-row">';
-  var linea2 = '<div class="tm-week-details-row">';
   var sumaTotalGeneral = 0; var conteoTotalGeneral = 0;
+  var items = [];
   semanas.forEach(function(sem) {
     var sumaSemana = 0; var conteoSemana = 0;
     tm_datosTablero.forEach(function(d) {
@@ -2027,30 +2172,50 @@ function tm_generarDetalleSemanasIndicador(conf, semanas) {
           else if(conf.tipo == 2) { sumaSemana += (val * 100); conteoSemana++; }
           else if(conf.tipo == 3) { if(val > conf.meta) val = conf.meta; sumaSemana += val; conteoSemana++; }
           else if(conf.tipo == 6 || conf.tipo == 7) { sumaSemana += (val * 100); conteoSemana++; }
-          sumaTotalGeneral += sumaSemana; conteoTotalGeneral += conteoSemana;
         }
       }
     });
-    linea1 += '<span class="tm-week-num">S'+tm_formatearSemana(sem)+'</span>';
+    // Acumular al total UNA SOLA VEZ por semana (bug fix: antes sumaba dentro del forEach de días)
+    sumaTotalGeneral += sumaSemana;
+    conteoTotalGeneral += conteoSemana;
+    var display = '-';
     if(conteoSemana > 0) {
       var promSem = sumaSemana;
       if(conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7) promSem = sumaSemana / conteoSemana;
       var pctSem = conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7 ? promSem : (promSem / conf.meta) * 100;
       if(pctSem > 100) pctSem = 100;
-      var display = conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7 ? pctSem.toFixed(1)+'%' : Math.round(promSem).toLocaleString();
-      linea2 += '<span class="tm-week-val">'+display+'</span>';
-    } else {
-      linea2 += '<span class="tm-week-val" style="color:#ccc;">-</span>';
+      display = conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7 ? pctSem.toFixed(1)+'%' : Math.round(promSem).toLocaleString();
     }
+    items.push({ label: 'S'+tm_formatearSemana(sem), val: display, noData: conteoSemana === 0 });
   });
   var totalDisplay = '-';
   if(conteoTotalGeneral > 0) {
     if(conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7) totalDisplay = (sumaTotalGeneral / conteoTotalGeneral).toFixed(1)+'%';
     else totalDisplay = Math.round(sumaTotalGeneral).toLocaleString();
   }
-  linea1 += '<span class="tm-week-num">TOTAL</span></div>';
-  linea2 += '<span class="tm-week-val" style="font-weight:900;color:#1565c0;">'+totalDisplay+'</span></div>';
-  html += linea1 + linea2 + '</div>';
+  items.push({ label: 'TOTAL', val: totalDisplay, isTotal: true, noData: conteoTotalGeneral === 0 });
+  var mid = Math.ceil(items.length / 2);
+  var colA = items.slice(0, mid);
+  var colB = items.slice(mid);
+  var html = '<div class="tm-week-details" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;margin-top:4px;">';
+  var maxLen = Math.max(colA.length, colB.length);
+  for(var i = 0; i < maxLen; i++) {
+    var a = colA[i];
+    var b = colB[i];
+    if(a) {
+      html += '<div class="tm-week-details-row" style="justify-content:space-between;">'
+        + '<span class="tm-week-num">'+a.label+'</span>'
+        + '<span class="tm-week-val"'+(a.isTotal?' style="color:#1565c0;"':a.noData?' style="color:#ccc;"':'')+'>'+a.val+'</span>'
+        + '</div>';
+    }
+    if(b) {
+      html += '<div class="tm-week-details-row" style="justify-content:space-between;">'
+        + '<span class="tm-week-num">'+b.label+'</span>'
+        + '<span class="tm-week-val"'+(b.isTotal?' style="color:#1565c0;"':b.noData?' style="color:#ccc;"':'')+'>'+b.val+'</span>'
+        + '</div>';
+    }
+  }
+  html += '</div>';
   return html;
 }
 
@@ -2080,10 +2245,12 @@ function tm_generarHTMLCelda(val, conf, fecha, dato1) {
   }
   if(conf.tipo == 2) {
     var displayVal2 = (val!=="") ? (Number(val)*100).toFixed(2)+"%" : "";
-    return '<div class="tm-cell-content" onclick="tm_capturarEnviado(\''+fecha+'\',\''+conf.nombre+'\')" style="cursor:pointer;"><div style="font-size:14px;font-weight:900;">'+displayVal2+'</div>'+(val!==""?'<div class="tm-pct-box" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
+    var skullCls2 = (estilo.emoji === '💀') ? ' tm-pct-skull' : '';
+    return '<div class="tm-cell-content" onclick="tm_capturarEnviado(\''+fecha+'\',\''+conf.nombre+'\')" style="cursor:pointer;"><div style="font-size:14px;font-weight:900;">'+displayVal2+'</div>'+(val!==""?'<div class="tm-pct-box'+skullCls2+'" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
   }
   var valFormateado = (val !== "" && !isNaN(val)) ? Number(val).toLocaleString('en-US') : val;
-  return '<div class="tm-cell-content"><input type="text" inputmode="numeric" class="tm-input-cell" value="'+valFormateado+'" onchange="tm_guardarValor(this,\''+fecha+'\',\''+conf.nombre+'\','+conf.meta+','+conf.tipo+')" onfocus="this.select()" placeholder="-">'+(val!==""?'<div class="tm-pct-box" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
+  var skullClass = (estilo.emoji === '💀') ? ' tm-pct-skull' : '';
+  return '<div class="tm-cell-content"><input type="text" inputmode="numeric" class="tm-input-cell" value="'+valFormateado+'" onchange="tm_guardarValor(this,\''+fecha+'\',\''+conf.nombre+'\','+conf.meta+','+conf.tipo+')" onfocus="this.select()" placeholder="-">'+(val!==""?'<div class="tm-pct-box'+skullClass+'" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
 }
 
 function tm_generarHTMLPromedio(conf) {
@@ -2102,19 +2269,36 @@ function tm_generarHTMLPromedio(conf) {
     var pct=(sumNC/sumProd)*100; var est=tm_obtenerEstilo(pct,7);
     return '<div class="tm-cell-content"><div style="font-size:16px;font-weight:900;">'+sumNC.toLocaleString()+'</div><div class="tm-pct-box" style="background:'+est.bg+';color:'+est.text+';width:100%;"><span>'+pct.toFixed(1)+'%</span><span>'+est.emoji+'</span></div></div>';
   }
+  // Tipo 2 (porcentaje exacto): promediar cada valor directamente, sin ponderar por días
+  if(conf.tipo == 2) {
+    var sumaT2=0; var cntT2=0;
+    for(var i=3;i<=8;i++){
+      var f=headers[i].getAttribute('data-date');
+      var d=tm_datosTablero.find(function(x){return x.indicador==conf.nombre&&x.fecha==f;});
+      if(d&&d.resultado!==""){sumaT2+=Number(d.resultado);cntT2++;}
+    }
+    if(cntT2===0) return "";
+    var promT2=sumaT2/cntT2;
+    var pctT2=promT2*100; if(pctT2>100)pctT2=100;
+    var estiloT2=tm_obtenerEstilo(pctT2,2);
+    var skullT2=(estiloT2.emoji==='💀')?' tm-pct-skull':'';
+    return '<div class="tm-cell-content"><div style="font-size:14px;font-weight:900;color:#0d47a1;">'+pctT2.toFixed(2)+'%</div><div class="tm-pct-box'+skullT2+'" style="background:'+estiloT2.bg+';color:'+estiloT2.text+';width:100%;"><span>'+pctT2.toFixed(1)+'%</span><span>'+estiloT2.emoji+'</span></div></div>';
+  }
   var sumas=0; var diasCount=0;
   for(var i=3;i<=8;i++){
     var f=headers[i].getAttribute('data-date');
+    var peso=tm_pesoLaboral(f);
     var d=tm_datosTablero.find(function(x){return x.indicador==conf.nombre&&x.fecha==f;});
-    if(d&&d.resultado!==""){var v=Number(d.resultado);var vCalc=v;if(conf.tipo==1&&v>70000)vCalc=70000;if(conf.tipo==3&&v>conf.meta)vCalc=conf.meta;sumas+=vCalc;if(conf.tipo==3&&i==8)diasCount+=0.5;else diasCount+=1;}
+    if(d&&d.resultado!==""){var v=Number(d.resultado);var vCalc=v;if(conf.tipo==1&&v>70000)vCalc=70000;if(conf.tipo==3&&v>conf.meta)vCalc=conf.meta;sumas+=vCalc;diasCount+=peso;}
   }
   if(diasCount===0) return "";
   var promBruto=sumas/diasCount;
-  var cumplimiento=conf.tipo==2?promBruto*100:(promBruto/conf.meta)*100;
+  var cumplimiento=(promBruto/conf.meta)*100;
   if(cumplimiento>100) cumplimiento=100;
   var estilo=tm_obtenerEstilo(cumplimiento,conf.tipo);
-  var promText=conf.tipo==2?"":Math.round(promBruto).toLocaleString('en-US');
-  return '<div class="tm-cell-content"><div style="font-size:20px;font-weight:900;color:#0d47a1;margin-bottom:5px;">'+promText+'</div><div class="tm-pct-box" style="background:'+estilo.bg+';color:'+estilo.text+';width:100%;"><span>'+cumplimiento.toFixed(1)+'%</span><span>'+estilo.emoji+'</span></div></div>';
+  var skullClassProm = (estilo.emoji === '💀') ? ' tm-pct-skull' : '';
+  var promText=Math.round(promBruto).toLocaleString('en-US');
+  return '<div class="tm-cell-content"><div style="font-size:18px;font-weight:900;color:#0d47a1;margin-bottom:3px;">'+promText+'</div><div class="tm-pct-box'+skullClassProm+'" style="background:'+estilo.bg+';color:'+estilo.text+';width:100%;"><span>'+cumplimiento.toFixed(1)+'%</span><span>'+estilo.emoji+'</span></div></div>';
 }
 
 function tm_obtenerProduccionTotalDia(fecha) {
@@ -2140,13 +2324,27 @@ function tm_renderizarTabla2() {
   var h2 = document.getElementById('tm-prodHeaderRow').children;
   var fechaPrimeraColumna = h2[1].getAttribute('data-date');
   var semanasDelMes = tm_obtenerTodasLasSemanasDelMes(fechaPrimeraColumna);
+  // Marcar headers inhábiles en Tabla 2
+  for(var hi2=1; hi2<=6; hi2++) {
+    var fhd2 = h2[hi2].getAttribute('data-date');
+    if(fhd2 && tm_esInhabil(fhd2)) {
+      h2[hi2].classList.add('tm-th-inhabil');
+    } else {
+      h2[hi2].classList.remove('tm-th-inhabil');
+    }
+  }
   listaFinal.forEach(function(cat) {
+    var catId = 'tm-cat-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
     var tr = document.createElement('tr');
+    tr.id = catId;
     var detalleSemanas = tm_generarDetalleSemanasLinea(cat, semanasDelMes);
-    tr.innerHTML = '<td class="tm-prod-cat">'+cat+detalleSemanas+'</td>';
+    var arrowState = tm_expandedCats[cat] ? ' open' : '';
+    var catDisplay = '<span class="tm-cat-arrow'+arrowState+'" id="arrow-'+catId+'">▶</span>'+cat;
+    tr.innerHTML = '<td class="tm-prod-cat tm-prod-cat-clickable" onclick="tm_toggleExpandCat(\''+cat.replace(/'/g,"\\'")+'\')" >'+catDisplay+detalleSemanas+'</td>';
     var sumKilosTotal=0; var sumRealTotal=0; var sumTeoTotal=0; var diasOperativos=0;
     for(var i=1;i<=6;i++) {
       var f = h2[i].getAttribute('data-date');
+      var esInhabT2 = tm_esInhabil(f);
       var cellHtml = ""; var dayKilos=0; var dayReal=0; var dayTeo=0;
       if(tm_datosProduccion[cat] && tm_datosProduccion[cat][f]) {
         var d = tm_datosProduccion[cat][f];
@@ -2161,26 +2359,33 @@ function tm_renderizarTabla2() {
           var styleDay=tm_getEstiloEficiencia(effDay);
           var fechaISO=new Date(f+'T12:00:00');
           var fechaDisplay=fechaISO.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
-          var catEncoded=encodeURIComponent(cat);
           cellHtml+='<div class="tm-day-total" onclick="tm_verDetalleMaquina(\''+cat.replace(/'/g,"\\'")+'\',\''+f+'\',\''+tm_diasSemanaTxt[i-1]+'\')"><span style="font-size:9px;color:#90a4ae;">'+fechaDisplay+'</span><div style="display:flex;align-items:center;gap:5px;"><span style="font-size:12px;">'+Math.round(dayKilos).toLocaleString()+'</span><span style="font-size:10px;color:'+styleDay.colorCode+';background:rgba(255,255,255,.15);padding:1px 4px;border-radius:3px;">'+effDay.toFixed(0)+'% '+styleDay.emoji+'</span></div></div>';
           sumKilosTotal+=dayKilos; sumRealTotal+=dayReal; sumTeoTotal+=dayTeo;
-          if(i==6) diasOperativos+=0.5; else diasOperativos+=1;
+          var pesoD=tm_pesoLaboral(f); diasOperativos+=pesoD;
         }
       } else { cellHtml='<div class="tm-bg-gray" style="height:100%;"></div>'; }
-      tr.innerHTML += '<td>'+cellHtml+'</td>';
+      tr.innerHTML += '<td'+(esInhabT2?' class="tm-cel-inhabil"':'')+'>'+cellHtml+'</td>';
     }
     var promFinal=(diasOperativos>0)?sumKilosTotal/diasOperativos:0;
     var effGlobal=(sumTeoTotal>0)?(sumRealTotal/sumTeoTotal)*100:0; if(effGlobal>100)effGlobal=100;
     var styleGlob=tm_getEstiloEficiencia(effGlobal);
-    tr.innerHTML+='<td class="tm-col-prom" style="vertical-align:middle;text-align:center;cursor:pointer;" onclick="tm_verDetalleSemanal(\''+cat.replace(/'/g,"\\'")+'\')"><div style="font-weight:900;font-size:16px;color:#0d47a1;">'+Math.round(promFinal).toLocaleString()+'</div><div style="font-size:10px;color:#555;margin-top:5px;">PROM / DÍA</div><div style="margin-top:5px;font-weight:bold;background:'+styleGlob.bg+';color:'+styleGlob.txt+';padding:2px;border-radius:4px;">EFIC: '+effGlobal.toFixed(0)+'%</div></td>';
+    tr.innerHTML+='<td class="tm-col-prom" style="vertical-align:middle;text-align:center;"><div style="font-weight:900;font-size:14px;color:#0d47a1;">'+Math.round(promFinal).toLocaleString()+'</div><div style="font-size:9px;color:#555;margin-top:3px;">PROM/DÍA</div><div style="margin-top:3px;font-weight:bold;font-size:10px;background:'+styleGlob.bg+';color:'+styleGlob.txt+';padding:1px;border-radius:3px;">'+effGlobal.toFixed(0)+'%</div></td>';
     tbody.appendChild(tr);
+    // Fila de expansión por máquina (se muestra si la categoría está expandida)
+    var trExp = document.createElement('tr');
+    trExp.className = 'tm-prod-expand-tr';
+    trExp.id = 'tm-expand-' + catId;
+    trExp.style.display = tm_expandedCats[cat] ? '' : 'none';
+    var colSpan = 9; // 1 cat + 6 días + 1 prom = 8, pero encabezado tiene 8 cols
+    trExp.innerHTML = '<td colspan="8"><div class="tm-expand-inner" id="tm-expand-inner-'+catId+'">'+
+      (tm_expandedCats[cat] ? tm_generarHTMLExpandMaquinas(cat) : '')+'</div></td>';
+    tbody.appendChild(trExp);
   });
 }
 
 function tm_generarDetalleSemanasLinea(cat, semanas) {
-  var html='<div class="tm-week-details">';
-  var linea1='<div class="tm-week-details-row">'; var linea2='<div class="tm-week-details-row">'; var linea3='<div class="tm-week-details-row">';
   var sumaKilosTotal=0; var sumaRealTotal=0; var sumaTeoTotal=0;
+  var items=[];
   semanas.forEach(function(sem) {
     var kilosSem=0; var realSem=0; var teoSem=0;
     if(tm_datosProduccion[cat]) {
@@ -2189,16 +2394,42 @@ function tm_generarDetalleSemanasLinea(cat, semanas) {
         if(tm_getWeekNumber(fechaDate)===sem){var d=tm_datosProduccion[cat][fecha];kilosSem+=(d[1].k+d[2].k+d[3].k);realSem+=(d[1].uReal+d[2].uReal+d[3].uReal);teoSem+=(d[1].uTeo+d[2].uTeo+d[3].uTeo);}
       }
     }
-    linea1+='<span class="tm-week-num">S'+sem+'</span>';
-    if(kilosSem>0){sumaKilosTotal+=kilosSem;sumaRealTotal+=realSem;sumaTeoTotal+=teoSem;var effSem=teoSem>0?(realSem/teoSem)*100:0;if(effSem>100)effSem=100;var ss=tm_getEstiloEficiencia(effSem);linea2+='<span class="tm-week-val">'+Math.round(kilosSem).toLocaleString()+'</span>';linea3+='<span class="tm-week-val" style="font-size:10px;padding:1px 3px;border-radius:2px;background:'+ss.bg+';color:'+ss.txt+'">'+effSem.toFixed(0)+'%</span>';}
-    else{linea2+='<span class="tm-week-val" style="color:#ccc;">-</span>';linea3+='<span class="tm-week-val" style="color:#ccc;">-</span>';}
+    if(kilosSem>0){
+      sumaKilosTotal+=kilosSem;sumaRealTotal+=realSem;sumaTeoTotal+=teoSem;
+      var effSem=teoSem>0?(realSem/teoSem)*100:0;if(effSem>100)effSem=100;
+      var ss=tm_getEstiloEficiencia(effSem);
+      items.push({label:'S'+sem,kil:Math.round(kilosSem).toLocaleString(),effBg:ss.bg,effTxt:ss.txt,eff:effSem.toFixed(0)+'%',noData:false});
+    } else {
+      items.push({label:'S'+sem,kil:'-',effBg:'transparent',effTxt:'#ccc',eff:'-',noData:true});
+    }
   });
-  var effTotal=sumaTeoTotal>0?(sumaRealTotal/sumaTeoTotal)*100:0; if(effTotal>100)effTotal=100;
+  var effTotal=sumaTeoTotal>0?(sumaRealTotal/sumaTeoTotal)*100:0;if(effTotal>100)effTotal=100;
   var styleTotal=tm_getEstiloEficiencia(effTotal);
-  linea1+='<span class="tm-week-num">TOTAL</span></div>';
-  linea2+='<span class="tm-week-val" style="font-weight:900;color:#1565c0;">'+(sumaKilosTotal>0?Math.round(sumaKilosTotal).toLocaleString():'-')+'</span></div>';
-  linea3+='<span class="tm-week-val" style="font-size:10px;padding:1px 3px;border-radius:2px;background:'+(sumaKilosTotal>0?styleTotal.bg:'transparent')+';color:'+(sumaKilosTotal>0?styleTotal.txt:'#ccc')+';font-weight:900;">'+(sumaKilosTotal>0?effTotal.toFixed(0)+'%':'-')+'</span></div>';
-  html+=linea1+linea2+linea3+'</div>';
+  items.push({label:'TOTAL',kil:(sumaKilosTotal>0?Math.round(sumaKilosTotal).toLocaleString():'-'),effBg:(sumaKilosTotal>0?styleTotal.bg:'transparent'),effTxt:(sumaKilosTotal>0?styleTotal.txt:'#ccc'),eff:(sumaKilosTotal>0?effTotal.toFixed(0)+'%':'-'),isTotal:true,noData:sumaKilosTotal===0});
+  var mid=Math.ceil(items.length/2);
+  var colA=items.slice(0,mid);
+  var colB=items.slice(mid);
+  var html='<div class="tm-week-details" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;margin-top:4px;">';
+  var maxLen=Math.max(colA.length,colB.length);
+  for(var i=0;i<maxLen;i++){
+    var a=colA[i];
+    var b=colB[i];
+    if(a){
+      html+='<div class="tm-week-details-row" style="justify-content:space-between;">'
+        +'<span class="tm-week-num">'+a.label+'</span>'
+        +'<span class="tm-week-val"'+(a.isTotal?' style="color:#1565c0;font-weight:900;"':a.noData?' style="color:#ccc;"':'')+'>'+a.kil+'</span>'
+        +'<span class="tm-week-val" style="font-size:9px;padding:1px 3px;border-radius:2px;background:'+a.effBg+';color:'+a.effTxt+';">'+a.eff+'</span>'
+        +'</div>';
+    }
+    if(b){
+      html+='<div class="tm-week-details-row" style="justify-content:space-between;">'
+        +'<span class="tm-week-num">'+b.label+'</span>'
+        +'<span class="tm-week-val"'+(b.isTotal?' style="color:#1565c0;font-weight:900;"':b.noData?' style="color:#ccc;"':'')+'>'+b.kil+'</span>'
+        +'<span class="tm-week-val" style="font-size:9px;padding:1px 3px;border-radius:2px;background:'+b.effBg+';color:'+b.effTxt+';">'+b.eff+'</span>'
+        +'</div>';
+    }
+  }
+  html+='</div>';
   return html;
 }
 
@@ -2286,16 +2517,48 @@ function tm_guardarValor(input, fecha, indicador, meta, tipo) {
 }
 
 function tm_capturarRatio(fecha, indicador) {
-  var input=prompt("RATIO (Ej: 1:4)");
-  if(!input||!input.includes(":")) return;
-  var parts=input.split(":");var res=Number(parts[0])/Number(parts[1]);
-  tm_saveAndRefresh(fecha, indicador, res, input);
+  Swal.fire({
+    title:'Capturar Ratio',
+    html:'<div style="font-size:13px;color:#555;margin-bottom:8px;">Formato: boletines:avisos (Ej: 1:4)</div>'
+        +'<input id="tm-swal-ratio" class="swal2-input" placeholder="1:4">',
+    confirmButtonText:'Guardar', showCancelButton:true, cancelButtonText:'Cancelar',
+    confirmButtonColor:'#1565c0',
+    preConfirm: function(){
+      var v=document.getElementById('tm-swal-ratio').value.trim();
+      if(!v||!v.includes(':')){ Swal.showValidationMessage('Formato inválido. Usa ej: 1:4'); return false; }
+      var parts=v.split(':');
+      if(isNaN(parts[0])||isNaN(parts[1])||Number(parts[1])===0){ Swal.showValidationMessage('Valores inválidos'); return false; }
+      return v;
+    }
+  }).then(function(r){
+    if(!r.isConfirmed||!r.value) return;
+    var parts=r.value.split(':');
+    var res=Number(parts[0])/Number(parts[1]);
+    tm_saveAndRefresh(fecha, indicador, res, r.value);
+  });
 }
 
 function tm_capturarEnviado(fecha, indicador) {
-  var e=Number(prompt("Errores:")||0);var t=Number(prompt("Total partidas:")||0);
-  if(t===0) return;var res=(t-e)/t;
-  tm_saveAndRefresh(fecha, indicador, res, e);
+  Swal.fire({
+    title:'Material Enviado OK',
+    html:'<div style="font-size:13px;color:#555;margin-bottom:8px;">'+fecha+'</div>'
+        +'<label style="font-size:12px;color:#333;">Errores:</label>'
+        +'<input id="tm-swal-err" class="swal2-input" type="number" min="0" placeholder="0" style="margin-bottom:6px;">'
+        +'<label style="font-size:12px;color:#333;">Total partidas:</label>'
+        +'<input id="tm-swal-tot" class="swal2-input" type="number" min="1" placeholder="0">',
+    confirmButtonText:'Guardar', showCancelButton:true, cancelButtonText:'Cancelar',
+    confirmButtonColor:'#1565c0',
+    preConfirm: function(){
+      var e=Number(document.getElementById('tm-swal-err').value||0);
+      var t=Number(document.getElementById('tm-swal-tot').value||0);
+      if(t===0){ Swal.showValidationMessage('El total de partidas no puede ser 0'); return false; }
+      return {e:e, t:t};
+    }
+  }).then(function(r){
+    if(!r.isConfirmed||!r.value) return;
+    var res=(r.value.t-r.value.e)/r.value.t;
+    tm_saveAndRefresh(fecha, indicador, res, r.value.e);
+  });
 }
 
 function tm_abrirModalCalidad(fecha, indicador) {
@@ -2333,17 +2596,18 @@ function tm_saveAndRefresh(fecha, indicador, res, dato1) {
 }
 
 async function tm_enviarReporte() {
-  if(!confirm("¿Enviar reporte a Telegram?")) return;
+  var conf = await sConfirm('¿Enviar reporte a Telegram?','','Enviar','Cancelar');
+  if(!conf) return;
   showLoader('Generando y enviando imágenes...');
   try {
     var html2canvas = window.html2canvas;
-    if(!html2canvas) { alert("html2canvas no disponible en este contexto."); hideLoader(); return; }
+    if(!html2canvas) { hideLoader(); sAlert('html2canvas no disponible.','error'); return; }
     var canvas1 = await html2canvas(document.getElementById('tm-captureArea1'));
     await tm_enviarPromise(canvas1.toDataURL("image/png"), "📊 TABLERO DIARIO");
     var canvas2 = await html2canvas(document.getElementById('tm-captureArea2'));
     await tm_enviarPromise(canvas2.toDataURL("image/png"), "🏭 MÉTRICAS PRODUCCIÓN");
-    alert("✅ Enviado.");
-  } catch(e) { alert("Error: " + e); }
+    sAlert('Reporte enviado correctamente','success','¡Listo!');
+  } catch(e) { sAlert('Error: ' + e,'error'); }
   finally { hideLoader(); }
 }
 
@@ -2353,6 +2617,235 @@ function tm_enviarPromise(img, cap) {
   });
 }
 
+function tm_editarMeta(idx) {
+  var conf = tm_CONFIG[idx];
+  if(!conf || conf.tipo === 6 || conf.tipo === 7) return;
+  var metaActual = conf.meta;
+  Swal.fire({
+    title: '✏️ Editar Meta',
+    html: '<div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:12px;">'+conf.nombre+'</div>'
+         +'<label style="font-size:12px;color:#555;">Nueva meta (kg o unidades):</label>'
+         +'<input id="tm-swal-meta" class="swal2-input" type="number" min="1" value="'+metaActual+'">'
+         +'<div style="font-size:11px;color:#999;margin-top:8px;">⚠️ Este cambio aplica al mes en curso. El próximo mes tomará esta meta como base.</div>',
+    confirmButtonText: '💾 Guardar',
+    showCancelButton: true,
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#1565c0',
+    preConfirm: function() {
+      var v = Number(document.getElementById('tm-swal-meta').value);
+      if(!v || v <= 0) { Swal.showValidationMessage('Ingresa un valor mayor a 0'); return false; }
+      return v;
+    }
+  }).then(function(r) {
+    if(!r.isConfirmed || !r.value) return;
+    var nuevaMeta = r.value;
+    // Actualizar en memoria
+    tm_CONFIG[idx].meta = nuevaMeta;
+    // Guardar en backend (fila especial META_CONFIG_<indicador> con fecha = 1ro del mes)
+    var hoy = tm_fechaReferencia;
+    var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    var yyyy = primerDia.getFullYear();
+    var mm = String(primerDia.getMonth()+1).padStart(2,'0');
+    var dd = '01';
+    var fechaMeta = yyyy+'-'+mm+'-'+dd;
+    showLoader('Guardando meta...');
+    google.script.run
+      .withSuccessHandler(function(){
+        hideLoader();
+        tm_renderizarTabla1();
+        sAlert('Meta actualizada: '+nuevaMeta.toLocaleString(),'success','¡Guardado!');
+      })
+      .withFailureHandler(function(e){ hideLoader(); sAlert('Error: '+e,'error'); })
+      .guardarDatoTablero({
+        fecha: fechaMeta,
+        indicador: 'META_CONFIG_'+conf.nombre,
+        resultado: nuevaMeta,
+        meta: nuevaMeta,
+        dato1: ''
+      });
+  });
+}
+
+function tm_cargarMetasMes() {
+  // Carga metas guardadas del mes en curso (o toma las del mes anterior si no existen)
+  var hoy = tm_fechaReferencia;
+  var primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  var ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
+  var fmt = function(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+  // Buscar mes anterior como fallback
+  var primerDiaMesAnt = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+  var ultimoDiaMesAnt = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+  google.script.run
+    .withSuccessHandler(function(datos) {
+      if(!datos || datos.length === 0) return;
+      // Agrupar por indicador: preferir mes actual, si no existe usar mes anterior
+      var porIndicador = {};
+      datos.forEach(function(d){
+        if(!porIndicador[d.indicador] || d.fecha >= fmt(primerDiaMes)) {
+          porIndicador[d.indicador] = d;
+        }
+      });
+      tm_CONFIG.forEach(function(conf){
+        var clave = 'META_CONFIG_'+conf.nombre;
+        if(porIndicador[clave] && porIndicador[clave].resultado) {
+          conf.meta = Number(porIndicador[clave].resultado);
+        }
+      });
+      tm_renderizarTabla1();
+    })
+    .withFailureHandler(function(){}) // silencioso si falla
+    .obtenerDatosTablero(fmt(primerDiaMesAnt), fmt(ultimoDiaMes));
+}
+
+function tm_toggleExpandCat(cat) {
+  tm_expandedCats[cat] = !tm_expandedCats[cat];
+  var catId = 'tm-cat-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
+  var trExp = document.getElementById('tm-expand-' + catId);
+  var arrow = document.getElementById('arrow-' + catId);
+  if(!trExp) return;
+  if(tm_expandedCats[cat]) {
+    // Generar contenido al expandir (usa datos ya en memoria)
+    var inner = document.getElementById('tm-expand-inner-' + catId);
+    if(inner) inner.innerHTML = tm_generarHTMLExpandMaquinas(cat);
+    trExp.style.display = '';
+    if(arrow) arrow.classList.add('open');
+  } else {
+    trExp.style.display = 'none';
+    if(arrow) arrow.classList.remove('open');
+  }
+}
+
+function tm_generarHTMLExpandMaquinas(cat) {
+  var h2 = document.getElementById('tm-prodHeaderRow').children;
+
+  // ── 1. Recopilar fechas y máquinas ──────────────────────────────────────
+  var fechas = []; // [{f, disp, inhab, label}]
+  for(var i=1; i<=6; i++) {
+    var f = h2[i].getAttribute('data-date');
+    var dISO = new Date(f+'T12:00:00');
+    var disp = dISO.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
+    fechas.push({ f:f, disp:disp, inhab:tm_esInhabil(f), label:tm_diasSemanaTxt[i-1] });
+  }
+
+  var todasMaqs = {};
+  fechas.forEach(function(fd){
+    if(tm_datosProduccion[cat] && tm_datosProduccion[cat][fd.f] && tm_datosProduccion[cat][fd.f].machines) {
+      for(var m in tm_datosProduccion[cat][fd.f].machines) todasMaqs[m] = true;
+    }
+  });
+  var maqList = Object.keys(todasMaqs).sort();
+  if(maqList.length === 0) return '<div style="padding:8px;color:#999;font-size:11px;">Sin datos de máquinas disponibles</div>';
+
+  // ── Encabezado: 2 filas ──────────────────────────────────────────────────
+  // Fila 1: MÁQUINA(rowspan2) | LUN(colspan4) | MAR(colspan4) | ... | PROM(colspan4)
+  // Fila 2: T1 T2 T3 DÍA (x6 días) | T1 T2 T3 TOT
+  // ── Encabezado 2 filas ───────────────────────────────────────────────────
+  var W_T = '55px';   // ancho de columna T1/T2/T3
+  var W_D = '62px';   // ancho de columna DÍA
+  var SEP_DIA  = 'border-left:3px solid #546e7a;';
+  var SEP_TURN = 'border-left:1px solid #607d8b;';
+  var SEP_PROM = 'border-left:4px solid #1565c0;';
+
+  var hdr1 = '<tr><th class="tm-th-maq" rowspan="2">MÁQUINA</th>';
+  var hdr2 = '<tr>';
+
+  fechas.forEach(function(fd) {
+    var inhBg = fd.inhab ? 'background:#37474f;opacity:.8;' : '';
+    hdr1 += '<th colspan="4" style="'+SEP_DIA+inhBg+'">'
+          + fd.label + '<br><span style="font-weight:400;font-size:7px;opacity:.8;">'+fd.disp+'</span></th>';
+    var ib = fd.inhab ? 'background:#546e7a;' : '';
+    hdr2 += '<th style="width:'+W_T+';'+ib+SEP_DIA+'">T1</th>';
+    hdr2 += '<th style="width:'+W_T+';'+ib+SEP_TURN+'">T2</th>';
+    hdr2 += '<th style="width:'+W_T+';'+ib+SEP_TURN+'">T3</th>';
+    hdr2 += '<th style="width:'+W_D+';background:#263238;'+SEP_DIA+'">DÍA</th>';
+  });
+  hdr1 += '<th colspan="4" style="background:#1565c0;'+SEP_PROM+'">PROM SEM</th></tr>';
+  hdr2 += '<th style="width:'+W_T+';background:#1565c0;'+SEP_PROM+'">T1</th>';
+  hdr2 += '<th style="width:'+W_T+';background:#1565c0;'+SEP_TURN+'">T2</th>';
+  hdr2 += '<th style="width:'+W_T+';background:#1565c0;'+SEP_TURN+'">T3</th>';
+  hdr2 += '<th style="width:'+W_D+';background:#0d47a1;'+SEP_PROM+'">TOT</th></tr>';
+
+  var html = '<div class="tm-expand-inner"><table class="tm-maq-table"><thead>'+hdr1+hdr2+'</thead><tbody>';
+
+  // ── Helpers: cantidad SIEMPRE arriba, % SIEMPRE abajo ───────────────────
+  function mkCell(k, uR, uT, extraCls) {
+    if(!k && !uT) return '<td class="'+extraCls+'"><span class="tm-maq-empty">–</span></td>';
+    var e = uT>0 ? (uR/uT)*100 : 0; if(e>100)e=100;
+    var s = tm_getEstiloEficiencia(e);
+    return '<td class="'+extraCls+'">'
+      + '<span class="tm-maq-kil">'+Math.round(k).toLocaleString()+'</span>'
+      + '<span class="tm-maq-shift-chip" style="background:'+s.bg+';color:'+s.txt+';">'+e.toFixed(0)+'%</span>'
+      + '</td>';
+  }
+  function mkEmpty(extraCls) {
+    return '<td class="'+extraCls+'"><span class="tm-maq-empty">–</span></td>';
+  }
+
+  // ── Una fila por máquina ─────────────────────────────────────────────────
+  maqList.forEach(function(maq) {
+    var semT = {1:{k:0,uR:0,uT:0}, 2:{k:0,uR:0,uT:0}, 3:{k:0,uR:0,uT:0}, tot:{k:0,uR:0,uT:0}};
+
+    var diasData = fechas.map(function(fd) {
+      var r = {t:{1:null,2:null,3:null}, tot:{k:0,uR:0,uT:0}, inhab:fd.inhab};
+      if(tm_datosProduccion[cat] && tm_datosProduccion[cat][fd.f] &&
+         tm_datosProduccion[cat][fd.f].machines && tm_datosProduccion[cat][fd.f].machines[maq]) {
+        var md = tm_datosProduccion[cat][fd.f].machines[maq];
+        for(var tv,t=1;t<=3;t++){
+          tv=md[t];
+          if(tv&&(tv.k>0||tv.uT>0)){
+            r.t[t]=tv;
+            r.tot.k+=tv.k; r.tot.uR+=tv.uR; r.tot.uT+=tv.uT;
+            semT[t].k+=tv.k; semT[t].uR+=tv.uR; semT[t].uT+=tv.uT;
+            semT.tot.k+=tv.k; semT.tot.uR+=tv.uR; semT.tot.uT+=tv.uT;
+          }
+        }
+      }
+      return r;
+    });
+
+    var row = '<tr><td class="tm-maq-name-cell">'+maq+'</td>';
+
+    diasData.forEach(function(dd) {
+      var ib = dd.inhab ? ' bg-inhab' : '';
+      var t1=dd.t[1], t2=dd.t[2], t3=dd.t[3], dt=dd.tot;
+      row += t1 ? mkCell(t1.k,t1.uR,t1.uT,'bord-day'+ib) : mkEmpty('bord-day'+ib);
+      row += t2 ? mkCell(t2.k,t2.uR,t2.uT,'bord-turn'+ib) : mkEmpty('bord-turn'+ib);
+      row += t3 ? mkCell(t3.k,t3.uR,t3.uT,'bord-turn'+ib) : mkEmpty('bord-turn'+ib);
+      // celda DÍA: fondo oscuro si hay datos
+      if(dt.k>0||dt.uT>0) {
+        row += mkCell(dt.k,dt.uR,dt.uT,'bord-day'+(dd.inhab?' bg-inhab':' bg-dia'));
+      } else {
+        row += mkEmpty('bord-day'+(dd.inhab?' bg-inhab':' bg-dia'));
+      }
+    });
+
+    // PROM SEM: T1 T2 T3
+    var st1=semT[1], st2=semT[2], st3=semT[3];
+    row += st1.k>0 ? mkCell(st1.k,st1.uR,st1.uT,'bord-prom bg-prom-t') : mkEmpty('bord-prom bg-prom-t');
+    row += st2.k>0 ? mkCell(st2.k,st2.uR,st2.uT,'bord-turn bg-prom-t') : mkEmpty('bord-turn bg-prom-t');
+    row += st3.k>0 ? mkCell(st3.k,st3.uR,st3.uT,'bord-turn bg-prom-t') : mkEmpty('bord-turn bg-prom-t');
+    // TOT semana
+    var stot=semT.tot;
+    if(stot.k>0) {
+      var eT=stot.uT>0?(stot.uR/stot.uT)*100:0; if(eT>100)eT=100;
+      var seT=tm_getEstiloEficiencia(eT);
+      row += '<td class="bord-prom bg-prom-tot">'
+           + '<span class="tm-maq-kil" style="color:white;">'+Math.round(stot.k).toLocaleString()+'</span>'
+           + '<span class="tm-maq-shift-chip" style="background:'+seT.bg+';color:'+seT.txt+';">'+eT.toFixed(0)+'%</span>'
+           + '</td>';
+    } else {
+      row += mkEmpty('bord-prom bg-prom-tot');
+    }
+    row += '</tr>';
+    html += row;
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+window.tm_toggleExpandCat = tm_toggleExpandCat;
+window.tm_editarMeta = tm_editarMeta;
 window.tm_cambiarSemana = tm_cambiarSemana;
 window.tm_actualizarVistaActual = tm_actualizarVistaActual;
 window.tm_guardarValor = tm_guardarValor;
@@ -4330,7 +4823,8 @@ function pintGuardar() {
     unidad:      infoBase.unidad,
     serie:       infoBase.serie,
     cantidad:    parseFloat(document.getElementById('pint-numCant').value),
-    ruta:        pint_rutaCargada
+    ruta:        pint_rutaCargada,
+    prefijo:     'INT'
   };
 
   showLoader("Inyectando en Base de Datos...");
@@ -5988,7 +6482,8 @@ function planifRenderBoardTabla() {
         {key:'invPct',      label:'%'},
         {key:'invExistNeg', label:'Ex_Neg', soloC7:true},
         {key:'sol',         label:'Solic.'},
-        {key:'prod',        label:'Prod.'}
+        {key:'prod',        label:'Prod.'},
+        {key:'_restan',     label:'Restan', noClick:true}
       ];
       cols.forEach(function(c) {
         if (c.key === '_drag2' || c.key === '_drag3') {
@@ -6028,12 +6523,14 @@ function planifRenderBoardTabla() {
         if (planif_modoExcedentes && !window._planifExcMap[String(o.codigo||'').toUpperCase()]) return;
         totalSol += Number(o.sol)||0; totalProd += Number(o.prod)||0;
       });
+      var totalRestan = Math.max(0, totalSol - totalProd);
       var totalCols = 6 + cols.filter(function(c){ return !(c.soloC7 && !tieneC7); }).length + 1;
-      var colspanPrev = totalCols - 3;
+      var colspanPrev = totalCols - 4;
       html += '<tfoot><tr style="background:#e8eaf6;font-weight:900;border-top:2px solid #9fa8da;">';
       html += '<td colspan="' + colspanPrev + '" style="padding:5px 10px;text-align:right;font-size:12px;color:#1a237e;">TOTALES:</td>';
       html += '<td id="pt-total-sol-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#1565c0;font-size:12px;">' + planifFormatN(totalSol) + '</td>';
       html += '<td id="pt-total-prod-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#880e4f;font-size:12px;">' + planifFormatN(totalProd) + '</td>';
+      html += '<td id="pt-total-restan-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#000;font-size:12px;font-weight:900;">' + planifFormatN(totalRestan) + '</td>';
       html += '<td style="padding:5px 8px;"></td>';
       html += '</tr></tfoot>';
       html += '</tbody></table></div></div>';
@@ -6285,6 +6782,7 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
     (Number(o.prod) > 0
       ? '<td onclick="planifAbrirModalProdPlanif(\'' + idE + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#880e4f;font-weight:900;text-decoration:underline;" title="Click para ver producción">' + planifFormatN(o.prod) + '</td>'
       : '<td style="padding:4px 8px;text-align:right;color:#999;">' + planifFormatN(o.prod) + '</td>') +
+    '<td style="padding:4px 8px;text-align:right;font-weight:900;color:#000;">' + planifFormatN(Math.max(0, (Number(o.sol)||0) - (Number(o.prod)||0))) + '</td>' +
     '<td style="padding:4px 8px;text-align:center;"><button onclick="planifTablaToggleEstado(\'' + idE + '\')" class="' + estadoExtraClass + '" style="background:' + estadoColor + ';color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;" id="pt-estbtn-' + o.id + '">' + estadoLabel + '</button></td>' +
     '</tr>';
 }
@@ -6836,8 +7334,8 @@ function planifTablaRefrescarEncabezados(maqKey, maqSafe) {
     if (_lbls) { esp1 = _lbls.esp1 || 'Esp.1'; esp2 = _lbls.esp2 || 'Esp.2'; }
   }
   // COLUMNAS FIJAS: [0]=check,[1]=Pedido,[2]=drag1,[3]=#,[4]=Orden,[5]=🏭 → offset=6
-  var colsKeys   = ['codigo','tipo','_drag2','dia','long','cuerpo','cuerda','_drag3','acero','_docs','invMin','invMax','invExist','invPct','sol','prod'];
-  var colsLabels = ['Código','Tipo','','Diam.','Long.',esp1,esp2,'','Acero','\uD83D\uDCCB','Min','Max','Exist','%','Solic.','Prod.'];
+  var colsKeys   = ['codigo','tipo','_drag2','dia','long','cuerpo','cuerda','_drag3','acero','_docs','invMin','invMax','invExist','invPct','sol','prod','_restan'];
+  var colsLabels = ['Código','Tipo','','Diam.','Long.',esp1,esp2,'','Acero','\uD83D\uDCCB','Min','Max','Exist','%','Solic.','Prod.','Restan'];
   var ths = tabla.querySelectorAll('thead th');
   colsKeys.forEach(function(key, i) {
     var th = ths[i+6];
@@ -7253,7 +7751,8 @@ function planif_spGenerar(codigo) {
     cantidad:    cant,
     unidad:      it.unidad || 'KG',
     serie:       it.serie  || 'P',
-    ruta:        rutaPayload
+    ruta:        rutaPayload,
+    prefijo:     'TEM'
   };
   google.script.run
     .withSuccessHandler(function(res) {
@@ -12068,7 +12567,14 @@ function loadCaptura() {
 <div id="cap-panel" style="font-family:'Roboto',sans-serif;background:#eceff1;min-height:100%;padding-bottom:150px;overflow-x:hidden;">
 
   <!-- VISTA 1: SELECTOR DE PROCESO -->
-  <div id="cap-view1" style="padding:20px;text-align:center;">
+  <div id="cap-view1" style="padding:20px;text-align:center;position:relative;">
+    <button id="cap-btn-test-telegram" onclick="capTestTelegramReporte()"
+      disabled
+      style="position:absolute;top:0;right:0;background:#9e9e9e;color:#e0e0e0;border:none;
+      padding:10px 18px;border-radius:8px;font-weight:900;font-size:13px;cursor:not-allowed;
+      box-shadow:none;z-index:10;opacity:0.6;">
+      🧪 TEST REPORTE
+    </button>
     <h1 style="font-weight:900;color:#1565c0;font-size:32px;">SELECCIONA PROCESO</h1>
     <div id="cap-gridProcesos" style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;padding:20px;align-content:start;"></div>
   </div>
@@ -13276,9 +13782,8 @@ function loadCaptura() {
   // capEnviarReporteEficiencia está definida globalmente debajo de loadCaptura
 }
 
-// ── REPORTE DE EFICIENCIA — función global accesible desde cualquier módulo ──
-window.capEnviarReporteEficiencia = function(registros) {
-    // Pedir datos enriquecidos al servidor (producto, eficiencia, estándar)
+// ── ORQUESTADOR: llama al reporte con destino opcional de Telegram ──
+window.capEnviarReporteEficienciaConDestino = function(registros, chatIdDestino) {
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:99999;'
       + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
@@ -13306,75 +13811,117 @@ window.capEnviarReporteEficiencia = function(registros) {
           return (v >= 60 && v < 65) ? '#000' : '#fff';
         }
 
+        // Convierte fecha YYYY-MM-DD a dd/mm/aa
+        function fmtFecha(f) {
+          if(!f) return '';
+          var p = String(f).split('-');
+          if(p.length === 3) return p[2]+'/'+p[1]+'/'+p[0].slice(2);
+          return f;
+        }
+
+        function turnoLabel(t) {
+          return t === '1' ? '1° TURNO' : t === '2' ? '2° TURNO' : t === '3' ? '3° TURNO' : 'TURNO '+t;
+        }
+
         function procesarSiguiente() {
           if(idx >= procesos.length) {
             document.getElementById('cap-rep-main').innerText = '✅ ¡Reporte enviado!';
             document.getElementById('cap-rep-sub').innerText = procesos.length + ' proceso(s) enviados a Telegram';
-            setTimeout(function(){ document.body.removeChild(overlay); loadCaptura(); }, 2500);
+            setTimeout(function(){ document.body.removeChild(overlay); }, 2500);
             return;
           }
-          var proc    = procesos[idx];
-          var datos   = porProceso[proc];
-          var totalKg = datos.totalKilos || 0;
+          var proc      = procesos[idx];
+          var datos     = porProceso[proc];
+          var totalKg   = datos.totalKilos || 0;
           var eficTotal = datos.eficienciaTotal || 0;
           var bgHeader  = getEficColor(eficTotal);
           var txtHeader = getEficTextColor(eficTotal);
           var unidadLabel = proc.toUpperCase().includes('COLATADO') ? 'ROLLOS' : 'KILOS';
+          var svgProceso  = getProcSVG(proc);
+          var fechaFmt    = fmtFecha(fecha);
 
           document.getElementById('cap-rep-main').innerText = 'Enviando ' + (idx+1) + ' de ' + procesos.length;
           document.getElementById('cap-rep-sub').innerText  = 'Proceso: ' + proc;
 
-          // Construir filas de tabla exactamente igual a ReporteEficienciaHTML
+          // ── FILAS DE TABLA (nuevo formato de columnas) ──
           var tbodyRows = '';
+          var bordeInferiorMaq = 'border-bottom:3px solid #455a64;';
           (datos.grupos || []).forEach(function(grp){
             var eficGrp = grp.eficiencia || 0;
             var bgEfic  = getEficColor(eficGrp);
             var txtEfic = getEficTextColor(eficGrp);
             var nDet    = grp.detalles ? grp.detalles.length : 1;
             (grp.detalles || []).forEach(function(det, k){
+              var esUltimaDet = (k === nDet - 1);
+              var bdBot = esUltimaDet ? bordeInferiorMaq : '';
               tbodyRows += '<tr>';
               if(k === 0){
-                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;padding:8px;font-weight:900;text-align:center;vertical-align:middle;">'+grp.maquina+'</td>';
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;'+bordeInferiorMaq+'padding:8px;font-weight:900;text-align:center;vertical-align:middle;font-size:13px;">'+grp.maquina+'</td>';
               }
-              tbodyRows += '<td style="border:1px solid #999;padding:6px;text-align:center;font-weight:bold;">'+det.lote+'</td>';
-              tbodyRows += '<td style="border:1px solid #999;padding:6px;text-align:left;font-weight:bold;font-size:13px;text-transform:uppercase;">'+det.producto+'</td>';
-              tbodyRows += '<td style="border:1px solid #999;padding:6px;text-align:center;font-weight:bold;">'+parseFloat(det.cantidad).toLocaleString('en-US')+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:6px;text-align:center;font-weight:900;font-size:13px;color:#0d47a1;">'+det.lote+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.tipo+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.diam+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.longitud+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.cuerpo+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.cuerda+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.acero+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:6px;text-align:center;font-weight:bold;font-size:12px;">'+parseFloat(det.cantidad).toLocaleString('en-US')+'</td>';
               if(k === 0){
-                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;padding:8px;text-align:center;vertical-align:middle;font-weight:bold;">'+grp.operador+'</td>';
-                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;padding:8px;text-align:center;vertical-align:middle;font-size:14px;font-weight:900;">'+parseFloat(grp.total).toLocaleString('en-US')+'</td>';
-                tbodyRows += '<td rowspan="'+nDet+'" style="border:2px solid #333;padding:8px;text-align:center;vertical-align:middle;font-size:14px;font-weight:900;background:'+bgEfic+';color:'+txtEfic+';">'+eficGrp.toFixed(2)+' %</td>';
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;'+bordeInferiorMaq+'padding:8px;text-align:center;vertical-align:middle;font-weight:bold;font-size:12px;">'+grp.operador+'</td>';
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;'+bordeInferiorMaq+'padding:8px;text-align:center;vertical-align:middle;font-size:14px;font-weight:900;color:#6a0032;">'+parseFloat(grp.total).toLocaleString('en-US')+'</td>';
+                var eficGrpCap = eficGrp > 100 ? 100 : eficGrp;
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:2px solid #333;'+bordeInferiorMaq+'padding:8px;text-align:center;vertical-align:middle;font-size:13px;font-weight:900;background:'+bgEfic+';color:'+txtEfic+';">'+eficGrpCap.toFixed(2)+' %</td>';
               }
               tbodyRows += '</tr>';
             });
           });
 
-          var html = '<div style="width:1250px;background:#fff;padding:20px;font-family:Roboto,sans-serif;">'
-            // Header
-            + '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #9c27b0;padding-bottom:15px;margin-bottom:25px;">'
-            + '<div><img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:60px;"></div>'
-            + '<div style="text-align:center;flex:1;">'
-            + '<div style="font-size:32px;font-weight:900;color:#0000CC;text-transform:uppercase;letter-spacing:1px;">REPORTE DE EFICIENCIA</div>'
-            + '<div style="font-size:16px;font-weight:bold;color:#c62828;margin-top:5px;">FECHA: '+fecha+' &nbsp;|&nbsp; CAPTURÓ: '+usuarioLabel+'</div>'
+          // ── HTML DEL REPORTE NUEVO DISEÑO ──
+          var html = '<div style="width:1350px;background:#fff;padding:14px 18px 10px;font-family:Roboto,sans-serif;">'
+
+            // ── ENCABEZADO COMPACTO ──
+            + '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1565c0;padding-bottom:8px;margin-bottom:12px;">'
+
+            // Logo izquierda — más grande
+            + '<div style="min-width:130px;">'
+            + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:58px;">'
             + '</div>'
-            + '<div style="background:#0000CC;color:white;padding:10px 25px;font-size:22px;font-weight:900;border-radius:8px;">TURNO '+turno+'</div>'
+
+            // Centro: SVG — TÍTULO — SVG (mismo SVG a ambos lados, con separación amplia)
+            + '<div style="flex:1;text-align:center;padding:0 16px;">'
+            + '<div style="display:inline-flex;align-items:center;gap:22px;">'
+            + '<div style="width:48px;height:48px;opacity:0.85;">'+svgProceso+'</div>'
+            + '<div>'
+            + '<div style="font-size:24px;font-weight:900;color:#1565c0;text-transform:uppercase;letter-spacing:1px;line-height:1.1;">EFICIENCIA DE '+proc+'</div>'
+            + '<div style="font-size:17px;font-weight:900;color:#c62828;letter-spacing:0.5px;margin-top:2px;">'+fechaFmt+' &nbsp;—&nbsp; '+turnoLabel(turno)+'</div>'
             + '</div>'
-            // Encabezado proceso con badge de eficiencia (igual a ReporteEficienciaHTML)
-            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:2px solid #9c27b0;padding-bottom:5px;">'
-            + '<div style="font-size:32px;font-weight:900;color:#9c27b0;text-transform:uppercase;">PROCESO: '+proc+'</div>'
-            + '<div style="display:flex;align-items:center;">'
-            + '<span style="font-size:24px;font-weight:900;color:#333;">Total: '+parseFloat(totalKg).toLocaleString('en-US')+' '+unidadLabel+'</span>'
-            + '<span style="background:'+bgHeader+';color:'+txtHeader+';padding:5px 15px;border-radius:6px;font-weight:900;margin-left:15px;font-size:24px;">'+eficTotal.toFixed(2)+' %</span>'
-            + '</div></div>'
-            // Tabla igual a ReporteEficienciaHTML
+            + '<div style="width:48px;height:48px;opacity:0.85;">'+svgProceso+'</div>'
+            + '</div>'
+            + '</div>'
+
+            // Derecha: TOTAL + kilos en una sola línea, más grande; badge eficiencia abajo
+            + '<div style="text-align:right;min-width:170px;">'
+            + '<div style="font-size:22px;font-weight:900;color:#333;line-height:1.1;white-space:nowrap;">TOTAL: '+parseFloat(totalKg).toLocaleString('en-US')+' '+unidadLabel+'</div>'
+            + '<span style="display:inline-block;margin-top:5px;background:'+bgHeader+';color:'+txtHeader+';padding:5px 20px;border-radius:8px;font-weight:900;font-size:22px;">'+eficTotal.toFixed(2)+' %</span>'
+            + '</div>'
+
+            + '</div>'
+
+            // ── TABLA ──
             + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
-            + '<thead><tr style="background:#eee;">'
-            + '<th style="border:1px solid #333;padding:8px;width:12%;text-transform:uppercase;font-weight:900;text-align:center;">MÁQUINA</th>'
-            + '<th style="border:1px solid #333;padding:8px;width:10%;text-transform:uppercase;font-weight:900;text-align:center;">LOTE</th>'
-            + '<th style="border:1px solid #333;padding:8px;width:35%;text-transform:uppercase;font-weight:900;text-align:left;">PRODUCTO</th>'
-            + '<th style="border:1px solid #333;padding:8px;width:8%;text-transform:uppercase;font-weight:900;text-align:center;">CANT</th>'
-            + '<th style="border:1px solid #333;padding:8px;width:20%;text-transform:uppercase;font-weight:900;text-align:center;">OPERADOR</th>'
-            + '<th style="border:1px solid #333;padding:8px;width:8%;text-transform:uppercase;font-weight:900;text-align:center;">REAL</th>'
-            + '<th style="border:1px solid #333;padding:8px;width:7%;text-transform:uppercase;font-weight:900;text-align:center;">EFIC</th>'
+            + '<thead><tr style="background:#263238;color:white;">'
+            + '<th style="border:1px solid #333;padding:8px;width:10%;font-weight:900;text-align:center;">MÁQUINA</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:9%;font-weight:900;text-align:center;">LOTE</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">TIPO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">DIÁMETRO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">LONGITUD</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">CUERPO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">CUERDA</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">ACERO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">KILOS</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:18%;font-weight:900;text-align:center;">OPERADOR</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">TOTAL</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">EFIC</th>'
             + '</tr></thead>'
             + '<tbody>'+tbodyRows+'</tbody>'
             + '</table></div>';
@@ -13385,22 +13932,124 @@ window.capEnviarReporteEficiencia = function(registros) {
           document.body.appendChild(wrapper);
 
           html2canvas(wrapper, {
-            scale: 1.5, width: 1250,
+            scale: 1.5, width: 1350,
             height: wrapper.scrollHeight + 20,
             backgroundColor: '#ffffff',
             useCORS: true, logging: false
           }).then(function(canvas){
             var imgData = canvas.toDataURL('image/png');
             document.body.removeChild(wrapper);
-            var caption = '📊 *REPORTE DE EFICIENCIA*\n📅 Fecha: '+fecha+'\n🕒 Turno: '+turno
-              +'\n⚙️ Proceso: *'+proc+'*\n📈 Eficiencia: '+eficTotal.toFixed(1)+'%\n👤 Capturó: '+usuarioLabel;
+            // ── Detectar máquinas con eficiencia > 100% ──
+            var maquinasSobreEfic = [];
+            (datos.grupos || []).forEach(function(grp){
+              if((grp.eficiencia || 0) > 100) {
+                maquinasSobreEfic.push({ maquina: grp.maquina, efic: grp.eficiencia });
+              }
+            });
+
+            // ── Calcular kgMeta usando sumaTeorico por grupo (cappando efic a 100%) ──
+            var META_EFIC   = 65;
+            var kgMetaTotal = 0;
+            (datos.grupos || []).forEach(function(grp){
+              if((grp.sumaTeorico || 0) > 0) {
+                kgMetaTotal += grp.sumaTeorico * (META_EFIC / 100);
+              }
+            });
+            if(kgMetaTotal <= 0 && eficTotal > 0) {
+              kgMetaTotal = totalKg * (META_EFIC / Math.min(eficTotal, 100));
+            }
+            var kgMetaFmt = Math.round(kgMetaTotal).toLocaleString('en-US');
+
+            // ── Eficiencia real cappada al 100% por grupo para el resumen global ──
+            var eficCapTotal = eficTotal > 100 ? 100 : eficTotal;
+
+            // ── Emoji de medalla según nivel alcanzado ──
+            function emojiNivel(e) {
+              if(e >= 75) return '🥇';
+              if(e >= 70) return '🥈';
+              if(e >= 65) return '🥉';
+              return '❌';
+            }
+
+            // ── Construir caption ──
+            var lineaAnalisis = '✅ Sin irregularidades encontradas en tus capturas';
+
+            // Llamada asíncrona al backend de irregularidades; primero enviamos con texto provisional
+            // y actualizamos cuando llegue la respuesta (no es posible en GAS sin 2 llamadas)
+            // → Hacemos 1 sola llamada extra antes de enviar
+
+            // Guardamos para usar en el then
+            var _proc        = proc;
+            var _totalKg     = totalKg;
+            var _eficTotal   = eficTotal;
+            var _eficCapTotal= eficCapTotal;
+            var _kgMetaFmt   = kgMetaFmt;
+            var _maqSobre    = maquinasSobreEfic;
+            var _usuarioLabel= usuarioLabel;
+            var _unidadLabel = unidadLabel;
+            var _chatIdDestino = chatIdDestino;
+            var _imgData     = imgData;
+            var _registros   = registros;
+            var _fecha       = fecha;
+
+            function construirYEnviarCaption(irreg) {
+              var lineas = [];
+
+              // Sobreeficiencia
+              var sobreMsj = '';
+              if(_maqSobre.length > 0) {
+                sobreMsj = '\n⚠️ Efic. >100%: ';
+                sobreMsj += _maqSobre.map(function(m){ return m.maquina+' ('+Math.round(m.efic)+'%)'; }).join(', ');
+                sobreMsj += ' — verifica datos';
+              }
+
+              // Lotes incompletos
+              var lotesMsj = '';
+              if(irreg && irreg.lotesIncompletos && irreg.lotesIncompletos.length > 0) {
+                lotesMsj = '\n⚠️ Lotes sin predecesor: ';
+                lotesMsj += irreg.lotesIncompletos.map(function(l){ return l.lote+' (falta '+l.falta+')'; }).join(', ');
+              }
+
+              // Pesos incorrectos
+              var pesosMsj = '';
+              if(irreg && irreg.pesosIncorrectos && irreg.pesosIncorrectos.length > 0) {
+                pesosMsj = '\n⚠️ Pesos inconsistentes: ';
+                pesosMsj += irreg.pesosIncorrectos.map(function(p){ return p.lote+' — '+p.detalle; }).join(' | ');
+              }
+
+              var hayIrreg = sobreMsj || lotesMsj || pesosMsj;
+              var analisis = hayIrreg
+                ? (sobreMsj + lotesMsj + pesosMsj)
+                : '\n✅ Sin irregularidades encontradas en tus capturas';
+
+              var caption = '👤 *Capturó: '+_usuarioLabel+'*'
+                +'\n------- ➖ 📊 ➖ -------'
+                +'\n🏁 Meta mínima: '+META_EFIC+'% ('+_kgMetaFmt+' '+_unidadLabel+')'
+                +'\n📈 Obtenido: '+Math.round(_eficCapTotal)+'% ('+parseFloat(_totalKg).toLocaleString('en-US')+' '+_unidadLabel+') '+emojiNivel(_eficCapTotal)
+                +'\n------- ➖ ✍🏼 ➖ -------'
+                + analisis;
+
+              google.script.run
+                .withSuccessHandler(function(){ idx++; procesarSiguiente(); })
+                .withFailureHandler(function(err){
+                  document.body.removeChild(overlay);
+                  sAlert('Error Telegram: '+String(err), 'error');
+                })
+                .enviarImagenTelegram(_imgData, caption, _chatIdDestino || null);
+            }
+
+            // Llamar al backend de irregularidades antes de enviar
             google.script.run
-              .withSuccessHandler(function(){ idx++; procesarSiguiente(); })
-              .withFailureHandler(function(err){
-                document.body.removeChild(overlay);
-                sAlert('Error Telegram: '+String(err), 'error');
+              .withSuccessHandler(function(jsonIrreg){
+                var irreg = {};
+                try { irreg = JSON.parse(jsonIrreg); } catch(e) {}
+                construirYEnviarCaption(irreg);
               })
-              .enviarImagenTelegram(imgData, caption);
+              .withFailureHandler(function(){
+                // Si falla, enviar sin análisis
+                construirYEnviarCaption(null);
+              })
+              .verificarIrregularidadesReporte(_registros, _fecha);
           });
         }
         procesarSiguiente();
@@ -13410,6 +14059,31 @@ window.capEnviarReporteEficiencia = function(registros) {
         sAlert('Error al calcular eficiencia: '+String(err), 'error');
       })
       .obtenerDatosEficienciaParaCaptura(registros);
+};
+
+// ── FUNCIÓN DE PRUEBA: envía reporte ESTAMPADO 01/04/2026 Turno 1 al chat personal ──
+window.capTestTelegramReporte = function() {
+  sConfirm('Se enviará un reporte real de ESTAMPADO — 01/04/2026 — Turno 1 al chat de Telegram personal. ¿Continuar?','🧪 Test Reporte','Enviar','Cancelar').then(function(ok){
+    if(!ok) return;
+    showLoader('Consultando registros reales...');
+    google.script.run
+      .withSuccessHandler(function(jsonRegs) {
+        hideLoader();
+        var regs = JSON.parse(jsonRegs);
+        if(!regs || regs.length === 0) {
+          sAlert('No se encontraron registros de ESTAMPADO, Turno 1, fecha 01/04/2026 en PRODUCCION.','warning');
+          return;
+        }
+        capEnviarReporteEficienciaConDestino(regs, '625827165');
+      })
+      .withFailureHandler(function(err){ hideLoader(); sAlert('Error: '+String(err),'error'); })
+      .obtenerRegistrosPorFechaTurnoProceso('2026-04-01', '1', 'ESTAMPADO');
+  });
+};
+
+// ── REPORTE DE EFICIENCIA — función global accesible desde cualquier módulo ──
+window.capEnviarReporteEficiencia = function(registros) {
+  capEnviarReporteEficienciaConDestino(registros, null);
 };
 // ══════════════════════════════════════════════════════
 // MÓDULO: EDITOR DE PRODUCCIÓN

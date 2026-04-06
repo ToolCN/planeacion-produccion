@@ -2153,7 +2153,8 @@ function crearPedidoInternoCompleto(payload) {
     hoySoloFecha.setHours(0, 0, 0, 0);
 
     // A. PEDIDOS — Estado: PLANEADO
-    var folioINT = getSiguienteFolio("TEM");
+    var prefijoPedido = (payload.prefijo && payload.prefijo.trim()) ? payload.prefijo.trim().toUpperCase() : "INT";
+    var folioINT = getSiguienteFolio(prefijoPedido);
     sheetPed.appendRow([
       Utilities.getUuid().substring(0, 8),
       folioINT,
@@ -11116,20 +11117,30 @@ function obtenerDatosEficienciaParaCaptura(registros) {
     if (maqS && !mapStd[maqS]) mapStd[maqS] = velS;
   }
 
-  // --- ORDENES: mapa ID -> { tipo, desc, proceso, peso } ---
+  // --- ORDENES: mapa ID -> { tipo, desc, proceso, peso, diam, longitud, cuerpo, cuerda, acero } ---
   var hOrd = dataOrd[0];
   var iODesc    = hOrd.indexOf("DESCRIPCION");
   var iOTipo    = hOrd.indexOf("TIPO");
   var iOProceso = hOrd.indexOf("PROCESO");
   var iOPeso    = hOrd.indexOf("PESO");
+  var iODiam    = hOrd.indexOf("DIAMETRO");
+  var iOLong    = hOrd.indexOf("LONGITUD");
+  var iOCuerpo  = hOrd.indexOf("CUERPO");
+  var iOCuerda  = hOrd.indexOf("CUERDA");
+  var iOAcero   = hOrd.indexOf("ACERO");
   var mapOrd = {};
   for (var o = 1; o < dataOrd.length; o++) {
     var ro = dataOrd[o];
     mapOrd[String(ro[0])] = {
-      desc:    String(ro[iODesc    >= 0 ? iODesc    : 0] || "").trim(),
-      tipo:    String(ro[iOTipo    >= 0 ? iOTipo    : 0] || "").trim(),
-      proceso: String(ro[iOProceso >= 0 ? iOProceso : 0] || "").toUpperCase().trim(),
-      peso:    cleanNum(ro[iOPeso  >= 0 ? iOPeso    : 0])
+      desc:     String(ro[iODesc    >= 0 ? iODesc    : 0] || "").trim(),
+      tipo:     String(ro[iOTipo    >= 0 ? iOTipo    : 0] || "").trim(),
+      proceso:  String(ro[iOProceso >= 0 ? iOProceso : 0] || "").toUpperCase().trim(),
+      peso:     cleanNum(ro[iOPeso  >= 0 ? iOPeso    : 0]),
+      diam:     String(ro[iODiam    >= 0 ? iODiam    : 0] || "").trim(),
+      longitud: String(ro[iOLong    >= 0 ? iOLong    : 0] || "").trim(),
+      cuerpo:   String(ro[iOCuerpo  >= 0 ? iOCuerpo  : 0] || "").trim(),
+      cuerda:   String(ro[iOCuerda  >= 0 ? iOCuerda  : 0] || "").trim(),
+      acero:    String(ro[iOAcero   >= 0 ? iOAcero   : 0] || "").trim()
     };
   }
 
@@ -11209,7 +11220,13 @@ function obtenerDatosEficienciaParaCaptura(registros) {
     grp.detalles.push({
       lote:     r.loteFull  || "",
       producto: producto,
-      cantidad: prod
+      cantidad: prod,
+      tipo:     info.tipo     || "",
+      diam:     info.diam     || "",
+      longitud: info.longitud || "",
+      cuerpo:   info.cuerpo   || "",
+      cuerda:   info.cuerda   || "",
+      acero:    info.acero    || ""
     });
   });
 
@@ -11229,11 +11246,12 @@ function obtenerDatosEficienciaParaCaptura(registros) {
                  : grp.sumaReal   > 0  ? 100 : 0;
 
       grupos.push({
-        maquina:   grp.maquina,
-        operador:  grp.operador,
-        total:     grp.totalKilos,
+        maquina:    grp.maquina,
+        operador:   grp.operador,
+        total:      grp.totalKilos,
         eficiencia: effGrp,
-        detalles:  grp.detalles
+        sumaTeorico: grp.sumaTeorico,
+        detalles:   grp.detalles
       });
 
       totalKilosProc += grp.totalKilos;
@@ -11255,4 +11273,254 @@ function obtenerDatosEficienciaParaCaptura(registros) {
   });
 
   return JSON.stringify(porProceso);
+}
+
+// ── Devuelve registros reales de PRODUCCION para fecha+turno+proceso ──
+// Usado por el botón de prueba del reporte de eficiencia
+function obtenerRegistrosPorFechaTurnoProceso(fecha, turno, proceso) {
+  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var sheetProd = ss.getSheetByName("PRODUCCION");
+  var sheetOrd  = ss.getSheetByName("ORDENES");
+
+  var dataOrd  = sheetOrd.getDataRange().getValues();
+  var hOrd     = dataOrd[0].map(function(x){ return String(x).toUpperCase().trim(); });
+  var iProcOrd = hOrd.indexOf("PROCESO");
+  var iUser    = hOrd.indexOf("USER");
+
+  var dataProd = sheetProd.getDataRange().getValues();
+  var h        = dataProd[0].map(function(x){ return String(x).toUpperCase().trim(); });
+
+  var IDX = {
+    ID:      h.indexOf("ID"),
+    ORDEN:   h.indexOf("ORDEN"),
+    LOTE:    h.indexOf("LOTE"),
+    MAQ:     h.indexOf("MAQUINA"),
+    FECHA:   h.indexOf("FECHA"),
+    TURNO:   h.indexOf("TURNO"),
+    OP_TXT:  h.indexOf("NOMBRE_OPERADOR_TXT"),
+    PROD:    h.indexOf("PRODUCIDO"),
+    USER:    h.indexOf("USER"),
+    PROCESO: h.indexOf("PROCESO")
+  };
+
+  // Mapa ordenID → proceso
+  var mapaProceso = {};
+  if (iProcOrd >= 0) {
+    for (var o = 1; o < dataOrd.length; o++) {
+      var idO = String(dataOrd[o][0]);
+      var prO = String(dataOrd[o][iProcOrd] || "").trim().toUpperCase();
+      if (idO && prO) mapaProceso[idO] = prO;
+    }
+  }
+
+  function getProceso(row) {
+    if (IDX.PROCESO >= 0) {
+      var p = String(row[IDX.PROCESO] || "").trim().toUpperCase();
+      if (p) return p;
+    }
+    return mapaProceso[String(row[IDX.ORDEN] || "")] || "";
+  }
+
+  var procesoUp = String(proceso || "").toUpperCase().trim();
+  var turnoStr  = String(turno || "").trim();
+
+  var resultados = [];
+  for (var i = 1; i < dataProd.length; i++) {
+    var row = dataProd[i];
+
+    // Filtro proceso
+    var proc = getProceso(row);
+    if (proc !== procesoUp) continue;
+
+    // Filtro turno
+    if (String(row[IDX.TURNO] || "").trim() !== turnoStr) continue;
+
+    // Filtro fecha
+    var fVal = row[IDX.FECHA];
+    var fStr = "";
+    if (fVal instanceof Date && !isNaN(fVal.getTime())) {
+      fStr = fVal.getFullYear()
+           + "-" + (fVal.getMonth()+1 < 10 ? "0" : "") + (fVal.getMonth()+1)
+           + "-" + (fVal.getDate()    < 10 ? "0" : "") +  fVal.getDate();
+    }
+    if (fStr !== fecha) continue;
+
+    resultados.push({
+      proceso:   proc,
+      maquina:   String(row[IDX.MAQ]    || ""),
+      op1_txt:   String(row[IDX.OP_TXT] || ""),
+      producido: Number(row[IDX.PROD])  || 0,
+      turno:     turnoStr,
+      fecha:     fStr,
+      ordenID:   String(row[IDX.ORDEN]  || ""),
+      loteFull:  String(row[IDX.LOTE]   || ""),
+      usuario:   String(row[IDX.USER]   || "")
+    });
+  }
+
+  return JSON.stringify(resultados);
+}
+
+// ── Verifica irregularidades de lotes y pesos para el reporte de eficiencia ──
+// Recibe: registros = [{loteFull, maquina, fecha, ...}], fechaStr = "YYYY-MM-DD"
+// Devuelve JSON: { sobreEficiencia: [{maquina, efic}], lotesIncompletos: [{lote, maquina, falta}], pesosIncorrectos: [{lote, maquina, detalle}] }
+function verificarIrregularidadesReporte(registros, fechaStr) {
+  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var sheetProd = ss.getSheetByName("PRODUCCION");
+  var dataProd  = sheetProd.getDataRange().getValues();
+  var h         = dataProd[0].map(function(x){ return String(x).toUpperCase().trim(); });
+
+  var IDX = {
+    LOTE:   h.indexOf("LOTE"),
+    MAQ:    h.indexOf("MAQUINA"),
+    FECHA:  h.indexOf("FECHA"),
+    TURNO:  h.indexOf("TURNO"),
+    PESO_I: h.indexOf("PESO_I"),
+    PESO_F: h.indexOf("PESO_F"),
+    PROD:   h.indexOf("PRODUCIDO"),
+    PROCESO:h.indexOf("PROCESO"),
+    ORDEN:  h.indexOf("ORDEN")
+  };
+
+  // ── Parsear fecha objetivo y calcular ventana histórica (5 días hábiles atrás) ──
+  function parseYMD(s) {
+    var p = String(s).split("-");
+    return new Date(Number(p[0]), Number(p[1])-1, Number(p[2]), 0, 0, 0);
+  }
+  function toYMD(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return "";
+    return d.getFullYear()
+      + "-" + (d.getMonth()+1 < 10 ? "0" : "") + (d.getMonth()+1)
+      + "-" + (d.getDate()    < 10 ? "0" : "") +  d.getDate();
+  }
+  function diasHabilesAtras(fecha, n) {
+    var d = new Date(fecha.getTime());
+    var contados = 0;
+    while (contados < n) {
+      d.setDate(d.getDate() - 1);
+      var dow = d.getDay();
+      if (dow !== 0 && dow !== 6) contados++;
+    }
+    return d;
+  }
+
+  var fechaObj   = parseYMD(fechaStr);
+  var fechaMin   = diasHabilesAtras(fechaObj, 5);
+
+  // ── Pasada única: histLotes (días anteriores, para pesos) + hoyLotes (hoy) + todosDias (ambos, para continuidad) ──
+  var histLotes = {}; // días anteriores → verificación de pesos
+  var hoyLotes  = {}; // solo hoy       → verificación de pesos
+  var todosDias = {}; // hist + hoy     → verificación de continuidad de lotes
+
+  for (var i = 1; i < dataProd.length; i++) {
+    var row  = dataProd[i];
+    var fVal = row[IDX.FECHA];
+    if (!(fVal instanceof Date) || isNaN(fVal.getTime())) continue;
+    var fDate = fVal;
+    var fYMD  = toYMD(fDate);
+    var lote  = String(row[IDX.LOTE] || "").trim();
+    if (!lote) continue;
+
+    if (fYMD === fechaStr) {
+      // Hoy
+      todosDias[lote] = true;
+      if (!hoyLotes[lote]) hoyLotes[lote] = [];
+      hoyLotes[lote].push({
+        pesoI: Number(row[IDX.PESO_I]) || 0,
+        pesoF: Number(row[IDX.PESO_F]) || 0,
+        maq:   String(row[IDX.MAQ] || "")
+      });
+    } else if (fDate >= fechaMin && fDate < fechaObj) {
+      // Días anteriores dentro de la ventana
+      todosDias[lote] = true;
+      if (!histLotes[lote]) histLotes[lote] = [];
+      histLotes[lote].push({
+        pesoI: Number(row[IDX.PESO_I]) || 0,
+        pesoF: Number(row[IDX.PESO_F]) || 0,
+        maq:   String(row[IDX.MAQ] || "")
+      });
+    }
+  }
+
+  // ── Helper: parsear lote "P.XXXX.YY" → {serie:"P.XXXX", consec:YY} ──
+  function parseLote(lote) {
+    var m = lote.match(/^(.+)\.(\d+)$/);
+    if (!m) return null;
+    return { serie: m[1], consec: parseInt(m[2], 10) };
+  }
+
+  // ── 1. Sobreeficiencia: viene del frontend, no se calcula aquí ──
+  // (el frontend ya la detecta y la pasa si quiere; esta función solo analiza lotes/pesos)
+
+  // ── 2. Verificar continuidad de lotes (usa todosDias: hist + hoy) ──
+  var lotesIncompletos = [];
+  var lotesVistos = {};
+
+  registros.forEach(function(r) {
+    var lote = String(r.loteFull || "").trim();
+    var maq  = String(r.maquina  || "");
+    if (!lote || lotesVistos[lote]) return;
+    lotesVistos[lote] = true;
+
+    var parsed = parseLote(lote);
+    if (!parsed || parsed.consec <= 0) return;
+
+    var consecAnterior = parsed.consec - 1;
+    var loteAnterior   = parsed.serie + "." + ("00" + consecAnterior).slice(-2);
+
+    // Si el lote anterior existe en cualquier día (hist o hoy) → OK
+    if (todosDias[loteAnterior]) return;
+
+    // Solo reportar si hay evidencia de que la serie está activa
+    if (consecAnterior >= 1) {
+      var loteAnterior2 = parsed.serie + "." + ("00" + (consecAnterior - 1)).slice(-2);
+      if (todosDias[loteAnterior2] || consecAnterior === 1) {
+        lotesIncompletos.push({ lote: lote, maquina: maq, falta: loteAnterior });
+      }
+    }
+  });
+
+  // ── 3. Verificar continuidad de pesos ──
+  var pesosIncorrectos = [];
+  var lotesVistosP = {};
+
+  registros.forEach(function(r) {
+    var lote = String(r.loteFull || "").trim();
+    var maq  = String(r.maquina  || "");
+    if (!lote || lotesVistosP[lote]) return;
+    lotesVistosP[lote] = true;
+
+    var hoyRegs = hoyLotes[lote];
+    if (!hoyRegs || hoyRegs.length === 0) return;
+
+    var pesoIHoy = hoyRegs[0].pesoI;
+    var histRegs = histLotes[lote];
+
+    if (!histRegs || histRegs.length === 0) {
+      // Sin historial → PESO_I debería ser 0
+      if (pesoIHoy > 0) {
+        pesosIncorrectos.push({
+          lote:    lote,
+          maquina: maq,
+          detalle: "Sin historial previo pero PESO_I=" + pesoIHoy + " (debería ser 0)"
+        });
+      }
+    } else {
+      // Con historial → PESO_I de hoy debe coincidir con algún PESO_F anterior
+      var pesosFPrev = histRegs.map(function(x){ return x.pesoF; });
+      var coincide   = pesosFPrev.some(function(pf){ return Math.abs(pf - pesoIHoy) < 1; });
+      if (!coincide) {
+        pesosIncorrectos.push({
+          lote:    lote,
+          maquina: maq,
+          detalle: "PESO_I=" + pesoIHoy + " no coincide con PESO_F previo (" + pesosFPrev.join(" / ") + ")"
+        });
+      }
+    }
+  });
+
+  return JSON.stringify({
+    lotesIncompletos: lotesIncompletos,
+    pesosIncorrectos: pesosIncorrectos
+  });
 }
