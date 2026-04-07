@@ -11153,6 +11153,7 @@ function obtenerDatosEficienciaParaCaptura(registros) {
         p.indexOf("PULIDO")     >= 0 || p.indexOf("TREFILADO")>= 0) return "METROS";
     if (p.indexOf("FORJA")      >= 0 || p.indexOf("ESTAMPADO")>= 0 ||
         p.indexOf("PUNTEADO")   >= 0 || p.indexOf("ROLADO")   >= 0) return "PIEZAS";
+    if (p.indexOf("LAVADO")     >= 0) return "KILOS_MIN";
     return "KILOS";
   };
 
@@ -11193,7 +11194,7 @@ function obtenerDatosEficienciaParaCaptura(registros) {
     if (!reporte[proc].grupos[gKey]) {
       reporte[proc].grupos[gKey] = {
         maquina: maq, operador: op,
-        totalKilos: 0, sumaReal: 0, sumaTeorico: 0,
+        totalKilos: 0, sumaReal: 0, sumaTeorico: 0, sumaTeoricoKg: 0,
         turnosProcesados: {},
         detalles: []
       };
@@ -11205,13 +11206,20 @@ function obtenerDatosEficienciaParaCaptura(registros) {
     if (!grp.turnosProcesados[llaveTurno]) {
       var teorico = 0;
       if (std > 0) {
-        if (modo === "ROLLOS" || modo === "PIEZAS" || modo === "METROS") {
+        if (modo === "ROLLOS" || modo === "PIEZAS" || modo === "METROS" || modo === "KILOS_MIN") {
           teorico = std * 60 * horas;
         } else {
           teorico = std * horas;
         }
       }
-      grp.sumaTeorico += teorico;
+      grp.sumaTeorico   += teorico;
+      // sumaTeoricoKg: convertir a kg según modo
+      if (modo === "PIEZAS" || modo === "METROS") {
+        grp.sumaTeoricoKg += (pesoUnit > 0) ? teorico * pesoUnit : 0;
+      } else {
+        // KILOS, KILOS_MIN y ROLLOS: el teórico ya está en kg
+        grp.sumaTeoricoKg += teorico;
+      }
       grp.turnosProcesados[llaveTurno] = true;
     }
 
@@ -11240,18 +11248,53 @@ function obtenerDatosEficienciaParaCaptura(registros) {
     var sumaRealGlobal  = 0;
     var sumaTeoGlobal   = 0;
 
+    // ── Para COLATADO: ajustar teórico por operador dividiendo horas ──
+    // Si un operador aparece en N máquinas del mismo turno, sus horas se dividen entre N
+    if (r.modo === "ROLLOS") {
+      // Contar cuántas máquinas tiene cada operador por turno
+      var opTurnoMaqCount = {}; // "op||turno" -> count de máquinas
+      Object.keys(r.grupos).forEach(function(gKey) {
+        var grp = r.grupos[gKey];
+        Object.keys(grp.turnosProcesados).forEach(function(llaveTurno) {
+          var opKey = grp.operador + "||" + llaveTurno;
+          opTurnoMaqCount[opKey] = (opTurnoMaqCount[opKey] || 0) + 1;
+        });
+      });
+      // Recalcular sumaTeorico y sumaTeoricoKg dividiendo por N máquinas del operador
+      Object.keys(r.grupos).forEach(function(gKey) {
+        var grp = r.grupos[gKey];
+        var nuevoTeorico   = 0;
+        var nuevoTeoricoKg = 0;
+        var std = mapStd[grp.maquina] || 0;
+        Object.keys(grp.turnosProcesados).forEach(function(llaveTurno) {
+          var partes = llaveTurno.split("_");
+          var turnoNum = partes[partes.length - 1];
+          var horas = turnoNum == "2" ? 7.0 : turnoNum == "3" ? 8.0 : 7.5;
+          var opKey = grp.operador + "||" + llaveTurno;
+          var nMaq  = opTurnoMaqCount[opKey] || 1;
+          var horasEfectivas = horas / nMaq;
+          var teo = std > 0 ? std * 60 * horasEfectivas : 0;
+          nuevoTeorico   += teo;
+          nuevoTeoricoKg += teo; // ROLLOS: teórico ya en rollos
+        });
+        grp.sumaTeorico    = nuevoTeorico;
+        grp.sumaTeoricoKg  = nuevoTeoricoKg;
+      });
+    }
+
     Object.keys(r.grupos).forEach(function(gKey) {
       var grp    = r.grupos[gKey];
       var effGrp = grp.sumaTeorico > 0 ? (grp.sumaReal / grp.sumaTeorico) * 100
                  : grp.sumaReal   > 0  ? 100 : 0;
 
       grupos.push({
-        maquina:    grp.maquina,
-        operador:   grp.operador,
-        total:      grp.totalKilos,
-        eficiencia: effGrp,
-        sumaTeorico: grp.sumaTeorico,
-        detalles:   grp.detalles
+        maquina:      grp.maquina,
+        operador:     grp.operador,
+        total:        grp.totalKilos,
+        eficiencia:   effGrp,
+        sumaTeorico:  grp.sumaTeorico,
+        sumaTeoricoKg: grp.sumaTeoricoKg,
+        detalles:     grp.detalles
       });
 
       totalKilosProc += grp.totalKilos;
@@ -11404,13 +11447,30 @@ function verificarIrregularidadesReporte(registros, fechaStr) {
     return d;
   }
 
-  var fechaObj   = parseYMD(fechaStr);
-  var fechaMin   = diasHabilesAtras(fechaObj, 5);
+  var fechaObj      = parseYMD(fechaStr);
+  var fechaMinPesos = diasHabilesAtras(fechaObj, 5);   // 5 días hábiles: para verificar pesos
+  var fechaMinLotes = diasHabilesAtras(fechaObj, 20);  // 20 días hábiles: para continuidad de lotes
 
-  // ── Pasada única: histLotes (días anteriores, para pesos) + hoyLotes (hoy) + todosDias (ambos, para continuidad) ──
-  var histLotes = {}; // días anteriores → verificación de pesos
-  var hoyLotes  = {}; // solo hoy       → verificación de pesos
-  var todosDias = {}; // hist + hoy     → verificación de continuidad de lotes
+  // histLotes: clave lote+proceso, últimos 5 días hábiles (pesos)
+  // hoyLotes:  clave lote+proceso, solo hoy (pesos)
+  // todosDias: clave lote+proceso, últimos 20 días hábiles + hoy (continuidad de lotes)
+  var histLotes = {};
+  var hoyLotes  = {};
+  var todosDias = {};
+
+  // ── Mapa ordenID → proceso (para filas de PRODUCCION sin col PROCESO) ──
+  var sheetOrdV = SpreadsheetApp.openById(ID_HOJA_CALCULO).getSheetByName("ORDENES");
+  var dataOrdV  = sheetOrdV.getDataRange().getValues();
+  var hOrdV     = dataOrdV[0].map(function(x){ return String(x).toUpperCase().trim(); });
+  var iOrdProcV = hOrdV.indexOf("PROCESO");
+  var mapaProcesoV = {};
+  if (iOrdProcV >= 0) {
+    for (var o = 1; o < dataOrdV.length; o++) {
+      var idO = String(dataOrdV[o][0]);
+      var prO = String(dataOrdV[o][iOrdProcV] || "").toUpperCase().trim();
+      if (idO && prO) mapaProcesoV[idO] = prO;
+    }
+  }
 
   for (var i = 1; i < dataProd.length; i++) {
     var row  = dataProd[i];
@@ -11418,41 +11478,50 @@ function verificarIrregularidadesReporte(registros, fechaStr) {
     if (!(fVal instanceof Date) || isNaN(fVal.getTime())) continue;
     var fDate = fVal;
     var fYMD  = toYMD(fDate);
-    var lote  = String(row[IDX.LOTE] || "").trim();
+    if (fDate < fechaMinLotes && fYMD !== fechaStr) continue; // fuera de ventana máxima
+    var lote = String(row[IDX.LOTE] || "").trim();
     if (!lote) continue;
+    // Resolver proceso: primero col PROCESO de la fila, luego mapa ORDENES
+    var procFila = IDX.PROCESO >= 0 ? String(row[IDX.PROCESO] || "").toUpperCase().trim() : "";
+    if (!procFila && IDX.ORDEN >= 0) {
+      procFila = mapaProcesoV[String(row[IDX.ORDEN] || "")] || "";
+    }
+    var clave = lote + "||" + procFila;
 
     if (fYMD === fechaStr) {
-      // Hoy
-      todosDias[lote] = true;
-      if (!hoyLotes[lote]) hoyLotes[lote] = [];
-      hoyLotes[lote].push({
+      todosDias[clave] = true;
+      if (!hoyLotes[clave]) hoyLotes[clave] = [];
+      hoyLotes[clave].push({
         pesoI: Number(row[IDX.PESO_I]) || 0,
-        pesoF: Number(row[IDX.PESO_F]) || 0,
-        maq:   String(row[IDX.MAQ] || "")
+        pesoF: Number(row[IDX.PESO_F]) || 0
       });
-    } else if (fDate >= fechaMin && fDate < fechaObj) {
-      // Días anteriores dentro de la ventana
-      todosDias[lote] = true;
-      if (!histLotes[lote]) histLotes[lote] = [];
-      histLotes[lote].push({
-        pesoI: Number(row[IDX.PESO_I]) || 0,
-        pesoF: Number(row[IDX.PESO_F]) || 0,
-        maq:   String(row[IDX.MAQ] || "")
-      });
+    } else if (fDate < fechaObj) {
+      todosDias[clave] = true;
+      if (fDate >= fechaMinPesos) {
+        if (!histLotes[clave]) histLotes[clave] = [];
+        histLotes[clave].push({
+          pesoI: Number(row[IDX.PESO_I]) || 0,
+          pesoF: Number(row[IDX.PESO_F]) || 0
+        });
+      }
     }
   }
 
-  // ── Helper: parsear lote "P.XXXX.YY" → {serie:"P.XXXX", consec:YY} ──
+  // ── Helper: parsear lote "X.YYYY.ZZ" → {serie:"X.YYYY", consec:ZZ} ──
   function parseLote(lote) {
     var m = lote.match(/^(.+)\.(\d+)$/);
     if (!m) return null;
     return { serie: m[1], consec: parseInt(m[2], 10) };
   }
 
-  // ── 1. Sobreeficiencia: viene del frontend, no se calcula aquí ──
-  // (el frontend ya la detecta y la pasa si quiere; esta función solo analiza lotes/pesos)
+  var procesoReporte = registros.length > 0
+    ? String(registros[0].proceso || "").toUpperCase().trim() : "";
 
-  // ── 2. Verificar continuidad de lotes (usa todosDias: hist + hoy) ──
+  // ── 1. Continuidad de lotes ──
+  // Regla: si existe lote X.YY.NN en el reporte, el lote X.YY.(NN-1) debe
+  // existir en todosDias del mismo proceso. Si NN=1 y no existe el .00 → OK
+  // (es el primer lote de la serie). Solo reportar cuando hay evidencia de
+  // que la serie está activa (existe NN-2 o NN-1 es 1).
   var lotesIncompletos = [];
   var lotesVistos = {};
 
@@ -11466,56 +11535,58 @@ function verificarIrregularidadesReporte(registros, fechaStr) {
     if (!parsed || parsed.consec <= 0) return;
 
     var consecAnterior = parsed.consec - 1;
-    var loteAnterior   = parsed.serie + "." + ("00" + consecAnterior).slice(-2);
+    // Formato con ceros: mínimo 2 dígitos
+    var pad = function(n){ return n < 10 ? "0" + n : String(n); };
+    var loteAnt  = parsed.serie + "." + pad(consecAnterior);
+    var claveAnt = loteAnt + "||" + procesoReporte;
 
-    // Si el lote anterior existe en cualquier día (hist o hoy) → OK
-    if (todosDias[loteAnterior]) return;
+    if (todosDias[claveAnt]) return; // existe → OK
 
-    // Solo reportar si hay evidencia de que la serie está activa
     if (consecAnterior >= 1) {
-      var loteAnterior2 = parsed.serie + "." + ("00" + (consecAnterior - 1)).slice(-2);
-      if (todosDias[loteAnterior2] || consecAnterior === 1) {
-        lotesIncompletos.push({ lote: lote, maquina: maq, falta: loteAnterior });
+      var loteAnt2  = parsed.serie + "." + pad(consecAnterior - 1);
+      var claveAnt2 = loteAnt2 + "||" + procesoReporte;
+      if (todosDias[claveAnt2] || consecAnterior === 1) {
+        lotesIncompletos.push({ lote: lote, maquina: maq, falta: loteAnt });
       }
     }
   });
 
-  // ── 3. Verificar continuidad de pesos ──
+  // ── 2. Continuidad de pesos ──
+  // Regla: PESO_I = 0 → inicio limpio, OK.
+  //        PESO_I > 0 → debe coincidir con algún PESO_F previo del mismo lote+proceso.
   var pesosIncorrectos = [];
   var lotesVistosP = {};
 
   registros.forEach(function(r) {
     var lote = String(r.loteFull || "").trim();
     var maq  = String(r.maquina  || "");
+    var proc = String(r.proceso  || "").toUpperCase().trim();
     if (!lote || lotesVistosP[lote]) return;
     lotesVistosP[lote] = true;
 
-    var hoyRegs = hoyLotes[lote];
+    var clave   = lote + "||" + proc;
+    var hoyRegs = hoyLotes[clave];
     if (!hoyRegs || hoyRegs.length === 0) return;
 
-    var pesoIHoy = hoyRegs[0].pesoI;
-    var histRegs = histLotes[lote];
+    var pesoIHoy = hoyRegs.reduce(function(min, x){ return x.pesoI < min ? x.pesoI : min; }, hoyRegs[0].pesoI);
+    if (pesoIHoy === 0) return; // inicio limpio → OK
 
+    var histRegs = histLotes[clave];
     if (!histRegs || histRegs.length === 0) {
-      // Sin historial → PESO_I debería ser 0
-      if (pesoIHoy > 0) {
-        pesosIncorrectos.push({
-          lote:    lote,
-          maquina: maq,
-          detalle: "Sin historial previo pero PESO_I=" + pesoIHoy + " (debería ser 0)"
-        });
-      }
-    } else {
-      // Con historial → PESO_I de hoy debe coincidir con algún PESO_F anterior
-      var pesosFPrev = histRegs.map(function(x){ return x.pesoF; });
-      var coincide   = pesosFPrev.some(function(pf){ return Math.abs(pf - pesoIHoy) < 1; });
-      if (!coincide) {
-        pesosIncorrectos.push({
-          lote:    lote,
-          maquina: maq,
-          detalle: "PESO_I=" + pesoIHoy + " no coincide con PESO_F previo (" + pesosFPrev.join(" / ") + ")"
-        });
-      }
+      pesosIncorrectos.push({
+        lote: lote, maquina: maq,
+        detalle: "P.Inicial=" + pesoIHoy + " pero no hay registro previo del lote (debería empezar en 0)"
+      });
+      return;
+    }
+
+    var coincide = histRegs.some(function(x){ return Math.abs(x.pesoF - pesoIHoy) < 1; });
+    if (!coincide) {
+      var prevStr = histRegs.map(function(x){ return "PI:" + x.pesoI + " / PF:" + x.pesoF; }).join(" | ");
+      pesosIncorrectos.push({
+        lote: lote, maquina: maq,
+        detalle: "P.Inicial=" + pesoIHoy + " no coincide con P.Final previo (" + prevStr + ")"
+      });
     }
   });
 
