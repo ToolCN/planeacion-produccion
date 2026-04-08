@@ -5879,6 +5879,97 @@ function loadPlanificador() {
 #planif-panel .btn-reordenar { bottom: 60px; background: #1a237e; }
 #planif-panel .btn-cancelar-prio { bottom: 15px; background: #757575; }
 #planif-panel .machine-column.priority-mode .btn-reordenar, #planif-panel .machine-column.priority-mode .btn-cancelar-prio { display: block; }
+
+/* ── VISTA FORJA ── */
+#planif-forja-panel { display:none; position:fixed; inset:0; z-index:1100; background:#f1f5f9; flex-direction:column; }
+#planif-forja-panel.activo { display:flex; }
+#planif-forja-topbar { background:#1a237e; color:white; display:flex; align-items:stretch; flex-shrink:0; }
+#planif-forja-topbar .fh-left { display:flex; align-items:center; gap:12px; padding:10px 20px; flex-shrink:0; border-right:1px solid rgba(255,255,255,.15); }
+#planif-forja-topbar .fh-title { font-size:19px; font-weight:900; letter-spacing:.03em; white-space:nowrap; }
+#planif-forja-tabs { display:flex; gap:0; flex:1; }
+#planif-forja-tabs .ftab { padding:0 28px; color:rgba(255,255,255,.6); font-weight:800; font-size:.8rem; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; border-bottom:3px solid transparent; border-top:none; border-left:none; border-right:none; background:none; display:flex; align-items:center; transition:all .2s; }
+#planif-forja-tabs .ftab:hover { color:white; background:rgba(255,255,255,.06); }
+#planif-forja-tabs .ftab.activo { color:white; border-bottom:3px solid #ef5350; background:rgba(255,255,255,.08); }
+#planif-forja-content { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+.fv-tab-pane { display:none; flex:1; flex-direction:column; overflow:hidden; }
+.fv-tab-pane.activo { display:flex; }
+
+/* Tabla Programador Forja */
+#forja-prog-wrap { flex:1; overflow:auto; padding:0; }
+#forja-prog-tbl { width:100%; border-collapse:collapse; font-size:.8rem; font-family:'Roboto',sans-serif; }
+#forja-prog-tbl thead th { background:#1e293b; color:white; padding:9px 10px; font-weight:800; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; position:sticky; top:0; z-index:10; white-space:nowrap; border:1px solid #334155; cursor:pointer; user-select:none; }
+#forja-prog-tbl thead th .th-inner { display:flex; align-items:center; gap:6px; justify-content:center; }
+#forja-prog-tbl thead th .sort-arrow { font-size:.65rem; }
+#forja-prog-tbl thead th .filter-icon { font-size:.7rem; transition:color .2s; }
+#forja-prog-tbl thead th.filtrado .filter-icon { color:#ef5350; animation:fpulse 1.2s infinite; }
+@keyframes fpulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+#forja-prog-tbl tbody tr:nth-child(even) { background:#dde3ed; }
+#forja-prog-tbl tbody tr:nth-child(odd) { background:#ffffff; }
+#forja-prog-tbl tbody tr:hover td { background:#fef9c3 !important; }
+#forja-prog-tbl tbody td { padding:7px 10px; border:1px solid #e2e8f0; text-align:center; white-space:nowrap; }
+
+/* Botón expandir orden */
+#forja-prog-tbl .btn-expand { width:22px; height:22px; border-radius:50%; border:2px solid #64748b; background:white; color:#64748b; font-size:.8rem; font-weight:900; cursor:pointer; line-height:1; display:inline-flex; align-items:center; justify-content:center; transition:all .15s; padding:0; }
+#forja-prog-tbl .btn-expand.expandido { border-color:#7f1d1d; background:#7f1d1d; color:white; }
+#forja-prog-tbl tr.fila-hija td { background:#f0f4ff !important; font-size:.77rem; border-left:3px solid #7f1d1d; }
+#forja-prog-tbl tr.fila-hija:hover td { background:#e0e7ff !important; }
+#forja-prog-tbl tr.fila-hija td:first-child { padding-left:32px; }
+
+/* Columnas de inventario — toggle grupo */
+#forja-prog-tbl th.th-grupo-inv-ultimo { position:relative; }
+.fprog-grupo-btn { margin-left:6px; padding:1px 5px; border-radius:4px; border:1px solid rgba(255,255,255,.4); background:rgba(255,255,255,.15); color:white; font-size:.65rem; font-weight:900; cursor:pointer; vertical-align:middle; line-height:1.4; }
+.fprog-grupo-btn:hover { background:rgba(255,255,255,.3); }
+/* Estado inventario */
+.fprog-estado-malo { background:#c62828; color:white; font-weight:900; font-size:.72rem; padding:2px 6px; border-radius:4px; display:inline-block; }
+.fprog-estado-bueno { background:#2e7d32; color:white; font-weight:900; font-size:.72rem; padding:2px 6px; border-radius:4px; display:inline-block; }
+/* Efect badge */
+.fprog-efect { font-weight:900; font-size:.75rem; padding:2px 6px; border-radius:4px; display:inline-block; }
+
+/* Columnas grupo prod — encabezados multilínea */
+#forja-prog-tbl thead th { white-space: pre-line; line-height: 1.2; vertical-align: middle; }
+/* MAQUINA en rojo negritas */
+.fprog-maquina { color: #b71c1c; font-weight: 900; }
+/* Acero badge en tabla forja */
+.fprog-acero-badge { display:inline-block; }
+/* Status bar inferior */
+#forja-statusbar { background:#1e293b; color:white; padding:6px 16px; display:flex; align-items:center; gap:16px; font-size:.75rem; font-weight:700; flex-shrink:0; border-top:2px solid #334155; min-height:32px; }
+#forja-statusbar .fsb-item { display:flex; align-items:center; gap:6px; }
+#forja-statusbar .fsb-val { background:rgba(255,255,255,.15); border-radius:4px; padding:2px 8px; font-size:.8rem; font-weight:900; }
+#forja-statusbar .fsb-clear { background:none; border:1px solid rgba(255,255,255,.3); color:rgba(255,255,255,.7); border-radius:4px; padding:2px 8px; cursor:pointer; font-size:.72rem; font-weight:700; }
+#forja-statusbar .fsb-clear:hover { background:rgba(255,255,255,.1); }
+/* Fila seleccionada en tabla forja */
+#forja-prog-tbl tbody tr.fprog-seleccionada td { background:#fbbf24 !important; }
+#forja-prog-tbl tbody tr.fprog-seleccionada:hover td { background:#f59e0b !important; }
+
+/* Sin pedido vivo — solo celda parpadeante, sin alterar color de fila */
+@keyframes fprogBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.fprog-sin-pedido { color:#dc2626; font-weight:900; animation:fprogBlink 1s step-start infinite; }
+
+/* Zoom tabla Forja */
+#forja-zoom-btn { background:rgba(255,255,255,.15); color:white; border:1px solid rgba(255,255,255,.3); border-radius:7px; padding:5px 14px; font-size:.78rem; font-weight:900; cursor:pointer; display:flex; align-items:center; gap:5px; transition:background .15s; white-space:nowrap; margin-left:auto; }
+#forja-zoom-btn:hover { background:rgba(255,255,255,.28); }
+#forja-prog-tbl-wrap { transform-origin: top left; transition: transform .2s; }
+
+/* Selección de celdas numéricas */
+#forja-prog-tbl td.fprog-celda-sumable { cursor:cell; }
+#forja-prog-tbl td.fprog-celda-sumable:hover { outline:2px solid #f59e0b; outline-offset:-2px; }
+#forja-prog-tbl td.fprog-celda-selec { background:#fbbf24 !important; outline:2px solid #d97706; outline-offset:-2px; font-weight:900; }
+
+/* Dropdown filtro estilo Excel */
+.fprog-filter-drop { position:fixed; z-index:9999; background:white; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.18); min-width:220px; max-width:280px; padding:0; overflow:hidden; }
+.fprog-filter-drop .fd-search { display:flex; align-items:center; gap:6px; padding:8px 10px; border-bottom:1px solid #e2e8f0; }
+.fprog-filter-drop .fd-search input { flex:1; border:1px solid #cbd5e1; border-radius:6px; padding:5px 8px; font-size:.78rem; outline:none; }
+.fprog-filter-drop .fd-sort { display:flex; gap:4px; padding:6px 10px; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
+.fprog-filter-drop .fd-sort button { flex:1; padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:.72rem; font-weight:700; cursor:pointer; background:white; display:flex; align-items:center; justify-content:center; gap:4px; }
+.fprog-filter-drop .fd-sort button:hover { background:#f1f5f9; }
+.fprog-filter-drop .fd-list { max-height:200px; overflow-y:auto; padding:4px 0; }
+.fprog-filter-drop .fd-item { display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer; font-size:.78rem; }
+.fprog-filter-drop .fd-item:hover { background:#f1f5f9; }
+.fprog-filter-drop .fd-item input[type=checkbox] { cursor:pointer; accent-color:#1a237e; }
+.fprog-filter-drop .fd-actions { display:flex; gap:6px; padding:8px 10px; border-top:1px solid #e2e8f0; background:#f8fafc; }
+.fprog-filter-drop .fd-actions button { flex:1; padding:6px; border-radius:6px; border:none; font-weight:800; font-size:.75rem; cursor:pointer; }
+.fprog-filter-drop .fd-ok { background:#1a237e; color:white; }
+.fprog-filter-drop .fd-cancel { background:#e2e8f0; color:#374151; }
 </style>`;
 
   // ── HTML del Planificador ──
@@ -6149,7 +6240,57 @@ function loadPlanificador() {
     </div>
   </div>
 
-</div>`;
+</div>
+
+<div id="planif-forja-panel">
+  <div id="planif-forja-topbar">
+    <div class="fh-left">
+      <button onclick="planifCerrarVistaForja()" style="background:rgba(255,255,255,.15);border:none;color:white;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer;font-size:.78rem;">← Volver</button>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:22px;height:22px;flex-shrink:0;"><path d="M19.4 7.34L16.66 4.6A2 2 0 0 0 14 4.53l-9 9a2 2 0 0 0-.57 1.21L4 17.5a.5.5 0 0 0 .5.5H5l3.72-.38a2 2 0 0 0 1.21-.57l9-9a2 2 0 0 0-.53-2.71z" fill="#94a3b8"/><circle cx="10" cy="14" r="1.5" fill="white"/></svg>
+      <div class="fh-title">FORJA — PLANIFICADOR</div>
+    </div>
+    <div id="planif-forja-tabs">
+      <button class="ftab activo" onclick="planifForjaIrTab('programador')" id="ftab-programador">Programador</button>
+      <button class="ftab" onclick="planifForjaIrTab('plandiario')" id="ftab-plandiario">Plan Diario</button>
+      <button class="ftab" onclick="planifForjaIrTab('captura')" id="ftab-captura">Captura</button>
+    </div>
+    <button id="forja-zoom-btn" onclick="fprogCiclarZoom()" title="Cambiar zoom de tabla">🔍 100%</button>
+  </div>
+  <div id="planif-forja-content">
+    <!-- Pestaña 1: Programador -->
+    <div class="fv-tab-pane activo" id="fpane-programador">
+      <div id="forja-prog-wrap">
+        <div id="forja-prog-tbl-wrap">
+          <table id="forja-prog-tbl">
+            <thead>
+              <tr id="forja-prog-thead-row"></tr>
+            </thead>
+            <tbody id="forja-prog-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- Pestaña 2: Plan Diario -->
+    <div class="fv-tab-pane" id="fpane-plandiario">
+      <div style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">Plan Diario — Próximamente</div>
+    </div>
+    <!-- Pestaña 3: Captura -->
+    <div class="fv-tab-pane" id="fpane-captura">
+      <div style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">Captura — Próximamente</div>
+    </div>
+  </div>
+  <div id="forja-statusbar">
+    <span id="fsb-registros" class="fsb-item">📋 <span id="fsb-total-val" class="fsb-val">0</span> registros</span>
+    <span id="fsb-selec-wrap" class="fsb-item" style="display:none;">
+      ✅ <span id="fsb-selec-val" class="fsb-val">0</span> seleccionadas
+      &nbsp;|&nbsp; Σ <span id="fsb-suma-val" class="fsb-val">—</span>
+      &nbsp;|&nbsp; ⌀ <span id="fsb-prom-val" class="fsb-val">—</span>
+      <button class="fsb-clear" onclick="fprogLimpiarSeleccion()">✕ Limpiar</button>
+    </span>
+    <span style="margin-left:auto;color:rgba(255,255,255,.5);font-size:.68rem;">Clic en celda numérica: seleccionar | Ctrl+clic: multiselección</span>
+  </div>
+</div>
+`;
 
   ca.innerHTML = css + html;
 
@@ -6224,14 +6365,10 @@ function planifInit() {
       // ── Fila 3 ──────────────────────────────────────────────────────────
       { key:'FORJA', label:'FORJA',
         svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="4" rx="1" fill="#546e7a"/><rect x="10" y="6" width="4" height="14" fill="#78909c"/><line x1="10" y1="8" x2="14" y2="9" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="10" x2="14" y2="11" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="12" x2="14" y2="13" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="14" x2="14" y2="15" stroke="#455a64" stroke-width="0.7"/><line x1="10" y1="16" x2="14" y2="17" stroke="#455a64" stroke-width="0.7"/><path d="M9 20 Q12 22 15 20 L14 20 L10 20 Z" fill="#546e7a"/></svg>' },
-      { key:'ROLADO TORN', label:'ROLADO TORN',
-        svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 7 Q5 5 7 7 Q9 9 11 7 Q13 5 15 7 Q17 9 19 7 Q21 5 21 7" fill="none" stroke="#546e7a" stroke-width="2" stroke-linecap="round"/><path d="M3 12 Q5 10 7 12 Q9 14 11 12 Q13 10 15 12 Q17 14 19 12 Q21 10 21 12" fill="none" stroke="#546e7a" stroke-width="2" stroke-linecap="round"/><path d="M3 17 Q5 15 7 17 Q9 19 11 17 Q13 15 15 17 Q17 19 19 17 Q21 15 21 17" fill="none" stroke="#546e7a" stroke-width="2" stroke-linecap="round"/></svg>' },
-      { key:'PUNTEADO', label:'PUNTEADO',
-        svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12,2 14,8 12,22 10,8" fill="#78909c" stroke="#37474f" stroke-width="0.8"/><polygon points="8,8 16,8 14,14 10,14" fill="#546e7a"/><line x1="10" y1="8" x2="9" y2="12" stroke="#455a64" stroke-width="1"/><line x1="14" y1="8" x2="15" y2="12" stroke="#455a64" stroke-width="1"/></svg>' },
-      { key:'LAVADO', label:'LAVADO',
-        svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="10" y="2" width="4" height="10" fill="#bdbdbd" stroke="#757575" stroke-width="0.8"/><rect x="8" y="3" width="8" height="2" fill="#9e9e9e"/><path d="M9 12 Q7 14 7 16 Q7 20 12 20 Q17 20 17 16 Q17 14 15 12Z" fill="#4fc3f7" opacity="0.7" stroke="#0288d1" stroke-width="1"/><path d="M9 15 Q10 13 11 15 Q12 17 13 15 Q14 13 15 15" fill="none" stroke="#0277bd" stroke-width="1"/></svg>' },
-      { key:'ENDEREZADO PIJA', label:'ENDEREZADO PIJA',
-        svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 8 Q7 4 12 8 Q17 12 21 8" fill="none" stroke="#ef5350" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="14" x2="21" y2="14" stroke="#388e3c" stroke-width="2" stroke-linecap="round"/><polygon points="17,2 19,5 15,5" fill="#757575"/><rect x="16" y="5" width="2" height="6" fill="#9e9e9e"/></svg>' },
+      { key:'__fsp1', label:'', svg:'', hidden:true },
+      { key:'__fsp2', label:'', svg:'', hidden:true },
+      { key:'__fsp3', label:'', svg:'', hidden:true },
+      { key:'__fsp4', label:'', svg:'', hidden:true },
       { key:'TEMPLE Y REVENIDO', label:'TEMPLE Y REVENIDO',
         svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2 Q10 6 12 8 Q14 6 12 2Z" fill="#ff5722"/><path d="M12 7 Q9 12 10 16 Q12 21 14 16 Q15 12 12 7Z" fill="#ff7043"/><path d="M8 10 Q6 14 8 16" fill="none" stroke="#42a5f5" stroke-width="2" stroke-linecap="round"/><path d="M16 10 Q18 14 16 16" fill="none" stroke="#42a5f5" stroke-width="2" stroke-linecap="round"/><ellipse cx="12" cy="20" rx="4" ry="1.5" fill="#1565c0" opacity="0.6"/></svg>' }
     ];
@@ -6256,6 +6393,752 @@ function planifInit() {
   }).obtenerCatalogosPlanificador();
 }
 
+/* ═══════ VISTA FORJA ═══════ */
+var fprog_datosOriginales = [];   // todos los registros cargados del servidor
+var fprog_filtros = {};           // { colKey: Set de valores activos }
+var fprog_orden = { col: null, dir: 'asc' };  // orden actual
+var fprog_segundoOrden = { col: null, dir: 'asc' };
+
+var FPROG_COLS = [
+  { key:'orden',        label:'ORDEN',        align:'center', grupo:'base' },
+  { key:'operacion',    label:'OPERACIÓN',    align:'center', grupo:'base' },
+  { key:'op_int',       label:'OP INT',       align:'center', grupo:'base' },
+  { key:'fecha',        label:'FECHA',        align:'center', grupo:'base' },
+  { key:'tipo',         label:'TIPO',         align:'center', grupo:'base' },
+  { key:'pedido',       label:'PEDIDO',       align:'center', grupo:'base' },
+  { key:'partida',      label:'PARTIDA',      align:'center', grupo:'base' },
+  { key:'codigo',       label:'CÓDIGO',       align:'left',   grupo:'base' },
+  { key:'cantidad',     label:'CANTIDAD',     align:'right',  grupo:'base' },
+  { key:'backorder',    label:'BACKORDER',    align:'right',  grupo:'inv'  },
+  { key:'minimo',       label:'MÍNIMO',       align:'right',  grupo:'inv'  },
+  { key:'maximo',       label:'MÁXIMO',       align:'right',  grupo:'inv'  },
+  { key:'existencia',   label:'EXISTENCIA',   align:'right',  grupo:'inv'  },
+  { key:'estado_inv',   label:'ESTADO',       align:'center', grupo:'inv'  },
+  { key:'efect',        label:'EFECT',        align:'center', grupo:'inv'  },
+  { key:'descripcion',  label:'DESCRIPCIÓN',  align:'left',   grupo:'inv'  },
+  { key:'maquina',      label:'MAQUINA',      align:'center', grupo:'prod', sumable:false },
+  { key:'desc_tipo',    label:'DESC',         align:'center', grupo:'prod' },
+  { key:'diametro',     label:'Ø',            align:'center', grupo:'prod' },
+  { key:'longitud',     label:'L',            align:'center', grupo:'prod' },
+  { key:'cuerda',       label:'CDA',          align:'center', grupo:'prod' },
+  { key:'cuerpo',       label:'CPO',          align:'center', grupo:'prod' },
+  { key:'acero',        label:'ACERO',        align:'center', grupo:'prod' },
+  { key:'peso_pza',     label:'PESO\nPZA',    align:'right',  grupo:'prod', sumable:true  },
+  { key:'peso_merma',   label:'PESO\nMERMA',  align:'right',  grupo:'prod', sumable:true  },
+  { key:'peso_sin',     label:'PESO\nSIN',    align:'right',  grupo:'prod', sumable:true  },
+  { key:'mp_especif',   label:'MP\nESPECIF',  align:'center', grupo:'prod' },
+  { key:'mp_kg_req',    label:'MP KG\nREQUER',align:'right',  grupo:'prod', sumable:true  },
+  { key:'mp_kg_usada',  label:'MP KG\nUSADA', align:'right',  grupo:'prod', sumable:true  },
+  { key:'mp_kg_fabric', label:'MP KG\nFABRIC',align:'right',  grupo:'prod', sumable:true  },
+  { key:'observaciones',label:'OBSERVACIONES',align:'left',   grupo:'prod' }
+];
+
+// true = columnas de inventario visibles
+var fprog_invVisible = true;
+// true = columnas de producción visibles
+var fprog_prodVisible = true;
+
+var PROC_OP_MAP = {
+  'FORJA': 10,
+  'PUNTEADO': 25,
+  'ROLADO TORN': 30,
+  'LAVADO': 40,
+  'TEMPLE Y REVENIDO': 50
+};
+
+function planifAbrirVistaForja() {
+  var panel = document.getElementById('planif-forja-panel');
+  if (!panel) return;
+  panel.classList.add('activo');
+  // Cargar datos si no hay
+  fprogCargarDatos();
+}
+
+function planifCerrarVistaForja() {
+  var panel = document.getElementById('planif-forja-panel');
+  if (panel) panel.classList.remove('activo');
+}
+
+function planifForjaIrTab(tab) {
+  document.querySelectorAll('#planif-forja-tabs .ftab').forEach(function(b){ b.classList.remove('activo'); });
+  document.querySelectorAll('#planif-forja-content .fv-tab-pane').forEach(function(p){ p.classList.remove('activo'); });
+  var btnEl = document.getElementById('ftab-' + tab);
+  var paneEl = document.getElementById('fpane-' + tab);
+  if (btnEl) btnEl.classList.add('activo');
+  if (paneEl) paneEl.classList.add('activo');
+}
+
+function fprogCargarDatos() {
+  showLoader('Cargando datos Forja...');
+  google.script.run.withSuccessHandler(function(resRaw) {
+    hideLoader();
+    try {
+      var data = JSON.parse(resRaw);
+      fprog_datosOriginales = data;
+      fprog_filtros = {};
+      fprog_orden = { col: null, dir: 'asc' };
+      fprogRenderTabla();
+    } catch(e) {
+      sAlert('Error al cargar datos de Forja: ' + e.message, 'error');
+    }
+  }).withFailureHandler(function(e) {
+    hideLoader();
+    sAlert('Error servidor Forja: ' + e.message, 'error');
+  }).obtenerDatosProgramadorForja();
+}
+
+function fprogGetDatosFiltrados() {
+  var datos = fprog_datosOriginales.slice();
+  // Aplicar filtros
+  Object.keys(fprog_filtros).forEach(function(col) {
+    var activos = fprog_filtros[col];
+    if (!activos || activos.size === 0) return;
+    datos = datos.filter(function(r) {
+      return activos.has(String(r[col] == null ? '' : r[col]));
+    });
+  });
+  // Aplicar orden
+  if (fprog_orden.col) {
+    datos.sort(function(a, b) {
+      var va = a[fprog_orden.col]; var vb = b[fprog_orden.col];
+      var cmp = fprogCompareVal(va, vb, fprog_orden.col);
+      if (cmp === 0 && fprog_segundoOrden.col) {
+        var va2 = a[fprog_segundoOrden.col]; var vb2 = b[fprog_segundoOrden.col];
+        cmp = fprogCompareVal(va2, vb2, fprog_segundoOrden.col);
+        if (fprog_segundoOrden.dir === 'desc') cmp = -cmp;
+      }
+      if (fprog_orden.dir === 'desc') cmp = -cmp;
+      return cmp;
+    });
+  }
+  return datos;
+}
+
+// Convierte valor de diámetro/longitud a número decimal para ordenar correctamente
+// Soporta: fracciones "5/32", mixtos "3 3/4" o "3  3/4", decimales "12.5", "#10"
+function fprogParseMedida(v) {
+  var s = String(v || '').trim().replace(/\s+/g, ' '); // normalizar espacios
+  if (!s || s === '—') return null;
+
+  // Tipo #: retornar como número negativo-offset para que vaya al final (grupo 3)
+  if (/^#/.test(s)) {
+    var n = parseFloat(s.replace('#', ''));
+    return isNaN(n) ? null : 3000 + n; // grupo 3: números con #
+  }
+
+  // Detectar si contiene "/" → fracción o mixto
+  if (s.indexOf('/') > -1) {
+    // Mixto: "3 3/4" → 3 + 3/4
+    var partes = s.split(' ');
+    if (partes.length >= 2) {
+      var entero = parseFloat(partes[0]);
+      var frac   = partes[partes.length - 1].split('/');
+      if (!isNaN(entero) && frac.length === 2) {
+        var num = parseFloat(frac[0]), den = parseFloat(frac[1]);
+        if (!isNaN(num) && !isNaN(den) && den !== 0)
+          return entero + num / den; // grupo 1: pulgadas
+      }
+    }
+    // Fracción simple: "5/32"
+    var fr = s.split('/');
+    if (fr.length === 2) {
+      var n1 = parseFloat(fr[0]), d1 = parseFloat(fr[1]);
+      if (!isNaN(n1) && !isNaN(d1) && d1 !== 0) return n1 / d1; // grupo 1: pulgadas
+    }
+  }
+
+  // Número decimal o entero puro (mm u otros)
+  var nd = parseFloat(s);
+  if (!isNaN(nd)) {
+    // Si el número es >= 1 y no tiene fracción, consideramos mm (grupo 2)
+    // Distinguimos pulgadas (fracción ya capturada arriba) de mm
+    // Heurística: si tiene punto decimal o es >= 10, es mm
+    if (nd >= 10 || s.indexOf('.') > -1) return 1000 + nd; // grupo 2: mm
+    return nd; // grupo 1: pulgadas enteras pequeñas (1, 2, 3...)
+  }
+
+  return null;
+}
+
+function fprogCompareVal(va, vb, colKey) {
+  if (va == null) va = '';
+  if (vb == null) vb = '';
+
+  // Ordenamiento especial para diámetro y longitud
+  if (colKey === 'diametro' || colKey === 'longitud') {
+    var na = fprogParseMedida(va);
+    var nb = fprogParseMedida(vb);
+    // Nulos al final
+    if (na === null && nb === null) return 0;
+    if (na === null) return 1;
+    if (nb === null) return -1;
+    return na - nb;
+  }
+
+  // Ordenamiento genérico
+  var na2 = parseFloat(va), nb2 = parseFloat(vb);
+  if (!isNaN(na2) && !isNaN(nb2)) return na2 - nb2;
+  return String(va).localeCompare(String(vb), 'es', {sensitivity:'base'});
+}
+
+// Set de órdenes expandidas
+var fprog_expandidas = new Set();
+// Estado expandir-todo
+var fprog_todoExpandido = false;
+
+function fprogFmtNum(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  var n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return n.toLocaleString('es-MX', { minimumFractionDigits:0, maximumFractionDigits:0 });
+}
+
+function fprogInvPctColor(pct) {
+  if (pct === null || pct === undefined) return { bg:'transparent', blink:false, fg:'#333' };
+  if (pct <= 10)  return { bg:'#ef5350', blink:true,  fg:'#fff' };
+  if (pct <= 25)  return { bg:'#ef5350', blink:false, fg:'#fff' };
+  if (pct <= 40)  return { bg:'#f48fb1', blink:false, fg:'#000' };
+  if (pct <= 60)  return { bg:'#ff9800', blink:false, fg:'#000' };
+  if (pct <= 75)  return { bg:'#fdd835', blink:false, fg:'#000' };
+  if (pct <= 90)  return { bg:'#a5d6a7', blink:false, fg:'#000' };
+  return { bg:'#2e7d32', blink: pct > 105, fg:'#fff' };
+}
+
+function fprogMkSumable(colKey, valor, contenido, extraStyle) {
+  // Genera td con clase sumable y onclick para columnas que permiten selección
+  var numVal = parseFloat(valor) || 0;
+  var style  = 'text-align:right;' + (extraStyle || '');
+  return '<td class="fprog-celda-sumable" style="' + style + '"'
+    + ' onclick="fprogClickCelda(event,\'' + colKey + '\',' + numVal + ')">'
+    + contenido + '</td>';
+}
+
+function fprogCeldaValor(col, r) {
+  var val = r[col.key];
+
+  // Numéricas de inventario — sumables
+  if (col.key === 'cantidad' || col.key === 'backorder' || col.key === 'minimo' || col.key === 'maximo' || col.key === 'existencia') {
+    if (val === null || val === undefined)
+      return '<td style="text-align:right;color:#bbb;">—</td>';
+    return fprogMkSumable(col.key, val, fprogFmtNum(val));
+  }
+
+  // ESTADO inventario
+  if (col.key === 'estado_inv') {
+    var exist = parseFloat(r.existencia), min = parseFloat(r.minimo);
+    if (r.existencia === null || r.existencia === undefined || isNaN(exist) || isNaN(min) || min === 0)
+      return '<td style="text-align:center;color:#bbb;">—</td>';
+    return exist < min / 2
+      ? '<td style="text-align:center;"><span class="fprog-estado-malo">MALO</span></td>'
+      : '<td style="text-align:center;"><span class="fprog-estado-bueno">BUENO</span></td>';
+  }
+
+  // EFECT
+  if (col.key === 'efect') {
+    var exist2 = parseFloat(r.existencia), max2 = parseFloat(r.maximo);
+    if (r.existencia === null || r.existencia === undefined || isNaN(exist2) || isNaN(max2) || max2 === 0)
+      return '<td style="text-align:center;color:#bbb;">—</td>';
+    var pct = Math.round((exist2 / max2) * 100);
+    var ci = fprogInvPctColor(pct);
+    var blinkStyle = ci.blink ? 'animation:planifBlink 1s step-start infinite;' : '';
+    return '<td style="text-align:center;padding:3px 6px;"><span class="fprog-efect" style="background:' + ci.bg + ';color:' + ci.fg + ';' + blinkStyle + '">' + pct + '%</span></td>';
+  }
+
+  // PEDIDO y TIPO — parpadeo rojo si sin_pedido_vivo
+  if ((col.key === 'pedido' || col.key === 'tipo') && r.sin_pedido_vivo) {
+    var etiq = String(val || '');
+    if (!etiq || etiq === 'undefined') etiq = col.key === 'pedido' ? 'SIN PEDIDO' : '—';
+    return '<td style="text-align:center;"><span class="fprog-sin-pedido">' + etiq + '</span></td>';
+  }
+
+  // MAQUINA — rojo negritas
+  if (col.key === 'maquina') {
+    var m = String(val || '').trim();
+    return '<td style="text-align:center;"><span class="fprog-maquina">' + (m || '—') + '</span></td>';
+  }
+
+  // ACERO — badge de color
+  if (col.key === 'acero') {
+    var txt = String(val || '').toUpperCase().trim();
+    if (!txt || txt === 'UNDEFINED' || txt === '-') txt = '—';
+    var fill = '#263238', fg = 'white', stripe = null;
+    if (txt === '1004')                              { fill='#FFF'; fg='#000'; stripe='#2E7D32'; }
+    else if (txt === '1006')                         { fill='#FFF'; fg='#000'; stripe='#212121'; }
+    else if (txt === '1008')                         { fill='#FFF'; fg='#000'; }
+    else if (txt === '1018')                         { fill='#2E7D32'; fg='#FFF'; }
+    else if (txt.indexOf('10B21') >= 0)              { fill='#FFF'; fg='#000'; stripe='#7B1FA2'; }
+    else if (txt === '1038')                         { fill='#FFD600'; fg='#000'; }
+    else if (txt === '1033')                         { fill='#FFD600'; fg='#000'; stripe='#212121'; }
+    else if (txt === '1541')                         { fill='#FF6F00'; fg='#000'; }
+    else if (txt === '4140')                         { fill='#F06292'; fg='#000'; }
+    else if (txt === '1060')                         { fill='#0D47A1'; fg='#FFF'; }
+    else if (txt === '1055')                         { fill='#1565C0'; fg='#FFF'; stripe='#212121'; }
+    else if (txt === '1045')                         { fill='#C62828'; fg='#FFF'; }
+    else if (txt === '1006 REC')                     { fill='#FFF'; fg='#000'; stripe='#7B1FA2'; }
+    else if (txt === '1008 REC')                     { fill='#FFF'; fg='#000'; stripe='#212121'; }
+    else if (txt === '1018 REC')                     { fill='#2E7D32'; fg='#FFF'; stripe='#7B1FA2'; }
+    else if (txt.indexOf('INOX') >= 0 || txt.indexOf('304') >= 0) { fill='#00BCD4'; fg='#FFF'; }
+    if (txt === '—') return '<td style="text-align:center;color:#bbb;">—</td>';
+    var safe = 'fa' + txt.replace(/[^a-zA-Z0-9]/g,'') + Math.random().toString(36).slice(2,6);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24" style="width:64px;height:auto;">';
+    svg += '<rect width="80" height="24" rx="5" fill="' + fill + '" stroke="#000" stroke-width="1.2"/>';
+    if (stripe) {
+      svg += '<clipPath id="' + safe + '"><rect width="80" height="24" rx="5"/></clipPath>';
+      svg += '<polygon points="50,24 80,24 80,0" fill="' + stripe + '" clip-path="url(#' + safe + ')"/>';
+    }
+    svg += '<text x="36" y="17" font-family="Arial" font-weight="900" font-size="11" text-anchor="middle" fill="' + fg + '">' + txt + '</text>';
+    svg += '</svg>';
+    return '<td style="text-align:center;padding:2px 4px;">' + svg + '</td>';
+  }
+
+  // PESO PZA — con data-num para suma
+  if (col.key === 'peso_pza') {
+    var pv = parseFloat(r.peso_pza) || 0;
+    return '<td style="text-align:right;" data-num="' + pv + '">' + (pv > 0 ? pv.toFixed(4) : '—') + '</td>';
+  }
+  // PESO MERMA — siempre 0.0000
+  if (col.key === 'peso_merma') {
+    return '<td style="text-align:right;" data-num="0">0.0000</td>';
+  }
+  // PESO SIN MERMA = PESO - MERMA (MERMA=0)
+  if (col.key === 'peso_sin') {
+    var ps = parseFloat(r.peso_pza) || 0;
+    return '<td style="text-align:right;" data-num="' + ps + '">' + (ps > 0 ? ps.toFixed(4) : '—') + '</td>';
+  }
+  // Columnas MP — sumables aunque sin dato aún
+  if (col.key === 'mp_especif' || col.key === 'mp_kg_req' || col.key === 'mp_kg_usada' || col.key === 'mp_kg_fabric') {
+    return fprogMkSumable(col.key, 0, '—', 'text-align:center;color:#bbb;');
+  }
+
+  // Default
+  if (val === null || val === undefined) val = '';
+  return '<td style="text-align:' + col.align + ';">' + val + '</td>';
+}
+
+function fprogRenderTabla() {
+  var thead = document.getElementById('forja-prog-thead-row');
+  var tbody = document.getElementById('forja-prog-tbody');
+  if (!thead || !tbody) return;
+
+  // Columnas visibles según estado de grupos
+  var colsVisibles = FPROG_COLS.filter(function(c) {
+    if (c.grupo === 'inv'  && !fprog_invVisible)  return false;
+    if (c.grupo === 'prod' && !fprog_prodVisible) return false;
+    return true;
+  });
+
+  // ── Encabezados ──
+  var thHtml = '';
+  var iconTodo = fprog_todoExpandido
+    ? '<button class="btn-expand expandido" onclick="fprogToggleTodo(event)" title="Contraer todo">−</button>'
+    : '<button class="btn-expand" onclick="fprogToggleTodo(event)" title="Expandir todo">+</button>';
+  thHtml += '<th style="width:36px;text-align:center;background:#1e293b;position:sticky;top:0;z-index:10;border:1px solid #334155;">' + iconTodo + '</th>';
+
+  colsVisibles.forEach(function(col, idx) {
+    var c = col;
+    var hayFiltro = fprog_filtros[col.key] && fprog_filtros[col.key].size > 0;
+    var sortArrow = '';
+    if (fprog_orden.col === col.key) sortArrow = fprog_orden.dir === 'asc' ? '<span class="sort-arrow" style="color:#4ade80">▲</span>' : '<span class="sort-arrow" style="color:#f87171">▼</span>';
+    else if (fprog_segundoOrden.col === col.key) sortArrow = fprog_segundoOrden.dir === 'asc' ? '<span class="sort-arrow" style="color:#86efac;font-size:.55rem">▲</span>' : '<span class="sort-arrow" style="color:#fca5a5;font-size:.55rem">▼</span>';
+
+    // Botones de colapsar grupo
+    var extraBtn = '';
+    // Última col de grupo inv
+    if (fprog_invVisible && c.grupo === 'inv' && (idx + 1 >= colsVisibles.length || colsVisibles[idx+1].grupo !== 'inv')) {
+      extraBtn = '<button class="fprog-grupo-btn" onclick="fprogToggleInv(event)" title="Ocultar inventario">−</button>';
+    }
+    // Última col de grupo prod
+    if (fprog_prodVisible && c.grupo === 'prod' && (idx + 1 >= colsVisibles.length || colsVisibles[idx+1].grupo !== 'prod')) {
+      extraBtn = '<button class="fprog-grupo-btn" onclick="fprogToggleProd(event)" title="Ocultar producción">−</button>';
+    }
+
+    thHtml += '<th class="' + (hayFiltro ? 'filtrado' : '') + '"'
+      + ' onclick="fprogClickHeader(event,\'' + col.key + '\')">'
+      + '<div class="th-inner">'
+      + '<span class="filter-icon">▼</span>'
+      + col.label
+      + sortArrow
+      + extraBtn
+      + '</div>'
+      + '</th>';
+  });
+
+  if (!fprog_invVisible) {
+    thHtml += '<th style="width:32px;text-align:center;background:#1e293b;position:sticky;top:0;z-index:10;border:1px solid #334155;" onclick="event.stopPropagation()">'
+      + '<button class="fprog-grupo-btn" onclick="fprogToggleInv(event)" title="Mostrar inventario">+</button>'
+      + '</th>';
+  }
+  if (!fprog_prodVisible) {
+    thHtml += '<th style="width:32px;text-align:center;background:#1e293b;position:sticky;top:0;z-index:10;border:1px solid #334155;" onclick="event.stopPropagation()">'
+      + '<button class="fprog-grupo-btn" onclick="fprogToggleProd(event)" title="Mostrar producción">+</button>'
+      + '</th>';
+  }
+  thead.innerHTML = thHtml;
+
+  // ── Filas ──
+  var datosFiltrados = fprogGetDatosFiltrados();
+  var padres = datosFiltrados.filter(function(r) { return r.operacion == 10; });
+  var mapaHijas = {};
+  fprog_datosOriginales.forEach(function(r) {
+    if (r.operacion == 10) return;
+    var k = r.orden;
+    if (!mapaHijas[k]) mapaHijas[k] = [];
+    mapaHijas[k].push(r);
+  });
+
+  var totalCols = colsVisibles.length + 1 + (fprog_invVisible ? 0 : 1) + (fprog_prodVisible ? 0 : 1);
+  var tbHtml = '';
+
+  if (padres.length === 0) {
+    tbHtml = '<tr><td colspan="' + totalCols + '" style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">Sin registros</td></tr>';
+  } else {
+    padres.forEach(function(r) {
+      var ord = r.orden;
+      var expandido = fprog_expandidas.has(ord);
+      var hijas = mapaHijas[ord] || [];
+      var tieneHijas = hijas.length > 0;
+      var btnIcon = tieneHijas
+        ? (expandido
+            ? '<button class="btn-expand expandido" onclick="fprogToggleOrden(event,\'' + ord + '\')" title="Contraer">−</button>'
+            : '<button class="btn-expand" onclick="fprogToggleOrden(event,\'' + ord + '\')" title="Ver otros procesos">+</button>')
+        : '<span style="display:inline-block;width:22px;"></span>';
+
+      var clasesFila = r.sin_pedido_vivo ? ['fila-sin-pedido'] : [];
+      var claseAttr  = clasesFila.length ? ' class="' + clasesFila.join(' ') + '"' : '';
+      // Fila padre
+      tbHtml += '<tr' + claseAttr + '>';
+      tbHtml += '<td style="text-align:center;vertical-align:middle;">' + btnIcon + '</td>';
+      colsVisibles.forEach(function(col) {
+        tbHtml += fprogCeldaValor(col, r);
+      });
+      if (!fprog_invVisible)  tbHtml += '<td></td>';
+      if (!fprog_prodVisible) tbHtml += '<td></td>';
+      tbHtml += '</tr>';
+
+      if (expandido && tieneHijas) {
+        hijas.forEach(function(h) {
+          tbHtml += '<tr class="fila-hija">';
+          tbHtml += '<td></td>';
+          colsVisibles.forEach(function(col) {
+            tbHtml += fprogCeldaValor(col, h);
+          });
+          if (!fprog_invVisible)  tbHtml += '<td></td>';
+          if (!fprog_prodVisible) tbHtml += '<td></td>';
+          tbHtml += '</tr>';
+        });
+      }
+    });
+  }
+  tbody.innerHTML = tbHtml;
+  fprogActualizarStatusTotal();
+}
+
+function fprogToggleOrden(event, orden) {
+  event.stopPropagation();
+  if (fprog_expandidas.has(orden)) fprog_expandidas.delete(orden);
+  else fprog_expandidas.add(orden);
+  fprogRenderTabla();
+}
+
+function fprogToggleTodo(event) {
+  event.stopPropagation();
+  fprog_todoExpandido = !fprog_todoExpandido;
+  if (fprog_todoExpandido) {
+    fprogGetDatosFiltrados().forEach(function(r) {
+      if (r.operacion == 10) fprog_expandidas.add(r.orden);
+    });
+  } else {
+    fprog_expandidas.clear();
+  }
+  fprogRenderTabla();
+}
+
+function fprogToggleInv(event) {
+  event.stopPropagation();
+  fprog_invVisible = !fprog_invVisible;
+  fprogRenderTabla();
+}
+
+function fprogToggleProd(event) {
+  event.stopPropagation();
+  fprog_prodVisible = !fprog_prodVisible;
+  fprogRenderTabla();
+}
+
+/* ── Zoom tabla ── */
+var fprog_zoomNiveles = [100, 80, 60, 50];
+var fprog_zoomIdx = 0;
+
+function fprogCiclarZoom() {
+  fprog_zoomIdx = (fprog_zoomIdx + 1) % fprog_zoomNiveles.length;
+  var pct   = fprog_zoomNiveles[fprog_zoomIdx];
+  var scale = pct / 100;
+  var wrap  = document.getElementById('forja-prog-tbl-wrap');
+  var btn   = document.getElementById('forja-zoom-btn');
+  if (wrap) {
+    wrap.style.transform       = 'scale(' + scale + ')';
+    wrap.style.transformOrigin = 'top left';
+    // Ajustar altura del contenedor para que no quede espacio vacío
+    // Al escalar, la altura visual = altura real × scale, pero el flujo reserva altura real
+    // Forzamos height del wrapper para que el scroll respete la altura escalada
+    if (pct === 100) {
+      wrap.style.height = '';  // restaurar natural
+    } else {
+      // Esperar un frame para que el DOM calcule scrollHeight tras el scale
+      requestAnimationFrame(function() {
+        var tbl = document.getElementById('forja-prog-tbl');
+        if (tbl) {
+          var alturaEscalada = tbl.offsetHeight * scale;
+          wrap.style.height = alturaEscalada + 'px';
+        }
+      });
+    }
+  }
+  if (btn) btn.textContent = '🔍 ' + pct + '%';
+}
+
+/* ── Selección de celdas numéricas ── */
+// Columnas que permiten selección para suma/promedio/conteo
+var FPROG_COLS_SUMABLES = {
+  'cantidad':1,'backorder':1,'minimo':1,'maximo':1,'existencia':1,
+  'mp_especif':1,'mp_kg_req':1,'mp_kg_usada':1,'mp_kg_fabric':1
+};
+
+var fprog_celdasSelec = []; // array de { valor, tdEl }
+
+function fprogClickCelda(event, colKey, valor) {
+  event.stopPropagation();
+  var td = event.currentTarget;
+
+  if (event.ctrlKey || event.metaKey) {
+    // Ctrl+clic: toggle celda individual
+    var idx = fprog_celdasSelec.findIndex(function(c){ return c.tdEl === td; });
+    if (idx > -1) {
+      td.classList.remove('fprog-celda-selec');
+      fprog_celdasSelec.splice(idx, 1);
+    } else {
+      td.classList.add('fprog-celda-selec');
+      fprog_celdasSelec.push({ valor: parseFloat(valor) || 0, tdEl: td });
+    }
+  } else {
+    // Clic simple: limpiar todo y seleccionar solo esta celda
+    fprogLimpiarSeleccion();
+    td.classList.add('fprog-celda-selec');
+    fprog_celdasSelec.push({ valor: parseFloat(valor) || 0, tdEl: td });
+  }
+  fprogActualizarStatusBar();
+}
+
+function fprogLimpiarSeleccion() {
+  fprog_celdasSelec.forEach(function(c) {
+    if (c.tdEl) c.tdEl.classList.remove('fprog-celda-selec');
+  });
+  fprog_celdasSelec = [];
+  fprogActualizarStatusBar();
+}
+
+function fprogActualizarStatusBar() {
+  var wrap    = document.getElementById('fsb-selec-wrap');
+  var selecV  = document.getElementById('fsb-selec-val');
+  var sumaV   = document.getElementById('fsb-suma-val');
+  var promV   = document.getElementById('fsb-prom-val');
+
+  if (fprog_celdasSelec.length === 0) {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+
+  var cnt  = fprog_celdasSelec.length;
+  var suma = fprog_celdasSelec.reduce(function(acc, c){ return acc + c.valor; }, 0);
+  var prom = suma / cnt;
+
+  if (selecV) selecV.textContent = cnt;
+  if (sumaV)  sumaV.textContent  = 'Σ ' + fprogFmtNum(suma);
+  if (promV)  promV.textContent  = '⌀ ' + fprogFmtNum(Math.round(prom));
+}
+
+function fprogActualizarStatusTotal() {
+  var el = document.getElementById('fsb-total-val');
+  if (!el) return;
+  var padres = fprogGetDatosFiltrados().filter(function(r){ return r.operacion == 10; });
+  el.textContent = padres.length;
+}
+
+var _fprogDropActivo = null;
+function fprogClickHeader(event, colKey) {
+  event.stopPropagation();
+  // Cerrar dropdown si el mismo ya está abierto
+  if (_fprogDropActivo === colKey) {
+    fprogCerrarDrop();
+    return;
+  }
+  fprogCerrarDrop();
+  _fprogDropActivo = colKey;
+  fprogAbrirDrop(event.currentTarget, colKey);
+}
+
+function fprogCerrarDrop() {
+  var old = document.getElementById('fprog-drop');
+  if (old) old.remove();
+  _fprogDropActivo = null;
+}
+
+function fprogAbrirDrop(thEl, colKey) {
+  var datos = fprog_datosOriginales;
+  // Valores únicos de la columna (sin filtro de esa columna para mostrar todos posibles)
+  var valoresSet = {};
+  datos.forEach(function(r) {
+    var v = String(r[colKey] == null ? '' : r[colKey]);
+    valoresSet[v] = true;
+  });
+  var valoresOrdenados = Object.keys(valoresSet).sort(function(a,b){
+    var na=parseFloat(a),nb=parseFloat(b);
+    if(!isNaN(na)&&!isNaN(nb)) return na-nb;
+    return a.localeCompare(b,'es',{sensitivity:'base'});
+  });
+
+  var activos = fprog_filtros[colKey] ? fprog_filtros[colKey] : new Set(valoresOrdenados);
+  var todosActivos = (activos.size === valoresOrdenados.length);
+
+  var drop = document.createElement('div');
+  drop.id = 'fprog-drop';
+  drop.className = 'fprog-filter-drop';
+
+  // Posicionar
+  var rect = thEl.getBoundingClientRect();
+  drop.style.top = (rect.bottom + 2) + 'px';
+  drop.style.left = Math.min(rect.left, window.innerWidth - 290) + 'px';
+
+  // Construir HTML
+  var itemsHtml = '';
+  // Seleccionar/Deseleccionar todos
+  itemsHtml += '<div class="fd-item" onclick="fprogToggleAllItems(\'' + colKey + '\')" id="fd-item-todos">'
+    + '<input type="checkbox" id="fd-chk-todos" ' + (todosActivos ? 'checked' : '') + ' onclick="event.stopPropagation()">'
+    + '<span style="font-weight:800">(Seleccionar todo)</span>'
+    + '</div>';
+  valoresOrdenados.forEach(function(v) {
+    var chk = activos.has(v) ? 'checked' : '';
+    var vEsc = v.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    itemsHtml += '<div class="fd-item" onclick="fprogToggleItem(\'' + colKey + '\',\'' + vEsc + '\')">'
+      + '<input type="checkbox" ' + chk + ' onclick="event.stopPropagation()" data-val="' + vEsc + '">'
+      + '<span>' + (v === '' ? '(vacío)' : v) + '</span>'
+      + '</div>';
+  });
+
+  drop.innerHTML =
+    '<div class="fd-search"><span>🔍</span><input type="text" placeholder="Buscar..." oninput="fprogFiltrarDropSearch(this.value,\'' + colKey + '\')" id="fd-search-inp"></div>'
+    + '<div class="fd-sort">'
+    + '<button onclick="fprogOrdenar(\'' + colKey + '\',\'asc\')"><span style="color:#4ade80">▲</span> Asc</button>'
+    + '<button onclick="fprogOrdenar(\'' + colKey + '\',\'desc\')"><span style="color:#f87171">▼</span> Desc</button>'
+    + '</div>'
+    + '<div class="fd-list" id="fd-list-items">' + itemsHtml + '</div>'
+    + '<div class="fd-actions">'
+    + '<button class="fd-ok" onclick="fprogAplicarFiltro(\'' + colKey + '\')">Aceptar</button>'
+    + '<button class="fd-cancel" onclick="fprogCerrarDrop()">Cancelar</button>'
+    + '</div>';
+
+  // Guardar estado temporal
+  drop._colKey = colKey;
+  drop._activos = new Set(activos);
+  drop._todosValues = valoresOrdenados;
+
+  document.body.appendChild(drop);
+
+  // Cerrar si clic fuera
+  setTimeout(function() {
+    document.addEventListener('click', fprogOutsideDrop, true);
+  }, 100);
+}
+
+function fprogOutsideDrop(e) {
+  var drop = document.getElementById('fprog-drop');
+  if (drop && !drop.contains(e.target)) {
+    fprogCerrarDrop();
+    document.removeEventListener('click', fprogOutsideDrop, true);
+  }
+}
+
+function fprogFiltrarDropSearch(q, colKey) {
+  var list = document.getElementById('fd-list-items');
+  if (!list) return;
+  var items = list.querySelectorAll('.fd-item:not(:first-child)');
+  var ql = q.toLowerCase();
+  items.forEach(function(item) {
+    var txt = item.querySelector('span').textContent.toLowerCase();
+    item.style.display = txt.includes(ql) ? '' : 'none';
+  });
+}
+
+function fprogToggleAllItems(colKey) {
+  var drop = document.getElementById('fprog-drop');
+  if (!drop) return;
+  var chkTodos = document.getElementById('fd-chk-todos');
+  var items = document.querySelectorAll('#fd-list-items .fd-item:not(:first-child) input[type=checkbox]');
+  var nuevoEstado = !chkTodos.checked;
+  chkTodos.checked = nuevoEstado;
+  if (nuevoEstado) {
+    drop._activos = new Set(drop._todosValues);
+  } else {
+    drop._activos = new Set();
+  }
+  items.forEach(function(chk) {
+    chk.checked = nuevoEstado;
+  });
+}
+
+function fprogToggleItem(colKey, val) {
+  var drop = document.getElementById('fprog-drop');
+  if (!drop) return;
+  var items = document.querySelectorAll('#fd-list-items .fd-item:not(:first-child)');
+  items.forEach(function(item) {
+    var sp = item.querySelector('span');
+    var chk = item.querySelector('input');
+    var itemVal = sp.textContent === '(vacío)' ? '' : sp.textContent;
+    if (itemVal === val) {
+      chk.checked = !chk.checked;
+      if (chk.checked) drop._activos.add(val);
+      else drop._activos.delete(val);
+    }
+  });
+  // Actualizar checkbox todos
+  var chkTodos = document.getElementById('fd-chk-todos');
+  if (chkTodos) chkTodos.checked = (drop._activos.size === drop._todosValues.length);
+}
+
+function fprogAplicarFiltro(colKey) {
+  var drop = document.getElementById('fprog-drop');
+  if (!drop) return;
+  var activos = drop._activos;
+  var todos = drop._todosValues;
+  if (activos.size === todos.length) {
+    delete fprog_filtros[colKey];
+  } else {
+    fprog_filtros[colKey] = new Set(activos);
+  }
+  // Al cambiar filtros, colapsar todo para coherencia visual
+  fprog_expandidas.clear();
+  fprog_todoExpandido = false;
+  fprogCerrarDrop();
+  document.removeEventListener('click', fprogOutsideDrop, true);
+  fprogRenderTabla();
+}
+
+function fprogOrdenar(colKey, dir) {
+  // Si ya hay un orden activo diferente a esta col, pasa a segundo orden
+  if (fprog_orden.col && fprog_orden.col !== colKey) {
+    fprog_segundoOrden = { col: fprog_orden.col, dir: fprog_orden.dir };
+  } else if (fprog_orden.col === colKey) {
+    // mismo col, mantener segundo orden
+  } else {
+    fprog_segundoOrden = { col: null, dir: 'asc' };
+  }
+  fprog_orden = { col: colKey, dir: dir };
+  fprogCerrarDrop();
+  document.removeEventListener('click', fprogOutsideDrop, true);
+  fprogRenderTabla();
+}
+
 function planifToggleProc(p) {
   var idx = planif_seleccionProcesos.indexOf(p);
   if (idx > -1) { planif_seleccionProcesos.splice(idx, 1); document.getElementById('planif-proc-'+p).classList.remove('selected'); }
@@ -6263,6 +7146,11 @@ function planifToggleProc(p) {
 }
 
 function planifSeleccionarSoloProceso(p) {
+  // Si es FORJA, abrir vista especial de Forja
+  if (p === 'FORJA') {
+    planifAbrirVistaForja();
+    return;
+  }
   // Deseleccionar todos los demás
   planif_seleccionProcesos = [];
   document.querySelectorAll('#planif-procContainer .proc-card').forEach(function(el) {
@@ -9666,6 +10554,31 @@ function planifAbrirModalProdPlanif(idOrden, nombreOrden) {
 
 function planifCerrarModalProdPlanif() { document.getElementById('planif-modalProdPlanif').style.display = 'none'; }
 
+function planifEliminarRegistroProd(idReg, filaHoja, producido) {
+  sConfirm(
+    '¿Eliminar este registro de ' + Math.round(Number(producido)).toLocaleString() + ' kg? Esta acción no se puede deshacer.',
+    '🗑️ Eliminar Registro',
+    'Sí, eliminar',
+    'Cancelar'
+  ).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoader('Eliminando registro...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoader();
+        var r = typeof res === 'string' ? JSON.parse(res) : res;
+        if (!r.success) { sAlert('Error al eliminar: ' + (r.msg || 'Error desconocido'), 'error'); return; }
+        sAlert('Registro eliminado. Estado de orden: ' + r.nuevoEstado, 'success');
+        planifAbrirModalProdPlanif(window.planif_ordenActiva, planif_ProdCtx.nombreOrden);
+      })
+      .withFailureHandler(function(e) {
+        hideLoader();
+        sAlert('Error: ' + e, 'error');
+      })
+      .eliminarRegistroProduccion(idReg, filaHoja);
+  });
+}
+
 function planifRenderProdPlanif(data) {
   if (!data.success || !data.registros) {
     document.getElementById('planif-cuerpoProdPlanif').innerHTML = '<p style="color:red;padding:15px;">Error: ' + (data.msg||'Sin datos') + '</p>'; return;
@@ -9700,8 +10613,11 @@ function planifRenderProdPlanif(data) {
       '<td style="padding:6px;text-align:right;">'+Math.round(Number(r.pesoI)||0).toLocaleString()+'</td>' +
       '<td style="padding:6px;text-align:right;">'+Math.round(Number(r.pesoF)||0).toLocaleString()+'</td>' +
       '<td style="padding:6px;text-align:right;">'+Math.round(Number(r.pesoTina)||0).toLocaleString()+'</td>' +
-      '<td style="padding:6px;text-align:right;font-weight:900;color:#2e7d32;">'+Math.round(Number(r.producido)||0).toLocaleString()+'</td>' +
-      '<td style="padding:4px;text-align:center;"><button onclick="planifAbrirTransPlanif(\''+r.id+'\','+r.producido+',\''+ordenIdActual+'\')" style="background:#1565c0;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;" title="Transferir">🔄</button></td>' +
+      '<td class="planif-cel-num" data-col="producido" data-val="'+Math.round(Number(r.producido)||0)+'" style="padding:6px;text-align:right;font-weight:900;color:#2e7d32;user-select:none;cursor:cell;">'+Math.round(Number(r.producido)||0).toLocaleString()+'</td>' +
+      '<td style="padding:4px;text-align:center;display:flex;gap:3px;justify-content:center;align-items:center;">' +
+        '<button onclick="planifAbrirTransPlanif(\''+r.id+'\','+r.producido+',\''+ordenIdActual+'\')" style="background:#1565c0;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;" title="Transferir">🔄</button>' +
+        '<button onclick="planifEliminarRegistroProd(\''+r.id+'\','+r.filaHoja+','+r.producido+')" style="background:#c62828;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;" title="Eliminar registro">🗑️</button>' +
+      '</td>' +
       '</tr>';
   });
   html +=
@@ -9710,7 +10626,99 @@ function planifRenderProdPlanif(data) {
       '<td style="padding:8px;text-align:right;color:#2e7d32;">'+Math.round(totalProd).toLocaleString()+'</td>' +
       '<td></td>' +
     '</tr></tbody></table></div>';
+  html +=
+    '<div id="planif-barraSeleccion" style="display:none;position:sticky;bottom:0;background:#1a237e;color:white;padding:8px 16px;border-radius:0 0 6px 6px;font-size:13px;font-weight:700;display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
+      '<span style="opacity:0.8;font-size:11px;">📊 SELECCIÓN:</span>' +
+      '<span id="planif-selCount" style="background:rgba(255,255,255,0.15);padding:2px 8px;border-radius:4px;">0 filas</span>' +
+      '<span style="opacity:0.6;font-size:11px;">|</span>' +
+      '<span style="opacity:0.8;font-size:11px;">Suma Prod:</span><span id="planif-selProd" style="color:#ffcc80;font-size:16px;">0</span>' +
+      '<span style="opacity:0.6;font-size:11px;">|</span>' +
+      '<span style="opacity:0.8;font-size:11px;">Promedio:</span><span id="planif-selProm" style="color:#a5d6a7;font-size:16px;">0</span>' +
+      '<button onclick="planifLimpiarSeleccionProd()" style="margin-left:auto;background:rgba(255,255,255,0.2);color:white;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:11px;">✖ Limpiar</button>' +
+    '</div>';
+
   document.getElementById('planif-cuerpoProdPlanif').innerHTML = html;
+  planifIniciarSeleccionProd();
+}
+
+function planifIniciarSeleccionProd() {
+  var planif_selDragging = false;
+  var planif_selColActiva = null;
+  var planif_selFilasSet = new Set();
+
+  function actualizarBarraSeleccion() {
+    var count = planif_selFilasSet.size;
+    var sumP = 0;
+    document.querySelectorAll('#planif-cuerpoProdPlanif .planif-cel-num').forEach(function(cel) {
+      var tr = cel.closest('tr');
+      if (!tr || !planif_selFilasSet.has(tr.id)) return;
+      sumP += Number(cel.dataset.val) || 0;
+    });
+    var barra = document.getElementById('planif-barraSeleccion');
+    if (!barra) return;
+    if (count === 0) { barra.style.display = 'none'; return; }
+    barra.style.display = 'flex';
+    document.getElementById('planif-selCount').innerText = count + (count === 1 ? ' fila' : ' filas');
+    document.getElementById('planif-selProd').innerText  = sumP.toLocaleString();
+    document.getElementById('planif-selProm').innerText  = Math.round(sumP / count).toLocaleString();
+  }
+
+  function resaltarFila(tr, activo) {
+    if (!tr) return;
+    if (activo) {
+      tr.querySelectorAll('.planif-cel-num').forEach(function(c) {
+        c.style.background = '#bbdefb';
+      });
+    } else {
+      tr.querySelectorAll('.planif-cel-num').forEach(function(c) {
+        c.style.background = '';
+      });
+    }
+  }
+
+  document.querySelectorAll('#planif-cuerpoProdPlanif .planif-cel-num').forEach(function(cel) {
+    cel.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      planif_selDragging = true;
+      planif_selColActiva = cel.dataset.col;
+      var tr = cel.closest('tr');
+      if (!tr) return;
+      var trId = tr.id;
+      if (planif_selFilasSet.has(trId)) {
+        planif_selFilasSet.delete(trId);
+        resaltarFila(tr, false);
+      } else {
+        planif_selFilasSet.add(trId);
+        resaltarFila(tr, true);
+      }
+      actualizarBarraSeleccion();
+    });
+
+    cel.addEventListener('mouseenter', function(e) {
+      if (!planif_selDragging) return;
+      if (cel.dataset.col !== planif_selColActiva) return;
+      var tr = cel.closest('tr');
+      if (!tr) return;
+      var trId = tr.id;
+      if (!planif_selFilasSet.has(trId)) {
+        planif_selFilasSet.add(trId);
+        resaltarFila(tr, true);
+        actualizarBarraSeleccion();
+      }
+    });
+  });
+
+  document.addEventListener('mouseup', function planifMouseUpProd() {
+    planif_selDragging = false;
+  });
+}
+
+function planifLimpiarSeleccionProd() {
+  document.querySelectorAll('#planif-cuerpoProdPlanif .planif-cel-num').forEach(function(c) {
+    c.style.background = '';
+  });
+  var barra = document.getElementById('planif-barraSeleccion');
+  if (barra) barra.style.display = 'none';
 }
 
 function planifToggleTodosPlanif(checked) {
@@ -10801,7 +11809,7 @@ function loadProgInter() {
       '#pi-panel .pi-ruta-paso { background:#0f1e2d; border-radius:7px; padding:12px; margin-bottom:10px; border-left:4px solid #5c6bc0; }',
       '#pi-panel .pi-ruta-paso.translape { border-left-color:#ff9800; }',
       '#pi-panel .pi-ruta-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; font-size:12px; color:#b0bec5; }',
-      '#pi-panel .pi-ej-row { display:grid; grid-template-columns:28px 1fr 1fr 1fr 1.2fr; gap:8px; padding:8px; border-bottom:1px solid #263238; align-items:center; font-size:12px; }',
+      '#pi-panel .pi-ej-row { display:grid; grid-template-columns:28px 1fr 1fr 1fr 1.2fr 0.8fr; gap:8px; padding:8px; border-bottom:1px solid #263238; align-items:center; font-size:12px; }',
       '#pi-panel .pi-ej-row.head { background:#0f3460; font-weight:900; color:#90caf9; }',
       '#pi-panel .pi-before-val { color:#ef9a9a; }',
       '#pi-panel .pi-after-val  { color:#a5d6a7; font-weight:900; }',
@@ -11967,17 +12975,12 @@ function pi_abrirEjecucion(){
             '<span><b style="color:#b0bec5;">Mín:</b> '+fmt(c.minimo)+'</span>'+
             '<span><b style="color:#b0bec5;">Máx:</b> '+fmt(c.maximo)+'</span>'+
           '</div>'+
-          '<div class="pi-ej-row head"><div></div><div>PEDIDO</div><div>ANTES</div><div>DESPUÉS</div><div>RAZÓN</div></div>'+
+          '<div class="pi-ej-row head"><div></div><div>PEDIDO</div><div>ANTES</div><div>DESPUÉS</div><div>RAZÓN</div><div>ORDEN</div></div>'+
           '<div class="pi-ej-row"><div></div><div style="font-weight:900;color:#ffe082;">'+(c.pedidoFolio||c.pedidoId)+'</div>'+
             '<div class="pi-before-val">'+fmt(c.cantPedAntes)+'</div>'+
             '<div class="pi-after-val">'+fmt(c.cantPedDespues)+'</div>'+
-            '<div class="pi-razon-lbl">Cantidad pedido</div></div>';
-        c.ordenes.forEach(function(o){
-          html+='<div class="pi-ej-row"><div></div><div style="font-size:11px;color:#cfd8dc;">Ord '+o.idOrden+'</div>'+
-            '<div class="pi-before-val">'+fmt(o.solAntes)+'/'+o.estadoAntes+'</div>'+
-            '<div class="pi-after-val">'+fmt(o.solDespues)+'/'+o.estadoDespues+'</div>'+
-            '<div class="pi-razon-lbl">'+o.razon+'</div></div>';
-        });
+            '<div class="pi-razon-lbl">Cantidad pedido</div>'+
+            '<div style="font-size:12px;color:#ffe082;font-weight:900;">'+(c.ordenElegidaKey||'—')+'</div></div>';
         html+='</div>';
       });
       document.getElementById("pi-ejBody").innerHTML=html;
@@ -11989,13 +12992,39 @@ function pi_abrirEjecucion(){
 window.pi_abrirEjecucion = pi_abrirEjecucion;
 function pi_aplicarEjecucion(){
   var sel=pi_ejData.filter(function(c,i){var x=document.getElementById("pi-ej-"+i);return x&&x.checked;});
-  if(!sel.length){alert("Sin cambios seleccionados.");return;}
-  if(!confirm("¿Aplicar "+sel.length+" cambio(s)?")) return;
-  pi_cerrarModal("pi-modalEj"); showLoader("Aplicando...");
-  google.script.run
-    .withSuccessHandler(function(r){hideLoader();alert(r&&r.success?("✔ "+r.msg):("Error: "+(r?r.msg:"")));})
-    .withFailureHandler(function(e){hideLoader();alert(e);})
-    .aplicarActualizacionEjecucion(sel);
+  if(!sel.length){
+    Swal.fire({icon:'warning',title:'Sin selección',text:'No hay cambios seleccionados.',confirmButtonColor:'#e65100'});
+    return;
+  }
+  Swal.fire({
+    icon:'question',
+    title:'¿Aplicar cambios?',
+    text:'Se actualizarán '+sel.length+' código(s) con sus pedidos y órdenes.',
+    showCancelButton:true,
+    confirmButtonColor:'#e65100',
+    cancelButtonColor:'#546e7a',
+    confirmButtonText:'Sí, aplicar',
+    cancelButtonText:'Cancelar'
+  }).then(function(result){
+    if(!result.isConfirmed) return;
+    pi_cerrarModal("pi-modalEj");
+    showLoader("Aplicando cambios...");
+    google.script.run
+      .withSuccessHandler(function(r){
+        hideLoader();
+        var res=(typeof r==='string')?JSON.parse(r):r;
+        if(res&&res.success){
+          Swal.fire({icon:'success',title:'¡Listo!',text:res.msg,confirmButtonColor:'#2e7d32'});
+        } else {
+          Swal.fire({icon:'error',title:'Error',text:res?res.msg:'Error desconocido',confirmButtonColor:'#c62828'});
+        }
+      })
+      .withFailureHandler(function(e){
+        hideLoader();
+        Swal.fire({icon:'error',title:'Error del servidor',text:String(e),confirmButtonColor:'#c62828'});
+      })
+      .aplicarActualizacionEjecucion(sel);
+  });
 }
 window.pi_aplicarEjecucion = pi_aplicarEjecucion;
 
