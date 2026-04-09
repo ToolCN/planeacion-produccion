@@ -5895,7 +5895,7 @@ function loadPlanificador() {
 .fv-tab-pane.activo { display:flex; }
 
 /* Tabla Programador Forja */
-#forja-prog-wrap { flex:1; overflow:auto; padding:0; }
+#forja-prog-wrap { flex:1; overflow:auto; padding:0; position:relative; }
 #forja-prog-tbl { width:100%; border-collapse:collapse; font-size:.8rem; font-family:'Roboto',sans-serif; }
 #forja-prog-tbl thead th { background:#1e293b; color:white; padding:9px 10px; font-weight:800; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; position:sticky; top:0; z-index:10; white-space:nowrap; border:1px solid #334155; cursor:pointer; user-select:none; }
 #forja-prog-tbl thead th .th-inner { display:flex; align-items:center; gap:6px; justify-content:center; }
@@ -5906,6 +5906,7 @@ function loadPlanificador() {
 #forja-prog-tbl tbody tr:nth-child(even) { background:#dde3ed; }
 #forja-prog-tbl tbody tr:nth-child(odd) { background:#ffffff; }
 #forja-prog-tbl tbody tr:hover td { background:#fef9c3 !important; }
+#forja-prog-tbl td.fprog-nav-celda { background:#fef9c3 !important; outline:2px solid #f59e0b; outline-offset:-2px; }
 #forja-prog-tbl tbody td { padding:7px 10px; border:1px solid #e2e8f0; text-align:center; white-space:nowrap; }
 
 /* Botón expandir orden */
@@ -5947,8 +5948,41 @@ function loadPlanificador() {
 
 /* Zoom tabla Forja */
 #forja-zoom-btn { background:rgba(255,255,255,.15); color:white; border:1px solid rgba(255,255,255,.3); border-radius:7px; padding:5px 14px; font-size:.78rem; font-weight:900; cursor:pointer; display:flex; align-items:center; gap:5px; transition:background .15s; white-space:nowrap; margin-left:auto; }
+#forja-refresh-btn { background:rgba(255,255,255,.15); color:white; border:1px solid rgba(255,255,255,.3); border-radius:7px; padding:5px 12px; font-size:.78rem; font-weight:900; cursor:pointer; display:flex; align-items:center; gap:5px; transition:background .15s; white-space:nowrap; }
+#forja-refresh-btn:hover { background:rgba(255,255,255,.28); }
+#forja-refresh-btn .fprog-refresh-icon { display:inline-block; font-style:normal; transition:transform .15s; }
+#forja-refresh-btn.cargando .fprog-refresh-icon { animation:spin .7s linear infinite; }
 #forja-zoom-btn:hover { background:rgba(255,255,255,.28); }
-#forja-prog-tbl-wrap { transform-origin: top left; transition: transform .2s; }
+/* ── CAPTURA FORJA (fpc_) ── */
+#fpc-table-container::-webkit-scrollbar { width:7px; height:7px; }
+#fpc-table-container::-webkit-scrollbar-track { background:#f1f1f1; }
+#fpc-table-container::-webkit-scrollbar-thumb { background:#b0bec5; border-radius:4px; }
+#fpc-table-container::-webkit-scrollbar-thumb:hover { background:#546e7a; }
+#fpc-tablaProd td { border-bottom:1px solid #eee; padding:5px; vertical-align:middle; }
+#fpc-tablaProd tr:nth-child(even) td { background:#f9fafb; }
+#fpc-tablaProd tr:hover td { background:#fef9c3 !important; }
+#fpc-tablaProd tr.fpc-modified td { background:#fff9c4; }
+#fpc-tablaProd tr.fpc-deleted td { background:#ffcdd2 !important; color:#b71c1c; }
+#fpc-tablaProd tr.fpc-deleted input, #fpc-tablaProd tr.fpc-deleted select { text-decoration:line-through; pointer-events:none; opacity:0.6; }
+#fpc-tablaProd tr.fpc-fila-activa td { background:#ccff00 !important; font-weight:900 !important; }
+.fpc-tbl-input { width:100%; padding:5px; border:1px solid transparent; background:transparent; font-weight:bold; box-sizing:border-box; font-size:12px; }
+.fpc-tbl-input:focus { border:1px solid #1976d2; background:white; outline:none; }
+.fpc-num-input { text-align:right; }
+.fpc-filter-item { display:flex; align-items:center; gap:6px; padding:4px 0; font-size:13px; cursor:pointer; }
+.fpc-th-filtrado { background:#fdd835 !important; color:black !important; }
+#fpc-fotobar { display:none; background:rgba(255,255,255,.12); padding:0 10px; border-left:1px solid rgba(255,255,255,.2); }
+/* Toasts captura */
+#fpc-toast-lotes { display:none; position:fixed; bottom:24px; right:24px; background:#37474f; color:white; padding:10px 18px; border-radius:8px; font-size:12px; font-weight:700; z-index:9000; align-items:center; gap:10px; box-shadow:0 4px 14px rgba(0,0,0,.45); }
+#fpc-toast-maqs  { display:none; position:fixed; bottom:64px; right:24px; background:#1a3a5c; color:white; padding:10px 18px; border-radius:8px; font-size:12px; font-weight:700; z-index:9000; align-items:center; gap:10px; box-shadow:0 4px 14px rgba(0,0,0,.45); }
+
+/* ── PLAN DIARIO ── */
+.fpd-maq-btn { padding:3px 10px; border-radius:5px; border:1px solid #9fa8da; background:#e8eaf6; color:#1a237e; font-size:.72rem; font-weight:800; cursor:pointer; transition:all .15s; }
+.fpd-maq-btn.active { background:#1a237e; color:white; border-color:#1a237e; }
+.fpd-ghost { opacity:0.4; background:#c8ebfb !important; }
+#forja-reset-btn { background:rgba(239,68,68,.25); color:#fca5a5; border:1px solid rgba(239,68,68,.4); border-radius:7px; padding:5px 12px; font-size:.78rem; font-weight:900; cursor:pointer; display:none; align-items:center; gap:5px; transition:all .15s; white-space:nowrap; }
+#forja-reset-btn:hover { background:rgba(239,68,68,.45); color:white; }
+#forja-prog-tbl-wrap { transform-origin: top left; transition: transform .2s; min-width:100%; }
+#forja-prog-tbl thead th { position: sticky; top: 0; z-index: 20; }
 
 /* Selección de celdas numéricas */
 #forja-prog-tbl td.fprog-celda-sumable { cursor:cell; }
@@ -6254,7 +6288,19 @@ function loadPlanificador() {
       <button class="ftab" onclick="planifForjaIrTab('plandiario')" id="ftab-plandiario">Plan Diario</button>
       <button class="ftab" onclick="planifForjaIrTab('captura')" id="ftab-captura">Captura</button>
     </div>
+    <!-- Controles CAPTURA (visibles solo en tab captura) -->
+    <div id="fpc-topbar-ctrl" style="display:none;align-items:center;gap:8px;padding:0 12px;">
+      <label style="color:rgba(255,255,255,.7);font-size:.72rem;font-weight:700;white-space:nowrap;">INICIO</label>
+      <input type="date" id="fpc-fechaIni" style="background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:4px 8px;font-size:.78rem;font-weight:700;outline:none;">
+      <label style="color:rgba(255,255,255,.7);font-size:.72rem;font-weight:700;white-space:nowrap;">FIN</label>
+      <input type="date" id="fpc-fechaFin" style="background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:4px 8px;font-size:.78rem;font-weight:700;outline:none;">
+      <button id="fpc-btnProcesa" onclick="fpc_procesar()" style="background:#ef5350;color:white;border:none;border-radius:7px;padding:5px 16px;font-size:.78rem;font-weight:900;cursor:pointer;white-space:nowrap;">⚡ PROCESA</button>
+    </div>
+    <!-- Botón EXPORTA PLAN (visible solo en tab plandiario) -->
+    <button id="fpd-btnExportaPlan" onclick="fpd_exportarPlanPDF()" style="display:none;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:5px 14px;font-size:.78rem;font-weight:900;cursor:pointer;white-space:nowrap;margin-right:4px;">📄 EXPORTA PLAN</button>
+    <button id="forja-reset-btn" onclick="fprogResetFiltrosOrden()" title="Quitar todos los filtros y ordenamientos">✕ Reset</button>
     <button id="forja-zoom-btn" onclick="fprogCiclarZoom()" title="Cambiar zoom de tabla">🔍 100%</button>
+    <button id="forja-refresh-btn" onclick="fprogRefresh()" title="Actualizar datos"><i class="fprog-refresh-icon">↻</i> Actualizar</button>
   </div>
   <div id="planif-forja-content">
     <!-- Pestaña 1: Programador -->
@@ -6272,22 +6318,118 @@ function loadPlanificador() {
     </div>
     <!-- Pestaña 2: Plan Diario -->
     <div class="fv-tab-pane" id="fpane-plandiario">
-      <div style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">Plan Diario — Próximamente</div>
+      <div id="fpd-filtros-bar" style="background:#1e293b;padding:8px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;border-bottom:2px solid #334155;">
+        <span style="color:#94a3b8;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Grupos:</span>
+        <button onclick="fpd_toggleTodosGrupos(true)"  style="background:#4ade80;color:#0f172a;border:none;border-radius:5px;padding:3px 10px;font-size:.72rem;font-weight:800;cursor:pointer;">TODAS</button>
+        <button onclick="fpd_toggleTodosGrupos(false)" style="background:#f87171;color:white;border:none;border-radius:5px;padding:3px 10px;font-size:.72rem;font-weight:800;cursor:pointer;">NINGUNA</button>
+        <div id="fpd-grupo-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      </div>
+      <div id="fpd-container" style="flex:1;overflow-y:auto;padding:12px;box-sizing:border-box;"></div>
     </div>
     <!-- Pestaña 3: Captura -->
-    <div class="fv-tab-pane" id="fpane-captura">
-      <div style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">Captura — Próximamente</div>
+    <div class="fv-tab-pane" id="fpane-captura" style="flex-direction:column;overflow:hidden;">
+      <!-- Barra resumen (igual que EDP) -->
+      <div id="fpc-summary-bar" style="display:none;background:#e3f2fd;border-bottom:1px solid #90caf9;padding:6px 14px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;flex-shrink:0;">
+        <div style="font-size:12px;color:#555;">Regs: <span style="font-size:14px;font-weight:900;color:#1565c0;" id="fpc-sumRegs">0</span></div>
+        <div style="font-size:12px;color:#555;">Prod: <span style="font-size:14px;font-weight:900;color:#1565c0;" id="fpc-sumProd">0</span></div>
+        <div style="font-size:12px;color:#555;">Hrs: <span style="font-size:14px;font-weight:900;color:#1565c0;" id="fpc-sumHrs">0</span></div>
+      </div>
+      <!-- Toolbar con filtros (igual que EDP paso 3) -->
+      <div id="fpc-toolbar" style="display:none;background:white;padding:6px 12px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+        <button style="background:#607d8b;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_limpiarFiltros()">🌪️ Limpiar Filtros</button>
+        <button style="background:#546e7a;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_undoAll()">↩️ Deshacer Todo</button>
+        <button style="background:#2e7d32;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_exportarExcel()">📊 EXCEL</button>
+      </div>
+      <!-- Tabla (misma estructura que EDP) -->
+      <div id="fpc-table-container" style="overflow-x:auto;overflow-y:auto;background:white;flex:1;min-height:0;">
+        <div id="fpc-placeholder" style="padding:60px;text-align:center;color:#94a3b8;font-weight:700;font-size:1rem;">
+          Selecciona un rango de fechas y presiona ⚡ PROCESA
+        </div>
+        <table id="fpc-tablaProd" style="display:none;width:100%;border-collapse:collapse;font-size:12px;min-width:1200px;">
+          <thead>
+            <tr>
+              <th onclick="fpc_abrirFiltro('fecha')"        id="fpc-th-fecha"       style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;">FECHA ▾</th>
+              <th onclick="fpc_abrirFiltro('turno')"        id="fpc-th-turno"       style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;width:50px;">TURNO ▾</th>
+              <th onclick="fpc_abrirFiltro('maquina')"      id="fpc-th-maquina"     style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;min-width:160px;">MÁQUINA ▾</th>
+              <th onclick="fpc_abrirFiltro('lote')"         id="fpc-th-lote"        style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;min-width:130px;">LOTE ▾</th>
+              <th onclick="fpc_abrirFiltro('operadorTxt')"  id="fpc-th-operadorTxt" style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;">OPERADOR ▾</th>
+              <th onclick="fpc_abrirFiltro('pesoI')"        id="fpc-th-pesoI"       style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;">P. INI ▾</th>
+              <th onclick="fpc_abrirFiltro('pesoF')"        id="fpc-th-pesoF"       style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;">P. FIN ▾</th>
+              <th onclick="fpc_abrirFiltro('pesoTina')"     id="fpc-th-pesoTina"    style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;">TINA ▾</th>
+              <th onclick="fpc_abrirFiltro('producido')"    id="fpc-th-producido"   style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;">PROD ▾</th>
+              <th onclick="fpc_abrirFiltro('horas')"        id="fpc-th-horas"       style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;width:50px;">HRS ▾</th>
+              <th onclick="fpc_abrirFiltro('sello')"        id="fpc-th-sello"       style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;width:80px;">SELLO ▾</th>
+              <th onclick="fpc_abrirFiltro('comentario')"   id="fpc-th-comentario"  style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid #424242;width:120px;">COM ▾</th>
+              <th style="background:#212121;color:white;padding:10px;text-align:left;position:sticky;top:0;z-index:10;white-space:nowrap;">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="fpc-tbodyProd"></tbody>
+        </table>
+      </div>
+      <!-- Botón guardar flotante -->
+      <button id="fpc-btnSaveAll" style="display:none;position:fixed;bottom:30px;right:30px;background:#d32f2f;color:white;padding:20px 40px;border-radius:50px;font-size:18px;font-weight:900;box-shadow:0 8px 20px rgba(0,0,0,0.5);border:2px solid white;cursor:pointer;z-index:1100;" onclick="fpc_guardarCambios()">💾 GUARDAR (<span id="fpc-lblCount">0</span>)</button>
+      <!-- Modal filtro (idéntico a EDP) -->
+      <div id="fpc-filterPopup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:2000;justify-content:center;align-items:center;background:rgba(0,0,0,0.4);">
+        <div style="background:white;border-radius:8px;width:300px;max-height:500px;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+          <div style="padding:10px;border-bottom:1px solid #eee;font-weight:bold;background:#f5f5f5;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;">
+            <span>Filtrar <span id="fpc-lblColumnaFiltro"></span></span>
+            <button onclick="fpc_cerrarFiltro()" style="border:none;background:none;font-weight:bold;cursor:pointer;">✕</button>
+          </div>
+          <div style="padding:5px;display:flex;gap:5px;">
+            <button style="background:#78909c;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_sortData('asc')">⬆ Asc</button>
+            <button style="background:#78909c;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_sortData('desc')">⬇ Desc</button>
+          </div>
+          <div style="padding:5px;"><input type="text" id="fpc-txtBuscarFiltro" onkeyup="fpc_filtrarOpciones(this.value)" style="width:100%;padding:5px;box-sizing:border-box;" placeholder="Buscar..."></div>
+          <div style="padding:5px;display:flex;gap:10px;justify-content:center;">
+            <button style="background:#90a4ae;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;" onclick="fpc_toggleOpciones(true)">Todas</button>
+            <button style="background:#90a4ae;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;" onclick="fpc_toggleOpciones(false)">Ninguna</button>
+          </div>
+          <div id="fpc-listaOpcionesFiltro" style="flex:1;overflow-y:auto;padding:10px;"></div>
+          <div style="padding:10px;text-align:right;background:#f5f5f5;border-radius:0 0 8px 8px;">
+            <button style="background:#1976d2;color:white;border:none;border-radius:4px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_aplicarFiltro()">Aplicar</button>
+          </div>
+        </div>
+      </div>
+      <!-- Modal transferencia (idéntico a EDP) -->
+      <div id="fpc-modalTrans" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);">
+        <div style="background:white;border-radius:8px;width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+          <div style="padding:12px 15px;background:#ef6c00;color:white;font-weight:900;border-radius:8px 8px 0 0;font-size:16px;">🔄 TRANSFERIR PRODUCCIÓN</div>
+          <div style="padding:16px;">
+            <div id="fpc-lblInfoTrans" style="background:#fff3e0;padding:10px;border-radius:6px;margin-bottom:14px;font-size:13px;color:#e65100;font-weight:700;"></div>
+            <div style="margin-bottom:14px;">
+              <label style="font-weight:900;font-size:13px;display:block;margin-bottom:6px;">MODO:</label>
+              <label style="display:block;margin-bottom:6px;cursor:pointer;"><input type="radio" name="fpc-modoTrans" value="TOTAL" checked onchange="fpc_actualizarModoTrans()"> &nbsp;Transferir TODO a otra orden</label>
+              <label style="display:block;cursor:pointer;"><input type="radio" name="fpc-modoTrans" value="PARCIAL" onchange="fpc_actualizarModoTrans()"> &nbsp;Transferir cantidad parcial</label>
+            </div>
+            <div id="fpc-divKgParcial" style="display:none;margin-bottom:14px;">
+              <label style="font-weight:900;font-size:13px;">KG A TRANSFERIR:</label>
+              <input type="number" id="fpc-numKgTrans" step="0.01" min="0.01" style="width:100%;padding:10px;border:2px solid #ef6c00;border-radius:6px;font-size:16px;font-weight:900;margin-top:4px;">
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-weight:900;font-size:13px;display:block;margin-bottom:6px;">ORDEN DESTINO:</label>
+              <select id="fpc-selDestino" style="width:100%;padding:10px;border:2px solid #ccc;border-radius:6px;font-size:13px;font-weight:700;"><option>Cargando...</option></select>
+            </div>
+          </div>
+          <div style="padding:12px 15px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;">
+            <button style="padding:10px 20px;background:#757575;color:white;border:none;border-radius:6px;font-weight:900;cursor:pointer;" onclick="document.getElementById('fpc-modalTrans').style.display='none'">✖ CANCELAR</button>
+            <button style="padding:10px 20px;background:#ef6c00;color:white;border:none;border-radius:6px;font-weight:900;cursor:pointer;" onclick="fpc_confirmarTraspaso()">✔ CONFIRMAR</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+  <button id="fpd-btnGuardar" style="display:none;position:fixed;bottom:80px;right:30px;background:#fdd835;color:#1a1a1a;padding:14px 28px;border-radius:50px;font-weight:900;box-shadow:0 6px 20px rgba(0,0,0,0.35);border:2px solid #f9a825;cursor:pointer;z-index:1001;animation:planif-pulse-yellow 1.4s ease-in-out infinite;" onclick="fpd_guardarPrioridades()">💾 GUARDAR PRIORIDADES</button>
+  <div id="fpc-toast-lotes" style="display:none;position:fixed;bottom:24px;right:24px;background:#37474f;color:white;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:9000;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.45);"><div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:edpSpin .7s linear infinite;"></div>Cargando lotes...</div>
+  <div id="fpc-toast-maqs"  style="display:none;position:fixed;bottom:64px;right:24px;background:#1a3a5c;color:white;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:9000;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.45);"><div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#90caf9;border-radius:50%;animation:edpSpin .7s linear infinite;"></div>Cargando máquinas...</div>
   <div id="forja-statusbar">
     <span id="fsb-registros" class="fsb-item">📋 <span id="fsb-total-val" class="fsb-val">0</span> registros</span>
     <span id="fsb-selec-wrap" class="fsb-item" style="display:none;">
       ✅ <span id="fsb-selec-val" class="fsb-val">0</span> seleccionadas
       &nbsp;|&nbsp; Σ <span id="fsb-suma-val" class="fsb-val">—</span>
-      &nbsp;|&nbsp; ⌀ <span id="fsb-prom-val" class="fsb-val">—</span>
+      &nbsp;|&nbsp; x&#772; <span id="fsb-prom-val" class="fsb-val">—</span>
       <button class="fsb-clear" onclick="fprogLimpiarSeleccion()">✕ Limpiar</button>
     </span>
-    <span style="margin-left:auto;color:rgba(255,255,255,.5);font-size:.68rem;">Clic en celda numérica: seleccionar | Ctrl+clic: multiselección</span>
+    <span style="margin-left:auto;color:rgba(255,255,255,.5);font-size:.68rem;">Arrastra sobre celdas numéricas para seleccionar | Ctrl: acumular</span>
   </div>
 </div>
 `;
@@ -6395,9 +6537,18 @@ function planifInit() {
 
 /* ═══════ VISTA FORJA ═══════ */
 var fprog_datosOriginales = [];   // todos los registros cargados del servidor
+var fprog_filaEditandoMaq     = null; // { fila_hoja, orden, maquina_actual, codigo, proceso }
+var fprog_filaEditandoAcero   = null; // { fila_hoja, orden }
+var fprog_filaEditandoPeso    = null; // { fila_hoja, orden }
+var fprog_filaEditandoCantidad= null; // { id_orden, orden }
 var fprog_filtros = {};           // { colKey: Set de valores activos }
-var fprog_orden = { col: null, dir: 'asc' };  // orden actual
+var fprog_orden        = { col: null, dir: 'asc' };
 var fprog_segundoOrden = { col: null, dir: 'asc' };
+// Stack permanente de ordenamiento para columnas de medida
+// Estas columnas NO se limpian al filtrar ni al ordenar otras columnas
+var FPROG_COLS_MEDIDA_SET = { 'desc_tipo':1,'diametro':1,'longitud':1,'cuerda':1,'cuerpo':1,'acero':1 };
+var fprog_ordenMedida  = []; // [{ col, dir }] — persiste entre filtros
+var fprog_ordenGeneral = { col: null, dir: 'asc' }; // para columnas no-medida
 
 var FPROG_COLS = [
   { key:'orden',        label:'ORDEN',        align:'center', grupo:'base' },
@@ -6423,14 +6574,16 @@ var FPROG_COLS = [
   { key:'cuerda',       label:'CDA',          align:'center', grupo:'prod' },
   { key:'cuerpo',       label:'CPO',          align:'center', grupo:'prod' },
   { key:'acero',        label:'ACERO',        align:'center', grupo:'prod' },
-  { key:'peso_pza',     label:'PESO\nPZA',    align:'right',  grupo:'prod', sumable:true  },
-  { key:'peso_merma',   label:'PESO\nMERMA',  align:'right',  grupo:'prod', sumable:true  },
-  { key:'peso_sin',     label:'PESO\nSIN',    align:'right',  grupo:'prod', sumable:true  },
-  { key:'mp_especif',   label:'MP\nESPECIF',  align:'center', grupo:'prod' },
-  { key:'mp_kg_req',    label:'MP KG\nREQUER',align:'right',  grupo:'prod', sumable:true  },
-  { key:'mp_kg_usada',  label:'MP KG\nUSADA', align:'right',  grupo:'prod', sumable:true  },
-  { key:'mp_kg_fabric', label:'MP KG\nFABRIC',align:'right',  grupo:'prod', sumable:true  },
-  { key:'observaciones',label:'OBSERVACIONES',align:'left',   grupo:'prod' }
+  { key:'peso_pza',     label:'PESO\nPZA',       align:'right',  grupo:'prod', sumable:true  },
+  { key:'peso_merma',   label:'PESO\nMERMA',      align:'right',  grupo:'prod', sumable:true  },
+  { key:'peso_con',     label:'PESO\nCON MERMA',  align:'right',  grupo:'prod', sumable:true  },
+  { key:'mp_especif',   label:'MP\nESPECIF',      align:'center', grupo:'prod' },
+  { key:'mp_kg_req',    label:'MP KG\nREQUER',    align:'right',  grupo:'prod', sumable:true  },
+  { key:'mp_kg_usada',  label:'MP KG\nUSADA',     align:'right',  grupo:'prod', sumable:true  },
+  { key:'mp_kg_xfabric',label:'MP KG\nXFABRIC',  align:'right',  grupo:'prod', sumable:true  },
+  { key:'kg_prod',      label:'KG\nPROD',         align:'right',  grupo:'prod', sumable:true  },
+  { key:'pzas_prod',    label:'PZAS\nPROD',       align:'right',  grupo:'prod', sumable:true  },
+  { key:'observaciones',label:'OBSERVACIONES',    align:'left',   grupo:'prod' }
 ];
 
 // true = columnas de inventario visibles
@@ -6462,11 +6615,1656 @@ function planifCerrarVistaForja() {
 function planifForjaIrTab(tab) {
   document.querySelectorAll('#planif-forja-tabs .ftab').forEach(function(b){ b.classList.remove('activo'); });
   document.querySelectorAll('#planif-forja-content .fv-tab-pane').forEach(function(p){ p.classList.remove('activo'); });
-  var btnEl = document.getElementById('ftab-' + tab);
+  var btnEl  = document.getElementById('ftab-' + tab);
   var paneEl = document.getElementById('fpane-' + tab);
-  if (btnEl) btnEl.classList.add('activo');
+  if (btnEl)  btnEl.classList.add('activo');
   if (paneEl) paneEl.classList.add('activo');
+
+  // Controles topbar: solo visibles en CAPTURA
+  var ctrl = document.getElementById('fpc-topbar-ctrl');
+  if (ctrl) ctrl.style.display = (tab === 'captura') ? 'flex' : 'none';
+
+  // Botón EXPORTA PLAN: solo visible en PLAN DIARIO
+  var exportBtn = document.getElementById('fpd-btnExportaPlan');
+  if (exportBtn) exportBtn.style.display = (tab === 'plandiario') ? '' : 'none';
+
+  // Botones de PROGRAMADOR: zoom, reset, refresh — solo en PROGRAMADOR
+  var zoomBtn  = document.getElementById('forja-zoom-btn');
+  var resetBtn = document.getElementById('forja-reset-btn');
+  var refBtn   = document.getElementById('forja-refresh-btn');
+  if (zoomBtn)  zoomBtn.style.display  = (tab === 'programador') ? '' : 'none';
+  if (resetBtn) resetBtn.style.display = (tab === 'programador') ? '' : 'none';
+  if (refBtn)   refBtn.style.display   = (tab === 'programador') ? '' : 'none';
+
+  if (tab === 'plandiario') fpd_init();
+  if (tab === 'captura') {
+    var hoy = new Date(); var ayer = new Date(); ayer.setDate(hoy.getDate()-1);
+    var fi = document.getElementById('fpc-fechaIni');
+    var ff = document.getElementById('fpc-fechaFin');
+    if (fi && !fi.value) fi.value = ayer.toISOString().split('T')[0];
+    if (ff && !ff.value) ff.value = hoy.toISOString().split('T')[0];
+  }
 }
+
+/* ══════════════════════════════════════════════
+   PLAN DIARIO FORJA — copia fiel de PRIORIDAD
+   ══════════════════════════════════════════════ */
+
+var FPD_OP_NOMBRE        = { 10:'FORJA', 25:'PUNTEADO', 30:'ROLADO TORN', 40:'LAVADO', 50:'TEMPLE Y REVENIDO' };
+var fpd_tablaOrdenLocal  = {};
+var fpd_tablaChecks      = {};
+var fpd_tablaOrdenColumnas = [];
+var fpd_tablaOrdenTick   = 0;
+var fpd_gruposData       = {};   // { grupo: [maq,...] }
+var fpd_gruposOrden      = [];   // orden de grupos
+var fpd_gruposVisibles   = {};   // { grupo: true/false }
+var fpd_estadoLocal      = {};   // id_orden → estado override
+
+// Convierte registro fprog_datosOriginales al shape de planifRenderTablaFila
+function fpd_toO(r) {
+  var pzas = (parseFloat(r.producido)||0) > 0 && (parseFloat(r.peso_pza)||0) > 0
+    ? Math.round((parseFloat(r.producido)||0) / (parseFloat(r.peso_pza)||0)) : 0;
+  var sol    = parseFloat(r.cantidad) || 0;
+  var avance = sol > 0 ? Math.min(100, (pzas / sol) * 100) : 0;
+  var estado = fpd_estadoLocal[r.id_orden] || (avance > 100 ? 'SOBREPRODUCCION' : 'ACTIVE');
+  return {
+    id:       r.id_orden,
+    pedido:   (r.tipo && r.tipo !== '—' ? r.tipo + '-' : '') + (r.pedido || ''),
+    serie:    'F',
+    orden:    String(r.orden || ''),
+    maquina:  String(r.maquina || '').trim().toUpperCase(),
+    proceso:  FPD_OP_NOMBRE[r.operacion] || ('OP' + r.operacion),
+    codigo:   r.codigo    || '',
+    tipo:     r.desc_tipo || '',
+    dia:      r.diametro  || '',
+    long:     r.longitud  || '',
+    cuerpo:   r.cuerpo    || '',
+    cuerda:   r.cuerda    || '',
+    acero:    r.acero     || '',
+    sol:      sol,
+    prod:     pzas,
+    avance:   avance,
+    estado:   estado,
+    prioridad:0,
+    invMin:   r.minimo     !== null && r.minimo     !== undefined ? r.minimo     : null,
+    invMax:   r.maximo     !== null && r.maximo     !== undefined ? r.maximo     : null,
+    invExist: r.existencia !== null && r.existencia !== undefined ? r.existencia : null,
+    fila_hoja:r.fila_hoja,
+    _raw:     r
+  };
+}
+
+function fpd_getMaqKey(maq, proc) { return String(maq).toUpperCase() + '||' + String(proc).toUpperCase(); }
+function fpd_getMaqSafe(k)        { return k.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function fpd_getOrdenes() {
+  return (fprog_datosOriginales || [])
+    .filter(function(r){ return !r.sin_pedido_vivo && r.id_orden; })
+    .map(fpd_toO);
+}
+
+// Devuelve si una máquina es visible según grupos activos
+function fpd_maqVisible(maq) {
+  var maqUp = String(maq).toUpperCase();
+  // Si no hay datos de grupos aún, mostrar todo
+  if (fpd_gruposOrden.length === 0) return true;
+  for (var g in fpd_gruposData) {
+    if (!fpd_gruposVisibles[g]) continue;
+    var maqs = fpd_gruposData[g];
+    for (var i = 0; i < maqs.length; i++) {
+      if (maqs[i].toUpperCase() === maqUp) return true;
+    }
+  }
+  return false;
+}
+
+// ── Init: carga grupos desde ESTANDARES y luego renderiza ──
+function fpd_init() {
+  var container = document.getElementById('fpd-container');
+  if (container) container.innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;font-weight:700;">Cargando...</div>';
+  // Si ya tenemos grupos cargados, no los recarga
+  if (fpd_gruposOrden.length > 0) {
+    fpd_renderFiltroGrupos();
+    fpd_renderTabla();
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(resRaw) {
+      try {
+        var res = JSON.parse(resRaw);
+        fpd_gruposData  = res.grupos || {};
+        fpd_gruposOrden = res.orden  || Object.keys(fpd_gruposData);
+        // Todos los grupos visibles por default
+        fpd_gruposOrden.forEach(function(g){ fpd_gruposVisibles[g] = true; });
+      } catch(e) {
+        fpd_gruposData = {}; fpd_gruposOrden = [];
+      }
+      fpd_renderFiltroGrupos();
+      fpd_renderTabla();
+    })
+    .withFailureHandler(function(e) {
+      if (container) container.innerHTML = '<div style="padding:30px;text-align:center;color:#ef4444;font-weight:700;">Error cargando grupos: ' + e + '</div>';
+    })
+    .fpd_obtenerGruposMaquinas();
+}
+
+// ── Filtros de grupos ──
+function fpd_renderFiltroGrupos() {
+  var cont = document.getElementById('fpd-grupo-btns');
+  if (!cont) return;
+  var html = '';
+  fpd_gruposOrden.forEach(function(g) {
+    var act = !!fpd_gruposVisibles[g];
+    var gSafe = g.replace(/[^a-zA-Z0-9]/g,'_');
+    html += '<button class="fpd-maq-btn' + (act ? ' active' : '') + '" id="fpd-gbtn-' + gSafe + '" onclick="fpd_toggleGrupo(\'' + g.replace(/'/g,"\\'") + '\')">' + g + '</button>';
+  });
+  cont.innerHTML = html;
+}
+
+function fpd_toggleGrupo(g) {
+  fpd_gruposVisibles[g] = !fpd_gruposVisibles[g];
+  var gSafe = g.replace(/[^a-zA-Z0-9]/g,'_');
+  var btn = document.getElementById('fpd-gbtn-' + gSafe);
+  if (btn) { if (fpd_gruposVisibles[g]) btn.classList.add('active'); else btn.classList.remove('active'); }
+  fpd_renderTabla();
+}
+
+function fpd_toggleTodosGrupos(v) {
+  fpd_gruposOrden.forEach(function(g) {
+    fpd_gruposVisibles[g] = v;
+    var btn = document.getElementById('fpd-gbtn-' + g.replace(/[^a-zA-Z0-9]/g,'_'));
+    if (btn) { if (v) btn.classList.add('active'); else btn.classList.remove('active'); }
+  });
+  fpd_renderTabla();
+}
+
+// ── Render principal ──
+function fpd_renderTabla(ordenes) {
+  var container = document.getElementById('fpd-container');
+  if (!container) return;
+  ordenes = ordenes || fpd_getOrdenes();
+
+  // Agrupar por maqKey
+  var grupos = {}, keysOrden = [];
+  ordenes.forEach(function(o) {
+    var k = fpd_getMaqKey(o.maquina, o.proceso);
+    if (!grupos[k]) { grupos[k] = []; keysOrden.push(k); }
+    grupos[k].push(o);
+  });
+  keysOrden = keysOrden.filter(function(k,i){ return keysOrden.indexOf(k) === i; });
+
+  var html = '';
+  keysOrden.forEach(function(maqKey) {
+    var pts = maqKey.split('||');
+    var maqLabel = pts[0];
+    // Filtrar por grupo visible
+    if (!fpd_maqVisible(maqLabel)) return;
+
+    var ordenesMaq = grupos[maqKey];
+    var maqSafe = fpd_getMaqSafe(maqKey);
+    var procLabel = pts[1] || '';
+
+    if (!fpd_tablaOrdenLocal[maqKey]) {
+      fpd_tablaOrdenLocal[maqKey] = ordenesMaq.map(function(o){ return o.id; });
+    }
+    if (!fpd_tablaChecks[maqKey]) fpd_tablaChecks[maqKey] = new Set();
+
+    // Aplicar ordenamiento de columnas
+    var ids = fpd_tablaOrdenLocal[maqKey].slice();
+    var sortsMaq = fpd_tablaOrdenColumnas.filter(function(s){ return s.maqKey === maqKey; })
+      .sort(function(a,b){ return a.tick - b.tick; });
+    if (sortsMaq.length > 0) {
+      ids.sort(function(idA, idB) {
+        var oA = ordenesMaq.find(function(x){ return x.id == idA; });
+        var oB = ordenesMaq.find(function(x){ return x.id == idB; });
+        for (var si = 0; si < sortsMaq.length; si++) {
+          var s = sortsMaq[si];
+          var gv = function(o) {
+            if (!o) return '';
+            if (s.col === 'invPct') { var ex=parseFloat(o.invExist)||0,mx=parseFloat(o.invMax)||0; return mx>0?ex/mx:-1; }
+            return o[s.col] !== undefined ? o[s.col] : '';
+          };
+          var vA=gv(oA), vB=gv(oB);
+          var cmp;
+          if (s.col === 'dia' || s.col === 'long') {
+            var mA=fprogParseMedida(vA), mB=fprogParseMedida(vB);
+            if (mA===null&&mB===null) cmp=0;
+            else if (mA===null) cmp=1;
+            else if (mB===null) cmp=-1;
+            else cmp=mA-mB;
+          } else {
+            var nA=parseFloat(vA), nB=parseFloat(vB);
+            cmp=(!isNaN(nA)&&!isNaN(nB))?nA-nB:String(vA).localeCompare(String(vB),'es',{sensitivity:'base'});
+          }
+          if (cmp !== 0) return s.dir === 'asc' ? cmp : -cmp;
+        }
+        return 0;
+      });
+      fpd_tablaOrdenLocal[maqKey] = ids;
+    }
+
+    var cols = [
+      {key:'codigo', label:'Código'},
+      {key:'tipo',   label:'Tipo'},
+      {key:'_drag2', label:''},
+      {key:'dia',    label:'Diam.'},
+      {key:'long',   label:'Long.'},
+      {key:'cuerpo', label:'Cuerpo'},
+      {key:'cuerda', label:'Cuerda'},
+      {key:'_drag3', label:''},
+      {key:'acero',  label:'Acero',    noClick:true},
+      {key:'_docs',  label:'&#128203;',noClick:true},
+      {key:'invMin', label:'Min'},
+      {key:'invMax', label:'Max'},
+      {key:'invExist',label:'Exist'},
+      {key:'invPct', label:'%'},
+      {key:'sol',    label:'Solic.'},
+      {key:'prod',   label:'Prod.'},
+      {key:'_restan',label:'Restan',   noClick:true}
+    ];
+
+    html += '<div class="planif-tabla-maq" id="fpdm-' + maqSafe + '" style="margin-bottom:24px;border:1px solid #cfd8dc;border-radius:8px;overflow:hidden;">';
+    html += '<div style="background:#1a237e;color:white;padding:10px 16px;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span>' + maqLabel + ' — ' + procLabel + ' (' + ordenesMaq.length + ' órdenes)</span>';
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<button onclick="fpd_deseleccionarTodo(\'' + maqSafe + '\')" style="background:rgba(255,255,255,.15);color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;">☐ Deseleccionar</button>';
+    html += '<button onclick="fpd_limpiarOrden(\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + maqSafe + '\')" style="background:rgba(255,255,255,.15);color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;">↺ Limpiar orden</button>';
+    html += '</div></div>';
+
+    html += '<div style="overflow-x:auto;"><table id="fpd-table-' + maqSafe + '" style="width:100%;border-collapse:collapse;font-size:12px;" data-maqkey="' + maqKey + '" data-maqsafe="' + maqSafe + '">';
+    html += '<thead><tr style="background:#e8eaf6;">';
+    html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;width:32px;"><input type="checkbox" onchange="fpd_toggleTodos(\'' + maqSafe + '\',this)"></th>';
+    html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;white-space:nowrap;font-weight:700;cursor:pointer;" onclick="fpd_ordenarCol(\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + maqSafe + '\',\'pedido\')">Pedido</th>';
+    html += '<th style="padding:6px 4px;border-bottom:2px solid #9fa8da;width:20px;"></th>';
+    html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;text-align:center;width:50px;">#</th>';
+    html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;text-align:center;">Orden</th>';
+    html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;text-align:center;width:40px;">🏭</th>';
+    cols.forEach(function(c) {
+      if (c.key === '_drag2' || c.key === '_drag3') { html += '<th style="padding:6px 4px;border-bottom:2px solid #9fa8da;width:20px;"></th>'; return; }
+      var sortsFpd = fpd_tablaOrdenColumnas.filter(function(s){ return s.maqKey===maqKey; }).sort(function(a,b){return a.tick-b.tick;});
+      var si = sortsFpd.find(function(s){ return s.col===c.key; });
+      var arrow = '';
+      if (si) {
+        var nivelFpd = sortsFpd.length > 1 ? '<sup style="font-size:.55rem">'+(sortsFpd.indexOf(si)+1)+'</sup>' : '';
+        arrow = si.dir==='asc'
+          ? ' <span style="color:#388e3c;font-size:11px;">▲'+nivelFpd+'</span>'
+          : ' <span style="color:#d32f2f;font-size:11px;">▼'+nivelFpd+'</span>';
+      }
+      if (c.noClick) { html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;white-space:nowrap;">' + c.label + '</th>'; }
+      else { html += '<th onclick="fpd_ordenarCol(\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + maqSafe + '\',\'' + c.key + '\')" style="padding:6px 8px;border-bottom:2px solid #9fa8da;cursor:pointer;white-space:nowrap;user-select:none;">' + c.label + arrow + '</th>'; }
+    });
+    html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;text-align:center;">Estado</th>';
+    html += '</tr></thead>';
+
+    html += '<tbody id="fpd-body-' + maqSafe + '" data-maqkey="' + maqKey + '" data-maqsafe="' + maqSafe + '">';
+    var totalSol = 0, totalProd = 0;
+    ids.forEach(function(id, rowIdx) {
+      var o = ordenesMaq.find(function(x){ return x.id == id; });
+      if (!o) return;
+      totalSol  += Number(o.sol)  || 0;
+      totalProd += Number(o.prod) || 0;
+      html += fpd_renderFila(o, rowIdx, maqKey, maqSafe);
+    });
+    var totalRestan = Math.max(0, totalSol - totalProd);
+    var totalCols   = 6 + cols.length + 1;
+    var colspanPrev = totalCols - 4;
+    html += '<tfoot><tr style="background:#e8eaf6;font-weight:900;border-top:2px solid #9fa8da;">';
+    html += '<td colspan="' + colspanPrev + '" style="padding:5px 10px;text-align:right;font-size:12px;color:#1a237e;">TOTALES:</td>';
+    html += '<td style="padding:5px 8px;text-align:right;color:#1565c0;font-size:12px;">' + planifFormatN(totalSol) + '</td>';
+    html += '<td style="padding:5px 8px;text-align:right;color:#880e4f;font-size:12px;">' + planifFormatN(totalProd) + '</td>';
+    html += '<td style="padding:5px 8px;text-align:right;color:#000;font-size:12px;font-weight:900;">' + planifFormatN(totalRestan) + '</td>';
+    html += '<td style="padding:5px 8px;"></td></tr></tfoot>';
+    html += '</tbody></table></div></div>';
+  });
+
+  if (!html) html = '<div style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">No hay órdenes con pedido vivo visibles.</div>';
+  container.innerHTML = html;
+
+  // Sortable
+  if (typeof Sortable !== 'undefined') {
+    document.querySelectorAll('[id^="fpd-body-"]').forEach(function(tbody) {
+      var maqKey  = tbody.dataset.maqkey;
+      var maqSafe = tbody.dataset.maqsafe;
+      new Sortable(tbody, {
+        animation: 150, handle: '.pt-drag-handle', ghostClass: 'fpd-ghost',
+        onEnd: function(evt) {
+          var checks    = fpd_tablaChecks[maqKey];
+          var draggedId = evt.item.dataset.id;
+          var ids2      = fpd_tablaOrdenLocal[maqKey];
+          if (checks && checks.size > 1 && checks.has(draggedId)) {
+            var newIndex  = evt.newIndex;
+            var selec     = ids2.filter(function(id){ return checks.has(id) && id !== draggedId; });
+            var sinSel    = ids2.filter(function(id){ return !checks.has(id); });
+            var posBase   = Math.min(newIndex, sinSel.length);
+            Array.prototype.splice.apply(sinSel, [posBase, 0].concat([draggedId].concat(selec)));
+            fpd_tablaOrdenLocal[maqKey] = sinSel;
+            var ords2 = fpd_getOrdenes().filter(function(o){ return fpd_getMaqKey(o.maquina,o.proceso)===maqKey; });
+            var nh = '';
+            fpd_tablaOrdenLocal[maqKey].forEach(function(id,ri){ var o=ords2.find(function(x){return x.id==id;}); if(o) nh+=fpd_renderFila(o,ri,maqKey,maqSafe); });
+            tbody.innerHTML = nh;
+            fpd_reattachSortable(tbody, maqKey, maqSafe);
+            fpd_rekeyboard(tbody);
+          } else {
+            fpd_actualizarOrdenLocal(maqKey, maqSafe);
+          }
+          fpd_marcarCambios();
+          fpd_renumerar(maqSafe);
+        }
+      });
+    });
+  }
+
+  document.querySelectorAll('[id^="fpd-body-"] tr').forEach(function(tr){ fpd_attachKey(tr); });
+}
+
+// ── Render de fila (copia exacta de planifRenderTablaFila) ──
+function fpd_renderFila(o, rowIdx, maqKey, maqSafe) {
+  var idE = String(o.id).replace(/'/g,"\\'");
+  var checked = fpd_tablaChecks[maqKey] && fpd_tablaChecks[maqKey].has(o.id) ? 'checked' : '';
+  var estadoUp = String(o.estado||'').toUpperCase();
+  var estadoLabel = estadoUp === 'TERMINADO' ? 'TERMINADO' : 'ACTIVE';
+  var estadoColor = estadoUp === 'TERMINADO' ? '#388e3c' : '#1565c0';
+  var estadoExtraClass = estadoUp === 'SOBREPRODUCCION' ? ' pt-btn-sobrep' : '';
+  return '<tr id="fpd-row-' + o.id + '" data-id="' + o.id + '" tabindex="0" style="border-bottom:1px solid #e0e0e0;cursor:pointer;" onclick="planifTablaToggleSeleccion(this)">'
+    + '<td style="padding:4px 8px;text-align:center;"><input type="checkbox" ' + checked + ' onchange="fpd_checkRow(\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + idE + '\',this)"></td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;font-size:11px;font-weight:700;color:#546e7a;">' + (o.pedido||'—') + '</td>'
+    + '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>'
+    + '<td style="padding:2px 4px;text-align:center;"><input type="number" min="1" class="pt-num-input" value="' + (rowIdx+1) + '" style="width:42px;text-align:center;font-weight:900;color:#1a237e;border:1px solid #9fa8da;border-radius:4px;padding:2px 2px;font-size:12px;" onchange="fpd_moverAPosicion(\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + maqSafe + '\',\'' + idE + '\',this)" onclick="this.select()" onfocus="this.select()" onkeydown="fpd_inputKeyNav(event,\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + maqSafe + '\',\'' + idE + '\',this)"></td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;font-weight:700;color:#1a237e;">F.' + String(o.orden).padStart(4,'0') + '</td>'
+    + '<td style="padding:4px 6px;text-align:center;"><button onclick="fpd_abrirCambioMaquina(\'' + idE + '\')" title="' + (o.maquina||'Sin asignar') + '" style="background:#e8eaf6;color:#1a237e;border:1px solid #9fa8da;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:14px;line-height:1;">🏭</button></td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;font-size:11px;color:#455a64;">' + (o.codigo||'') + '</td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;">' + (o.tipo||'') + '</td>'
+    + '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;">' + (o.dia||'') + '</td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;">' + (o.long||'') + '</td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;">' + (o.cuerpo||'') + '</td>'
+    + '<td style="padding:4px 8px;white-space:nowrap;">' + (o.cuerda||'') + '</td>'
+    + '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>'
+    + '<td style="padding:4px 6px;text-align:center;cursor:pointer;" onclick="planifAbrirEditAcero(\'' + idE + '\',\'' + (o.acero||'').replace(/'/g,"\\'") + '\',\'F.' + String(o.orden).padStart(4,'0') + '\')" title="Clic para editar Acero" id="fpd-acerobadge-' + o.id + '">' + planifGetAceroBadge(o.acero||'', o.id) + '</td>'
+    + '<td style="padding:4px 6px;text-align:center;"><button onclick="fpd_abrirDocOrden(\'' + idE + '\')" title="Ver documentación y lotes" style="background:#37474f;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:13px;line-height:1;">&#128203;</button></td>'
+    + fpd_invCeldas(o)
+    + (function(){
+        var maqSafeF = fpd_getMaqSafe(fpd_getMaqKey(o.maquina, o.proceso));
+        var kgSol    = o.sol  * (parseFloat(o._raw.peso_pza)||0);
+        var kgProd   = o.prod * (parseFloat(o._raw.peso_pza)||0);
+        var rest     = Math.max(0,(Number(o.sol)||0)-(Number(o.prod)||0));
+        var kgRest   = rest   * (parseFloat(o._raw.peso_pza)||0);
+        var fmtKg    = function(v){ return v > 0 ? '(' + v.toLocaleString('es-MX',{maximumFractionDigits:0}) + ' kg)' : ''; };
+        var tdSol    = '<td onclick="planifAbrirEditCantidad(\'' + idE + '\')" onmousedown="fpd_iniciarDrag(event,\'' + maqSafeF + '\',\'sol\',' + o.sol + ')" onmouseenter="fpd_extenderDrag(event,\'' + maqSafeF + '\',\'sol\',' + o.sol + ')" style="padding:3px 6px;text-align:right;cursor:pointer;color:#1565c0;font-weight:700;text-decoration:underline;line-height:1.2;" title="Click para editar cantidad">'
+          + '<div>' + planifFormatN(o.sol) + '</div>'
+          + (kgSol > 0 ? '<div style="font-size:10px;font-weight:400;color:#78909c;">(' + kgSol.toLocaleString('es-MX',{maximumFractionDigits:0}) + ' kg)</div>' : '')
+          + '</td>';
+        var tdProd   = Number(o.prod) > 0
+          ? '<td onclick="planifAbrirModalProdPlanif(\'' + idE + '\',\'F.' + String(o.orden).padStart(4,'0') + '\')" onmousedown="fpd_iniciarDrag(event,\'' + maqSafeF + '\',\'prod\',' + o.prod + ')" onmouseenter="fpd_extenderDrag(event,\'' + maqSafeF + '\',\'prod\',' + o.prod + ')" style="padding:3px 6px;text-align:right;cursor:pointer;color:#880e4f;font-weight:900;text-decoration:underline;line-height:1.2;" title="Click para ver producción">'
+            + '<div>' + planifFormatN(o.prod) + '</div>'
+            + (kgProd > 0 ? '<div style="font-size:10px;font-weight:400;color:#78909c;">(' + kgProd.toLocaleString('es-MX',{maximumFractionDigits:0}) + ' kg)</div>' : '')
+            + '</td>'
+          : '<td style="padding:3px 6px;text-align:right;color:#999;line-height:1.2;"><div>' + planifFormatN(o.prod) + '</div></td>';
+        var tdRest   = '<td onmousedown="fpd_iniciarDrag(event,\'' + maqSafeF + '\',\'restan\',' + rest + ')" onmouseenter="fpd_extenderDrag(event,\'' + maqSafeF + '\',\'restan\',' + rest + ')" style="padding:3px 6px;text-align:right;font-weight:900;color:#000;line-height:1.2;">'
+          + '<div>' + planifFormatN(rest) + '</div>'
+          + (kgRest > 0 ? '<div style="font-size:10px;font-weight:400;color:#78909c;">(' + kgRest.toLocaleString('es-MX',{maximumFractionDigits:0}) + ' kg)</div>' : '')
+          + '</td>';
+        return tdSol + tdProd + tdRest;
+      })()
+    + '<td style="padding:4px 8px;text-align:center;"><button onclick="fpd_toggleEstado(\'' + idE + '\')" class="' + estadoExtraClass + '" style="background:' + estadoColor + ';color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;" id="fpd-estbtn-' + o.id + '">' + estadoLabel + '</button></td>'
+    + '</tr>';
+}
+
+// ── Celdas inventario ──
+function fpd_invCeldas(o) {
+  var sinDato = '<td style="padding:4px 6px;text-align:right;color:#bbb;font-size:11px;">—</td>';
+  if (o.invExist === null || o.invExist === undefined) return sinDato + sinDato + sinDato + sinDato;
+  var existNum = parseFloat(o.invExist)||0, minNum = parseFloat(o.invMin)||0, maxNum = parseFloat(o.invMax)||0;
+  var fmtN = function(v){ return (parseFloat(v)||0).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:1}); };
+  var pct    = maxNum > 0 ? Math.round((existNum/maxNum)*100) : null;
+  var ci     = planifInvPctColor(pct);
+  var blk    = ci.blink ? 'animation:planifBlink 1s step-start infinite;' : '';
+  var txtCol = (pct !== null && pct <= 40) ? '#fff' : '#000';
+  if (ci.bg === '#2e7d32') txtCol = '#fff';
+  return '<td style="padding:4px 6px;text-align:right;font-size:11px;">' + fmtN(minNum) + '</td>'
+       + '<td style="padding:4px 6px;text-align:right;font-size:11px;">' + fmtN(maxNum) + '</td>'
+       + '<td style="padding:4px 6px;text-align:right;font-size:11px;">' + fmtN(existNum) + '</td>'
+       + '<td style="padding:3px 6px;text-align:center;font-size:11px;font-weight:900;background:' + ci.bg + ';color:' + txtCol + ';' + blk + '">' + (pct !== null ? pct + '%' : '—') + '</td>';
+}
+
+// ── Toggle estado ──
+function fpd_toggleEstado(id) {
+  var o = fpd_getOrdenes().find(function(x){ return x.id == id; });
+  if (!o) return;
+  var estadoActual = String(fpd_estadoLocal[id] || o.estado || 'ACTIVE').toUpperCase();
+  var nuevoEst = estadoActual === 'TERMINADO' ? 'ACTIVE' : 'TERMINADO';
+  var btn = document.getElementById('fpd-estbtn-' + id);
+  if (btn) { btn.textContent = '...'; btn.disabled = true; btn.className = ''; }
+  google.script.run.withSuccessHandler(function() {
+    fpd_estadoLocal[id] = nuevoEst;
+    var tr = document.getElementById('fpd-row-' + id);
+    if (tr) {
+      var tbody   = tr.closest('tbody');
+      var maqKey  = tbody ? tbody.dataset.maqkey  : '';
+      var maqSafe = tbody ? tbody.dataset.maqsafe : '';
+      var rowIdx  = tbody ? Array.from(tbody.querySelectorAll('tr')).indexOf(tr) : 0;
+      var oNew    = fpd_toO(o._raw); oNew.estado = nuevoEst;
+      tr.outerHTML = fpd_renderFila(oNew, rowIdx, maqKey, maqSafe);
+    }
+  }).withFailureHandler(function(e){
+    if (btn) { btn.textContent = estadoActual; btn.disabled = false; }
+    sAlert('Error: ' + e);
+  }).ejecutarCambioEstadoDirecto(id, nuevoEst);
+}
+
+// ── Ordenar columna ──
+function fpd_ordenarCol(maqKey, maqSafe, colKey) {
+  var ex = fpd_tablaOrdenColumnas.findIndex(function(s){ return s.col === colKey && s.maqKey === maqKey; });
+  if (ex > -1) { fpd_tablaOrdenColumnas[ex].dir = fpd_tablaOrdenColumnas[ex].dir==='asc'?'desc':'asc'; fpd_tablaOrdenColumnas[ex].tick = ++fpd_tablaOrdenTick; }
+  else { fpd_tablaOrdenColumnas.push({ maqKey:maqKey, col:colKey, dir:'asc', tick:++fpd_tablaOrdenTick }); }
+  fpd_renderTabla();
+}
+
+// ── Limpiar orden ──
+function fpd_limpiarOrden(maqKey, maqSafe) {
+  fpd_tablaOrdenColumnas = fpd_tablaOrdenColumnas.filter(function(s){ return s.maqKey !== maqKey; });
+  var ords = fpd_getOrdenes().filter(function(o){ return fpd_getMaqKey(o.maquina,o.proceso) === maqKey; });
+  fpd_tablaOrdenLocal[maqKey] = ords.map(function(o){ return o.id; });
+  var tbody = document.getElementById('fpd-body-' + maqSafe);
+  if (tbody) {
+    var nh = ''; fpd_tablaOrdenLocal[maqKey].forEach(function(id,ri){ var o=ords.find(function(x){return x.id==id;}); if(o) nh+=fpd_renderFila(o,ri,maqKey,maqSafe); });
+    tbody.innerHTML = nh;
+    fpd_reattachSortable(tbody, maqKey, maqSafe);
+    fpd_rekeyboard(tbody);
+    fpd_renumerar(maqSafe);
+  }
+}
+
+// ── Mover a posición ──
+function fpd_moverAPosicion(maqKey, maqSafe, id, input) {
+  var nuevaPos = parseInt(input.value);
+  var ids = fpd_tablaOrdenLocal[maqKey];
+  if (isNaN(nuevaPos)||nuevaPos<1) { input.value=ids.indexOf(id)+1; return; }
+  if (nuevaPos > ids.length) nuevaPos = ids.length;
+  input.value = nuevaPos;
+  var idxAct = ids.indexOf(id);
+  if (idxAct === -1 || idxAct === nuevaPos-1) return;
+  ids.splice(idxAct,1); ids.splice(nuevaPos-1,0,id);
+  fpd_tablaOrdenLocal[maqKey] = ids;
+  fpd_tablaOrdenColumnas = fpd_tablaOrdenColumnas.filter(function(s){ return s.maqKey !== maqKey; });
+  fpd_marcarCambios();
+  var tbody = document.getElementById('fpd-body-' + maqSafe);
+  if (tbody) {
+    var ords = fpd_getOrdenes().filter(function(o){ return fpd_getMaqKey(o.maquina,o.proceso) === maqKey; });
+    var nh = ''; ids.forEach(function(rid,ri){ var o=ords.find(function(x){return x.id==rid;}); if(o) nh+=fpd_renderFila(o,ri,maqKey,maqSafe); });
+    tbody.innerHTML = nh;
+    fpd_reattachSortable(tbody, maqKey, maqSafe);
+    fpd_rekeyboard(tbody);
+    fpd_renumerar(maqSafe);
+    var rowEl = document.getElementById('fpd-row-' + id);
+    if (rowEl) { rowEl.classList.add('pt-foco'); rowEl.focus(); }
+  }
+}
+
+// ── Checkboxes ──
+function fpd_checkRow(maqKey, id, cb) {
+  if (!fpd_tablaChecks[maqKey]) fpd_tablaChecks[maqKey] = new Set();
+  if (cb.checked) fpd_tablaChecks[maqKey].add(id); else fpd_tablaChecks[maqKey].delete(id);
+}
+function fpd_toggleTodos(maqSafe, masterCb) {
+  var tbody = document.getElementById('fpd-body-' + maqSafe);
+  if (!tbody) return;
+  var maqKey = tbody.dataset.maqkey;
+  tbody.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.checked = masterCb.checked;
+    var id = cb.closest('tr') && cb.closest('tr').dataset.id;
+    if (id) fpd_checkRow(maqKey, id, cb);
+  });
+}
+function fpd_deseleccionarTodo(maqSafe) {
+  var tbody = document.getElementById('fpd-body-' + maqSafe);
+  if (!tbody) return;
+  var maqKey = tbody.dataset.maqkey;
+  if (fpd_tablaChecks[maqKey]) fpd_tablaChecks[maqKey].clear();
+  tbody.querySelectorAll('input[type=checkbox]').forEach(function(cb){ cb.checked = false; });
+  var master = tbody.closest('.planif-tabla-maq') && tbody.closest('.planif-tabla-maq').querySelector('thead input[type=checkbox]');
+  if (master) master.checked = false;
+}
+
+// ── Utilidades ──
+function fpd_actualizarOrdenLocal(maqKey, maqSafe) {
+  var tbody = document.getElementById('fpd-body-' + maqSafe);
+  if (!tbody) return;
+  fpd_tablaOrdenLocal[maqKey] = Array.from(tbody.querySelectorAll('tr')).map(function(tr){ return tr.dataset.id; });
+}
+function fpd_renumerar(maqSafe) {
+  var tbody = document.getElementById('fpd-body-' + maqSafe);
+  if (!tbody) return;
+  Array.from(tbody.querySelectorAll('tr')).forEach(function(tr,i){ var inp=tr.querySelector('.pt-num-input'); if(inp) inp.value=i+1; });
+}
+function fpd_reattachSortable(tbody, maqKey, maqSafe) {
+  if (typeof Sortable === 'undefined') return;
+  new Sortable(tbody, { animation:150, handle:'.pt-drag-handle', ghostClass:'fpd-ghost',
+    onEnd: function(){ fpd_actualizarOrdenLocal(maqKey,maqSafe); fpd_renumerar(maqSafe); }
+  });
+}
+function fpd_attachKey(tr) {
+  tr.setAttribute('tabindex','0');
+  tr.addEventListener('keydown', function(e){
+    if (e.key==='ArrowDown'||e.key==='ArrowUp') {
+      e.preventDefault();
+      var rows = Array.from(tr.closest('tbody').querySelectorAll('tr'));
+      var idx  = rows.indexOf(tr);
+      var next = e.key==='ArrowDown' ? rows[idx+1] : rows[idx-1];
+      if (next) { tr.classList.remove('pt-foco'); next.classList.add('pt-foco'); next.focus(); }
+    }
+  });
+  tr.addEventListener('focus', function(){
+    tr.closest('tbody').querySelectorAll('tr').forEach(function(r){ r.classList.remove('pt-foco'); });
+    tr.classList.add('pt-foco');
+  });
+}
+function fpd_rekeyboard(tbody) { tbody.querySelectorAll('tr').forEach(function(tr){ fpd_attachKey(tr); }); }
+function fpd_inputKeyNav(e, maqKey, maqSafe, id, input) {
+  if (e.key==='Enter'||e.key==='ArrowDown') {
+    e.preventDefault(); input.blur();
+    setTimeout(function(){ var tbody=document.getElementById('fpd-body-'+maqSafe); if(!tbody) return; var rows=Array.from(tbody.querySelectorAll('tr')); var rowA=document.getElementById('fpd-row-'+id); var idx=rows.indexOf(rowA); var sig=rows[idx+1]; if(sig){var ni=sig.querySelector('.pt-num-input');if(ni){ni.focus();ni.select();}else sig.focus();} },120); return;
+  }
+  if (e.key==='ArrowUp') {
+    e.preventDefault(); input.blur();
+    setTimeout(function(){ var tbody=document.getElementById('fpd-body-'+maqSafe); if(!tbody) return; var rows=Array.from(tbody.querySelectorAll('tr')); var rowA=document.getElementById('fpd-row-'+id); var idx=rows.indexOf(rowA); var ant=rows[idx-1]; if(ant){var pi=ant.querySelector('.pt-num-input');if(pi){pi.focus();pi.select();}else ant.focus();} },120); return;
+  }
+}
+
+// ── Wrapper: abrir modal cambio de máquina desde Plan Diario ──
+// planifAbrirCambioMaquina busca en planif_ordenesVivas, que no aplica aquí.
+// Construimos un objeto compatible con lo que espera el modal.
+function fpd_abrirCambioMaquina(idOrden) {
+  var r = (fprog_datosOriginales || []).find(function(x){ return x.id_orden == idOrden; });
+  if (!r) return;
+  // Inyectar temporalmente en planif_ordenesVivas para que el modal funcione
+  var maqActual = String(r.maquina || '').trim().toUpperCase();
+  var proceso   = FPD_OP_NOMBRE[r.operacion] || 'FORJA';
+  var fake = {
+    id:                String(r.id_orden),
+    serie:             'F',
+    orden:             String(r.orden || ''),
+    maquina:           maqActual,
+    proceso:           proceso,
+    codigo:            r.codigo || '',
+    maquinasPermitidas:''  // sin permitidas → usará ⚙️ para configurar
+  };
+  // Buscar si ya existía en planif_ordenesVivas para preservar maquinasPermitidas
+  var vivo = planif_ordenesVivas.find(function(x){ return String(x.id) === String(idOrden); });
+  if (vivo) { fake.maquinasPermitidas = vivo.maquinasPermitidas || ''; }
+  // Registrar temporalmente
+  var yaExistia = !!vivo;
+  if (!yaExistia) planif_ordenesVivas.push(fake);
+  planifAbrirCambioMaquina(String(idOrden));
+  // Limpiar temporal después de que el modal se abra
+  if (!yaExistia) {
+    setTimeout(function() {
+      var idx = planif_ordenesVivas.indexOf(fake);
+      if (idx > -1) planif_ordenesVivas.splice(idx, 1);
+    }, 500);
+  }
+}
+
+// ── Wrapper: abrir modal documentación desde Plan Diario ──
+function fpd_abrirDocOrden(idOrden) {
+  var r = (fprog_datosOriginales || []).find(function(x){ return x.id_orden == idOrden; });
+  if (!r) return;
+  var pzas = (parseFloat(r.producido)||0) > 0 && (parseFloat(r.peso_pza)||0) > 0
+    ? Math.round((parseFloat(r.producido)||0) / (parseFloat(r.peso_pza)||0)) : 0;
+  var sol  = parseFloat(r.cantidad) || 0;
+  var fake = {
+    id:       String(r.id_orden),
+    serie:    'F',
+    orden:    String(r.orden || ''),
+    maquina:  String(r.maquina || '').trim().toUpperCase(),
+    proceso:  FPD_OP_NOMBRE[r.operacion] || 'FORJA',
+    codigo:   r.codigo    || '',
+    tipo:     r.desc_tipo || '',
+    dia:      r.diametro  || '',
+    long:     r.longitud  || '',
+    cuerpo:   r.cuerpo    || '',
+    cuerda:   r.cuerda    || '',
+    acero:    r.acero     || '',
+    sol:      sol,
+    prod:     pzas,
+    pedido:   (r.tipo && r.tipo !== '—' ? r.tipo + '-' : '') + (r.pedido || '')
+  };
+  var vivo = planif_ordenesVivas.find(function(x){ return String(x.id) === String(idOrden); });
+  var yaExistia = !!vivo;
+  if (!yaExistia) planif_ordenesVivas.push(fake);
+  planifAbrirDocOrden(String(idOrden));
+  if (!yaExistia) {
+    setTimeout(function() {
+      var idx = planif_ordenesVivas.indexOf(fake);
+      if (idx > -1) planif_ordenesVivas.splice(idx, 1);
+    }, 500);
+  }
+}
+
+// ── Marcar cambios pendientes y mostrar botón guardar ──
+function fpd_marcarCambios() {
+  var btn = document.getElementById('fpd-btnGuardar');
+  if (btn) btn.style.display = 'block';
+}
+
+// ── Guardar prioridades Plan Diario (orden de cada bloque máquina) ──
+function fpd_guardarPrioridades() {
+  var listaCambios = [];
+  Object.keys(fpd_tablaOrdenLocal).forEach(function(maqKey) {
+    fpd_tablaOrdenLocal[maqKey].forEach(function(id, index) {
+      if (id) listaCambios.push({ id: id, prioridadNueva: index + 1 });
+    });
+  });
+  if (listaCambios.length === 0) return;
+  showLoader('Guardando prioridades...');
+  google.script.run.withSuccessHandler(function() {
+    hideLoader();
+    var btn = document.getElementById('fpd-btnGuardar');
+    if (btn) btn.style.display = 'none';
+    sAlert('Prioridades guardadas', 'success', '¡Listo!');
+  }).withFailureHandler(function(e) {
+    hideLoader();
+    sAlert('Error: ' + e, 'error');
+  }).guardarPlanificacion(listaCambios);
+}
+
+// ── Selección tipo Excel en Plan Diario ──
+var fpd_seleccionActiva  = {};  // maqSafe → [{ td, valor }]
+var fpd_dragActivoMaq    = null;
+var fpd_dragColActiva    = null;
+var fpd_isDragging       = false;
+
+function fpd_iniciarDrag(event, maqSafe, colKey, valor) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  // Si cambia bloque, limpiar selección previa
+  if (fpd_dragActivoMaq && fpd_dragActivoMaq !== maqSafe) {
+    fpd_limpiarSeleccion(fpd_dragActivoMaq);
+  }
+  fpd_dragActivoMaq  = maqSafe;
+  fpd_dragColActiva  = colKey;
+  fpd_isDragging     = true;
+  if (!fpd_seleccionActiva[maqSafe]) fpd_seleccionActiva[maqSafe] = [];
+  // Si no Ctrl, limpiar selección previa del mismo bloque
+  if (!event.ctrlKey) fpd_limpiarSeleccion(maqSafe);
+  fpd_seleccionarTd(event.currentTarget, valor, maqSafe);
+  fpd_actualizarStatusDrag();
+}
+
+function fpd_extenderDrag(event, maqSafe, colKey, valor) {
+  if (!fpd_isDragging) return;
+  if (maqSafe !== fpd_dragActivoMaq) return;
+  if (colKey  !== fpd_dragColActiva) return;
+  fpd_seleccionarTd(event.currentTarget, valor, maqSafe);
+  fpd_actualizarStatusDrag();
+}
+
+function fpd_seleccionarTd(td, valor, maqSafe) {
+  if (!fpd_seleccionActiva[maqSafe]) fpd_seleccionActiva[maqSafe] = [];
+  var ya = fpd_seleccionActiva[maqSafe].find(function(x){ return x.td === td; });
+  if (ya) return;
+  td.style.outline = '2px solid #f59e0b';
+  td.style.outlineOffset = '-2px';
+  td.style.background = '#fbbf24';
+  fpd_seleccionActiva[maqSafe].push({ td: td, valor: parseFloat(valor) || 0 });
+}
+
+function fpd_limpiarSeleccion(maqSafe) {
+  if (fpd_seleccionActiva[maqSafe]) {
+    fpd_seleccionActiva[maqSafe].forEach(function(x){
+      x.td.style.outline = '';
+      x.td.style.outlineOffset = '';
+      x.td.style.background = '';
+    });
+    fpd_seleccionActiva[maqSafe] = [];
+  }
+}
+
+function fpd_actualizarStatusDrag() {
+  if (!fpd_dragActivoMaq) return;
+  var celdas = fpd_seleccionActiva[fpd_dragActivoMaq] || [];
+  var wrap  = document.getElementById('fsb-selec-wrap');
+  var selV  = document.getElementById('fsb-selec-val');
+  var sumaV = document.getElementById('fsb-suma-val');
+  var promV = document.getElementById('fsb-prom-val');
+  if (celdas.length === 0) {
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  var suma = celdas.reduce(function(acc, x){ return acc + x.valor; }, 0);
+  var prom = suma / celdas.length;
+  if (wrap)  wrap.style.display  = '';
+  if (selV)  selV.textContent    = celdas.length;
+  if (sumaV) sumaV.textContent   = suma.toLocaleString('es-MX', {maximumFractionDigits:2});
+  if (promV) promV.textContent   = prom.toLocaleString('es-MX', {maximumFractionDigits:2});
+}
+
+/* ── FIN PLAN DIARIO FORJA ── */
+
+/* ══════════════════════════════════════════════════════════════
+   CAPTURA FORJA (prefijo fpc_) — copia funcional del EDP
+   Procesos: FORJA, ROLADO TORN, LAVADO, TEMPLE Y REVENIDO, ENDEREZADO PIJA
+   ══════════════════════════════════════════════════════════════ */
+
+var fpc_datosProduccion   = [];
+var fpc_datosOriginales   = [];
+var fpc_cambiosPendientes = new Set();
+var fpc_filtrosActivos    = {};
+var fpc_colFiltroActual   = '';
+var fpc_diccionarioLotes  = {};
+var fpc_lotesEnCarga      = {};
+var fpc_cacheMaquinas     = {};
+var fpc_maqEnCarga        = {};
+var fpc_maqPendientes     = {};
+var fpc_idRegActivo       = '';
+var fpc_maxKgActivo       = 0;
+var fpc_filaActivaId      = null;
+var fpc_catalogoOperadores= [];
+var fpc_cacheOrden        = {};
+
+// Procesos que maneja este módulo de captura forja
+var FPC_PROCESOS = ['FORJA','ROLADO TORN','LAVADO','TEMPLE Y REVENIDO','ENDEREZADO PIJA'];
+
+function fpc_fmtNum(val) {
+  var n = parseFloat(val) || 0;
+  return n % 1 === 0 ? n.toLocaleString('en-US') : n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fpc_parseLimpio(val) { return parseFloat(String(val).replace(/,/g,'')) || 0; }
+function fpc_fmtSello(val) { return String(parseInt(val)||0); }
+
+// Inicializar fechas por defecto en los inputs de la topbar
+function fpc_iniciarCaptura() {
+  var hoy = new Date(); var ayer = new Date(); ayer.setDate(hoy.getDate()-1);
+  var fi = document.getElementById('fpc-fechaIni');
+  var ff = document.getElementById('fpc-fechaFin');
+  if (fi && !fi.value) fi.value = ayer.toISOString().split('T')[0];
+  if (ff && !ff.value) ff.value = hoy.toISOString().split('T')[0];
+  // Mostrar controles en topbar
+  var ctrl = document.getElementById('fpc-topbar-ctrl');
+  if (ctrl) ctrl.style.display = 'flex';
+}
+
+function fpc_limpiarCaptura() {
+  // Ocultar controles de topbar cuando no está en tab captura
+  var ctrl = document.getElementById('fpc-topbar-ctrl');
+  if (ctrl) ctrl.style.display = 'none';
+}
+
+// Botón PROCESA
+function fpc_procesar() {
+  var fi = (document.getElementById('fpc-fechaIni')||{}).value;
+  var ff = (document.getElementById('fpc-fechaFin')||{}).value;
+  if (!fi || !ff) { sAlert('Selecciona ambas fechas'); return; }
+  // Mostrar "Cargando..." en la tabla
+  var placeholder = document.getElementById('fpc-placeholder');
+  var tabla = document.getElementById('fpc-tablaProd');
+  if (placeholder) { placeholder.style.display='block'; placeholder.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div style="width:20px;height:20px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div><span style="font-weight:700;color:#475569;font-size:.95rem;">Cargando...</span></div>'; }
+  if (tabla) tabla.style.display = 'none';
+  var sumBar = document.getElementById('fpc-summary-bar');
+  var toolbar = document.getElementById('fpc-toolbar');
+  if (sumBar) sumBar.style.display = 'none';
+  if (toolbar) toolbar.style.display = 'none';
+
+  // Obtener catálogos primero (para tener operadores y máquinas de FORJA)
+  google.script.run
+    .withSuccessHandler(function(cat) {
+      // Extraer máquinas de los procesos de FORJA
+      var maqs = [];
+      FPC_PROCESOS.forEach(function(proc) {
+        var ms = (cat.maquinas && cat.maquinas[proc]) || [];
+        ms.forEach(function(m){ if (maqs.indexOf(m)<0) maqs.push(m); });
+      });
+      fpc_catalogoOperadores = cat.operadores || [];
+      if (maqs.length === 0) {
+        if (placeholder) { placeholder.style.display='block'; placeholder.innerHTML='<span style="color:#ef4444;font-weight:700;">Sin máquinas de FORJA configuradas en ESTANDARES</span>'; }
+        return;
+      }
+      // Buscar producción con esas máquinas
+      google.script.run
+        .withSuccessHandler(function(res) {
+          fpc_datosProduccion = res.registros || [];
+          fpc_datosOriginales = JSON.parse(JSON.stringify(fpc_datosProduccion));
+          fpc_diccionarioLotes = {};
+          fpc_filtrosActivos = {};
+          fpc_cambiosPendientes.clear();
+          fpc_filaActivaId = null;
+          fpc_cacheOrden = {};
+          fpc_renderTabla();
+          if (placeholder) placeholder.style.display='none';
+          if (tabla) tabla.style.display='';
+          if (sumBar) sumBar.style.display='flex';
+          if (toolbar) toolbar.style.display='flex';
+        })
+        .withFailureHandler(function(e) {
+          if (placeholder) { placeholder.style.display='block'; placeholder.innerHTML='<span style="color:#ef4444;font-weight:700;">Error: ' + e + '</span>'; }
+        })
+        .buscarProduccionCompleta({ maquinas: maqs, fechaIni: fi, fechaFin: ff });
+    })
+    .withFailureHandler(function(e) {
+      if (placeholder) { placeholder.style.display='block'; placeholder.innerHTML='<span style="color:#ef4444;font-weight:700;">Error catálogos: ' + e + '</span>'; }
+    })
+    .obtenerCatalogosProd();
+}
+
+// ── RENDER TABLA ──
+function fpc_renderTabla() {
+  var tbody = document.getElementById('fpc-tbodyProd');
+  if (!tbody) return;
+  var rowsHTML = [];
+
+  var datosVisibles = fpc_datosProduccion.filter(function(row) {
+    for (var col in fpc_filtrosActivos) {
+      if (fpc_filtrosActivos[col].indexOf(String(row[col])) === -1) return false;
+    }
+    return true;
+  });
+
+  fpc_actualizarResumen(datosVisibles);
+  fpc_actualizarEstilosHeaders();
+
+  var optsOp = '<option value="">-</option>';
+  fpc_catalogoOperadores.forEach(function(op) {
+    optsOp += '<option value="' + op.id + '">' + op.nombre + '</option>';
+  });
+
+  datosVisibles.forEach(function(row) {
+    var modClass = row.borrar ? 'fpc-deleted' : (fpc_cambiosPendientes.has(row.id) ? 'fpc-modified' : '');
+
+    var selMaq = '<select class="fpc-tbl-input" data-orden="' + row.ordenRef + '" data-maq="' + row.maquina + '" data-loaded="0" onfocus="fpc_precargarMaquinas(this)" onchange="fpc_editRow(\'' + row.id + '\',\'maquina\',this.value)"><option>' + row.maquina + '</option></select>';
+
+    var selOp = '<select class="fpc-tbl-input" onchange="fpc_editRow(\'' + row.id + '\',\'operadorId\',this.value,this)">' + optsOp.replace('value="' + row.operadorId + '"', 'value="' + row.operadorId + '" selected') + '</select>';
+
+    var selLote = '<select class="fpc-tbl-input" data-id="' + row.id + '" data-orden="' + row.ordenRef + '" data-lote="' + row.lote + '" data-loaded="0" onfocus="fpc_precargarLotes(this)" onchange="fpc_editRow(\'' + row.id + '\',\'lote\',this.value)"><option>' + row.lote + '</option></select>';
+
+    var actionBtns = '';
+    if (row.borrar) {
+      actionBtns = '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#2e7d32;" title="Restaurar" onclick="fpc_marcarBorrar(\'' + row.id + '\',false)">↩️</button>';
+    } else {
+      actionBtns += '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#ef6c00;" title="Transferir" onclick="fpc_abrirTransfer(\'' + row.id + '\',' + row.producido + ',\'' + row.ordenRef + '\')">⇄</button>';
+      if (modClass.includes('modified')) actionBtns += '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#546e7a;" title="Deshacer" onclick="fpc_undo(\'' + row.id + '\')">↩️</button>';
+      actionBtns += '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#c62828;" title="Eliminar" onclick="fpc_marcarBorrar(\'' + row.id + '\',true)">✕</button>';
+    }
+
+    rowsHTML.push('<tr class="' + modClass + '" id="fpc-tr-' + row.id + '" onclick="fpc_activarFila(\'' + row.id + '\')">'
+      + '<td><input type="date" class="fpc-tbl-input" value="' + row.fecha + '" onchange="fpc_editRow(\'' + row.id + '\',\'fecha\',this.value)"></td>'
+      + '<td><input type="number" class="fpc-tbl-input" value="' + row.turno + '" onchange="fpc_editRow(\'' + row.id + '\',\'turno\',this.value)" style="width:40px"></td>'
+      + '<td>' + selMaq + '</td>'
+      + '<td>' + selLote + '</td>'
+      + '<td>' + selOp + '</td>'
+      + '<td><input type="text" class="fpc-tbl-input fpc-num-input" value="' + fpc_fmtNum(row.pesoI) + '" id="fpc-pi-' + row.id + '" onfocus="this.select()" onblur="this.value=fpc_fmtNum(fpc_parseLimpio(this.value))" onchange="fpc_editRow(\'' + row.id + '\',\'pesoI\',fpc_parseLimpio(this.value))"></td>'
+      + '<td><input type="text" class="fpc-tbl-input fpc-num-input" value="' + fpc_fmtNum(row.pesoF) + '" id="fpc-pf-' + row.id + '" onfocus="this.select()" onblur="this.value=fpc_fmtNum(fpc_parseLimpio(this.value))" onchange="fpc_editRow(\'' + row.id + '\',\'pesoF\',fpc_parseLimpio(this.value))"></td>'
+      + '<td><input type="text" class="fpc-tbl-input fpc-num-input" value="' + fpc_fmtNum(row.pesoTina) + '" id="fpc-pt-' + row.id + '" onfocus="this.select()" onblur="this.value=fpc_fmtNum(fpc_parseLimpio(this.value))" onchange="fpc_editRow(\'' + row.id + '\',\'pesoTina\',fpc_parseLimpio(this.value))"></td>'
+      + '<td><input type="text" class="fpc-tbl-input fpc-num-input" value="' + fpc_fmtNum(row.producido) + '" id="fpc-prod-' + row.id + '" onfocus="this.select()" onblur="this.value=fpc_fmtNum(fpc_parseLimpio(this.value))" onchange="fpc_editRow(\'' + row.id + '\',\'producido\',fpc_parseLimpio(this.value))"></td>'
+      + '<td><input type="text" class="fpc-tbl-input fpc-num-input" value="' + fpc_fmtNum(row.horas) + '" onfocus="this.select()" onblur="this.value=fpc_fmtNum(fpc_parseLimpio(this.value))" onchange="fpc_editRow(\'' + row.id + '\',\'horas\',fpc_parseLimpio(this.value))" style="width:55px"></td>'
+      + '<td><input type="text" class="fpc-tbl-input" value="' + fpc_fmtSello(row.sello) + '" onfocus="this.select()" onchange="fpc_editRow(\'' + row.id + '\',\'sello\',this.value)"></td>'
+      + '<td><input class="fpc-tbl-input" value="' + (row.comentario||'') + '" onchange="fpc_editRow(\'' + row.id + '\',\'comentario\',this.value)"></td>'
+      + '<td style="text-align:center;white-space:nowrap;">' + actionBtns + '</td>'
+      + '</tr>');
+  });
+
+  tbody.innerHTML = rowsHTML.length > 0
+    ? rowsHTML.join('')
+    : '<tr><td colspan="13" style="text-align:center;padding:20px;color:#999;">Sin resultados</td></tr>';
+  fpc_updateGlobalBtn();
+}
+
+// ── EDITAR ──
+function fpc_editRow(id, f, val, sel) {
+  var row = fpc_datosProduccion.find(function(r){ return r.id==id; });
+  if (!row) return;
+  row[f] = val;
+  if (f === 'operadorId' && sel) row.operadorTxt = sel.options[sel.selectedIndex].text;
+  if (['pesoI','pesoF','pesoTina'].includes(f)) {
+    var pi = fpc_parseLimpio((document.getElementById('fpc-pi-' + id)||{}).value);
+    var pf = fpc_parseLimpio((document.getElementById('fpc-pf-' + id)||{}).value);
+    var pt = fpc_parseLimpio((document.getElementById('fpc-pt-' + id)||{}).value);
+    row.producido = pf - pi - pt;
+    var elProd = document.getElementById('fpc-prod-' + id);
+    if (elProd) elProd.value = fpc_fmtNum(row.producido);
+  }
+  fpc_checkChange(id);
+}
+
+function fpc_checkChange(id) {
+  var row  = fpc_datosProduccion.find(function(r){ return r.id==id; });
+  var orig = fpc_datosOriginales.find(function(r){ return r.id==id; });
+  if (row.borrar) { fpc_cambiosPendientes.add(id); }
+  else {
+    var cr = JSON.parse(JSON.stringify(row)); delete cr.borrar;
+    var co = JSON.parse(JSON.stringify(orig)); delete co.borrar;
+    if (JSON.stringify(cr) !== JSON.stringify(co)) fpc_cambiosPendientes.add(id);
+    else fpc_cambiosPendientes.delete(id);
+  }
+  fpc_updateGlobalBtn();
+}
+
+function fpc_marcarBorrar(id, estado) {
+  var row = fpc_datosProduccion.find(function(r){ return r.id==id; });
+  if (row) { row.borrar = estado; if (estado) fpc_cambiosPendientes.add(id); else fpc_checkChange(id); fpc_renderTabla(); }
+}
+
+function fpc_undo(id) {
+  var orig = fpc_datosOriginales.find(function(r){ return r.id==id; });
+  var idx  = fpc_datosProduccion.findIndex(function(r){ return r.id==id; });
+  if (orig && idx > -1) { fpc_datosProduccion[idx] = JSON.parse(JSON.stringify(orig)); fpc_cambiosPendientes.delete(id); fpc_renderTabla(); }
+}
+
+function fpc_undoAll() {
+  fpc_datosProduccion = JSON.parse(JSON.stringify(fpc_datosOriginales));
+  fpc_cambiosPendientes.clear();
+  fpc_renderTabla();
+}
+
+function fpc_updateGlobalBtn() {
+  var c = fpc_cambiosPendientes.size;
+  var btn = document.getElementById('fpc-btnSaveAll');
+  if (!btn) return;
+  btn.style.display = c > 0 ? 'block' : 'none';
+  var lbl = document.getElementById('fpc-lblCount');
+  if (lbl) lbl.innerText = c;
+}
+
+function fpc_guardarCambios() {
+  var lista = [];
+  fpc_cambiosPendientes.forEach(function(id) {
+    var item = fpc_datosProduccion.find(function(r){ return r.id==id; });
+    if (item) lista.push(item);
+  });
+  if (lista.length === 0) return;
+  var numBorrados = lista.filter(function(r){ return r.borrar; }).length;
+  Swal.fire({ title:'¿Confirmar guardado?', html:'Modificados: <b>' + (lista.length-numBorrados) + '</b><br>Eliminar: <b>' + numBorrados + '</b>', icon:'question', showCancelButton:true, confirmButtonText:'Guardar', cancelButtonText:'Cancelar' }).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoader('Guardando cambios...');
+    google.script.run
+      .withSuccessHandler(function(res) { sAlert(res,'success','¡Listo!'); fpc_procesar(); })
+      .withFailureHandler(function(e) { hideLoader(); sAlert('Error: ' + e,'error'); })
+      .guardarCambiosProduccion(lista);
+  });
+}
+
+// ── RESUMEN Y HEADERS ──
+function fpc_actualizarResumen(d) {
+  var p=0, h=0;
+  d.forEach(function(r){ if(!r.borrar){ p+=Number(r.producido)||0; h+=Number(r.horas)||0; } });
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.innerText=v; };
+  s('fpc-sumRegs', new Intl.NumberFormat().format(d.length));
+  s('fpc-sumProd', new Intl.NumberFormat().format(p));
+  s('fpc-sumHrs', new Intl.NumberFormat().format(h));
+}
+
+function fpc_actualizarEstilosHeaders() {
+  document.querySelectorAll('#fpc-tablaProd th').forEach(function(th){ th.classList.remove('fpc-th-filtrado'); });
+  for (var col in fpc_filtrosActivos) { var th=document.getElementById('fpc-th-'+col); if(th) th.classList.add('fpc-th-filtrado'); }
+}
+
+// ── FILTROS ──
+function fpc_abrirFiltro(col) {
+  fpc_colFiltroActual = col;
+  var lbl = document.getElementById('fpc-lblColumnaFiltro'); if(lbl) lbl.innerText = col.toUpperCase();
+  var txt = document.getElementById('fpc-txtBuscarFiltro'); if(txt) txt.value = '';
+  var candidatos = fpc_datosProduccion.filter(function(row) {
+    for (var c in fpc_filtrosActivos) { if (c!==col && fpc_filtrosActivos[c].indexOf(String(row[c]))===-1) return false; }
+    return true;
+  });
+  var valoresUnicos = Array.from(new Set(candidatos.map(function(r){ return String(r[col]); }))).sort();
+  var seleccionados = fpc_filtrosActivos[col] || valoresUnicos;
+  var html = valoresUnicos.map(function(v) {
+    return '<label class="fpc-filter-item"><input type="checkbox" value="' + v + '" ' + (seleccionados.includes(v)?'checked':'') + '> <span>' + v + '</span></label>';
+  }).join('');
+  var lista = document.getElementById('fpc-listaOpcionesFiltro'); if(lista) lista.innerHTML = html;
+  var popup = document.getElementById('fpc-filterPopup'); if(popup) popup.style.display = 'flex';
+}
+
+function fpc_aplicarFiltro() {
+  var inputs = document.querySelectorAll('#fpc-listaOpcionesFiltro input');
+  var permitidos = [];
+  inputs.forEach(function(inp){ if(inp.checked) permitidos.push(inp.value); });
+  if (permitidos.length === inputs.length) delete fpc_filtrosActivos[fpc_colFiltroActual];
+  else fpc_filtrosActivos[fpc_colFiltroActual] = permitidos;
+  fpc_renderTabla();
+  var popup = document.getElementById('fpc-filterPopup'); if(popup) popup.style.display = 'none';
+}
+
+function fpc_sortData(dir) {
+  var col = fpc_colFiltroActual; if(!col) return;
+  var isNum = fpc_datosProduccion.some(function(r){ return !isNaN(parseFloat(r[col])) && isFinite(r[col]); });
+  fpc_datosProduccion.sort(function(a,b) {
+    var vA=a[col], vB=b[col];
+    if(isNum){ vA=parseFloat(vA)||0; vB=parseFloat(vB)||0; return dir==='asc'?vA-vB:vB-vA; }
+    vA=String(vA).toLowerCase(); vB=String(vB).toLowerCase();
+    return dir==='asc'?vA.localeCompare(vB):vB.localeCompare(vA);
+  });
+  fpc_renderTabla();
+  var popup = document.getElementById('fpc-filterPopup'); if(popup) popup.style.display = 'none';
+}
+
+function fpc_cerrarFiltro() { var p=document.getElementById('fpc-filterPopup'); if(p) p.style.display='none'; }
+function fpc_limpiarFiltros() { fpc_filtrosActivos={}; fpc_renderTabla(); }
+function fpc_toggleOpciones(todos) { document.querySelectorAll('#fpc-listaOpcionesFiltro input').forEach(function(inp){ inp.checked=todos; }); }
+function fpc_filtrarOpciones(t) { t=t.toLowerCase(); document.querySelectorAll('#fpc-listaOpcionesFiltro .fpc-filter-item').forEach(function(el){ el.style.display=el.innerText.toLowerCase().includes(t)?'flex':'none'; }); }
+
+// ── LAZY LOTES ──
+function fpc_precargarLotes(sel) {
+  if (sel.dataset.loaded==='1') return;
+  var idOrden = sel.dataset.orden;
+  if (!idOrden || idOrden==='undefined') return;
+  if (fpc_lotesEnCarga[idOrden]) return;
+  if (fpc_diccionarioLotes[idOrden]) { fpc_poblarSelectLotes(sel, idOrden); return; }
+  fpc_lotesEnCarga[idOrden] = true;
+  var toast = document.getElementById('fpc-toast-lotes');
+  if (toast) toast.style.display = 'flex';
+  google.script.run
+    .withSuccessHandler(function(mapa) {
+      if (mapa && mapa[idOrden]) fpc_diccionarioLotes[idOrden] = mapa[idOrden];
+      else fpc_diccionarioLotes[idOrden] = [sel.dataset.lote];
+      fpc_poblarSelectLotes(sel, idOrden);
+      fpc_lotesEnCarga[idOrden] = false;
+      var hayActivas = Object.values(fpc_lotesEnCarga).some(function(v){ return v; });
+      if (!hayActivas) { var t=document.getElementById('fpc-toast-lotes'); if(t) t.style.display='none'; }
+    })
+    .withFailureHandler(function() {
+      fpc_lotesEnCarga[idOrden]=false;
+      var t=document.getElementById('fpc-toast-lotes'); if(t) t.style.display='none';
+      fpc_diccionarioLotes[idOrden]=[sel.dataset.lote];
+      fpc_poblarSelectLotes(sel, idOrden);
+    })
+    .obtenerLotesDeOrden(idOrden);
+}
+
+function fpc_poblarSelectLotes(sel, idOrden) {
+  var loteActual = sel.dataset.lote;
+  var lista = (fpc_diccionarioLotes[idOrden]||[loteActual]).slice();
+  if (lista.indexOf(loteActual)<0) lista.unshift(loteActual);
+  sel.innerHTML = lista.map(function(l){ return '<option'+(l===loteActual?' selected':'')+'>'+l+'</option>'; }).join('');
+  sel.dataset.loaded='1';
+}
+
+// ── LAZY MÁQUINAS ──
+function fpc_precargarMaquinas(sel) {
+  if (sel.dataset.loaded==='1') return;
+  var ordenRef = sel.dataset.orden;
+  var maqActual = sel.dataset.maq;
+  if (!ordenRef || ordenRef==='undefined') return;
+  var proceso = sel.dataset.proceso||'';
+  if (proceso && fpc_cacheMaquinas[proceso]) { fpc_poblarSelectMaquinas(sel, proceso, maqActual); return; }
+  if (proceso && fpc_maqEnCarga[proceso]) { if(!fpc_maqPendientes[proceso]) fpc_maqPendientes[proceso]=[]; fpc_maqPendientes[proceso].push(sel); return; }
+  if (fpc_maqEnCarga[ordenRef]) { if(!fpc_maqPendientes[ordenRef]) fpc_maqPendientes[ordenRef]=[]; fpc_maqPendientes[ordenRef].push(sel); return; }
+  fpc_maqEnCarga[ordenRef]=true;
+  var toast=document.getElementById('fpc-toast-maqs'); if(toast) toast.style.display='flex';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      res=(typeof res==='string')?JSON.parse(res):res;
+      fpc_maqEnCarga[ordenRef]=false;
+      var proc=(res.proceso||'').toUpperCase().trim();
+      var lista=(res.maquinas||[]).slice();
+      if (maqActual && lista.indexOf(maqActual)<0) lista.unshift(maqActual);
+      if (proc) fpc_cacheMaquinas[proc]=lista;
+      sel.dataset.proceso=proc;
+      fpc_poblarSelectMaquinas(sel, proc, maqActual);
+      var pendientes=(fpc_maqPendientes[ordenRef]||[]).concat(fpc_maqPendientes[proc]||[]);
+      pendientes.forEach(function(s){ var ma=s.dataset.maq; s.dataset.proceso=proc; fpc_poblarSelectMaquinas(s,proc,ma); });
+      delete fpc_maqPendientes[ordenRef]; delete fpc_maqPendientes[proc];
+      var hayActivas=Object.keys(fpc_maqEnCarga).some(function(k){ return fpc_maqEnCarga[k]; });
+      if (!hayActivas) { var t=document.getElementById('fpc-toast-maqs'); if(t) t.style.display='none'; }
+    })
+    .withFailureHandler(function() {
+      fpc_maqEnCarga[ordenRef]=false;
+      var t=document.getElementById('fpc-toast-maqs'); if(t) t.style.display='none';
+      sel.dataset.loaded='1';
+    })
+    .obtenerMaquinasDeOrden(ordenRef);
+}
+
+function fpc_poblarSelectMaquinas(sel, proceso, maqActual) {
+  var lista=(fpc_cacheMaquinas[proceso]||[maqActual]).slice();
+  if (lista.indexOf(maqActual)<0) lista.unshift(maqActual);
+  sel.innerHTML=lista.map(function(m){ return '<option'+(m===maqActual?' selected':'')+'>'+m+'</option>'; }).join('');
+  sel.dataset.loaded='1';
+  sel.focus();
+  var evt=document.createEvent('MouseEvents');
+  evt.initMouseEvent('mousedown',true,true,window);
+  sel.dispatchEvent(evt);
+}
+
+// ── TRANSFERENCIA ──
+function fpc_actualizarModoTrans() {
+  var modo=document.querySelector('input[name="fpc-modoTrans"]:checked');
+  var div=document.getElementById('fpc-divKgParcial');
+  if(modo && div) div.style.display=modo.value==='PARCIAL'?'block':'none';
+}
+
+function fpc_abrirTransfer(id, prod, ord) {
+  if (!ord || ord==='undefined') { sAlert('Error: Registro sin Orden Referencia'); return; }
+  fpc_idRegActivo=id; fpc_maxKgActivo=prod;
+  var lbl=document.getElementById('fpc-lblInfoTrans'); if(lbl) lbl.innerHTML='<b>Disponible:</b> '+prod+' kg';
+  var r=document.querySelector('input[name="fpc-modoTrans"][value="TOTAL"]'); if(r) r.checked=true;
+  var div=document.getElementById('fpc-divKgParcial'); if(div) div.style.display='none';
+  var num=document.getElementById('fpc-numKgTrans'); if(num) num.value=prod;
+  var sel=document.getElementById('fpc-selDestino'); if(sel) sel.innerHTML='<option>Cargando...</option>';
+  var modal=document.getElementById('fpc-modalTrans'); if(modal) modal.style.display='flex';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      var s=document.getElementById('fpc-selDestino'); if(!s) return;
+      var data=(typeof res==='string')?JSON.parse(res):res;
+      s.innerHTML='';
+      if(data.error){ sAlert(data.error); return; }
+      var list=data.list||[];
+      if(list.length===0){ s.innerHTML='<option value="">Sin órdenes hermanas disponibles</option>'; return; }
+      list.forEach(function(o){
+        var pend=(o.solicitado-o.producido).toFixed(0);
+        s.innerHTML+='<option value="'+o.id+'">'+o.nombre+' | Sol:'+Number(o.solicitado).toFixed(0)+' → Pend:'+pend+'</option>';
+      });
+    })
+    .withFailureHandler(function(e){ sAlert('Error al obtener candidatos: '+e); })
+    .obtenerCandidatosTransferencia(ord);
+}
+
+function fpc_confirmarTraspaso() {
+  var modoEl=document.querySelector('input[name="fpc-modoTrans"]:checked');
+  var modo=modoEl?modoEl.value:'TOTAL';
+  var d=(document.getElementById('fpc-selDestino')||{}).value;
+  var k=modo==='TOTAL'?fpc_maxKgActivo:parseFloat((document.getElementById('fpc-numKgTrans')||{}).value);
+  if(!d||!k||k<=0||k>fpc_maxKgActivo){ sAlert('Datos inválidos.'); return; }
+  Swal.fire({title:'¿Transferir '+k.toFixed(2)+' kg?',icon:'question',showCancelButton:true,confirmButtonText:'Confirmar',cancelButtonText:'Cancelar'}).then(function(result){
+    if(!result.isConfirmed) return;
+    var modal=document.getElementById('fpc-modalTrans'); if(modal) modal.style.display='none';
+    showLoader('Procesando transferencia...');
+    google.script.run
+      .withSuccessHandler(function(res){
+        var r=(typeof res==='string')?JSON.parse(res):res;
+        if(r && r.success) fpc_procesar(); else { hideLoader(); sAlert('Error: '+(r?r.msg:'Sin respuesta'),'error'); }
+      })
+      .withFailureHandler(function(e){ hideLoader(); sAlert('Error: '+e); })
+      .ejecutarTraspasoParcialOTotal(fpc_idRegActivo, d, k);
+  });
+}
+
+// ── FILA ACTIVA ──
+function fpc_activarFila(idFila) {
+  if (fpc_filaActivaId) { var ant=document.getElementById('fpc-tr-'+fpc_filaActivaId); if(ant) ant.classList.remove('fpc-fila-activa'); }
+  fpc_filaActivaId=idFila;
+  var tr=document.getElementById('fpc-tr-'+idFila); if(tr) tr.classList.add('fpc-fila-activa');
+}
+
+// ── EXCEL ──
+function fpc_exportarExcel() {
+  if (!fpc_datosProduccion.length) { sAlert('Sin datos para exportar'); return; }
+  var fi=(document.getElementById('fpc-fechaIni')||{}).value;
+  var ff=(document.getElementById('fpc-fechaFin')||{}).value;
+  var headers=['FECHA','TURNO','MAQUINA','LOTE','OPERADOR','P.INI','P.FIN','TINA','PRODUCIDO','HORAS','SELLO','COMENTARIO'];
+  var rows=[headers];
+  fpc_datosProduccion.forEach(function(r){
+    rows.push([r.fecha,r.turno,r.maquina,r.lote,r.operadorTxt,r.pesoI,r.pesoF,r.pesoTina,r.producido,r.horas,r.sello,r.comentario||'']);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[12,7,18,16,20,10,10,10,11,8,8,16].map(function(w){ return {wch:w}; });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Captura_Forja');
+  XLSX.writeFile(wb,'Captura_Forja_'+fi+'_al_'+ff+'.xlsx');
+}
+
+// ── NAVEGACIÓN CON TECLADO EN CAPTURA ──
+function fpc_keyNav(e) {
+  // Solo actuar si el foco está dentro del panel captura
+  var pane = document.getElementById('fpane-captura');
+  if (!pane || !pane.classList.contains('activo')) return;
+  if (!fpc_filaActivaId) return;
+
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    var tbody = document.getElementById('fpc-tbodyProd'); if (!tbody) return;
+    var filas = Array.from(tbody.querySelectorAll('tr[id^="fpc-tr-"]'));
+    var idx = filas.findIndex(function(tr) { return tr.id === 'fpc-tr-' + fpc_filaActivaId; });
+    var sig = e.key === 'ArrowDown' ? filas[idx + 1] : filas[idx - 1];
+    if (!sig) return;
+    var nuevoId = sig.id.replace('fpc-tr-', '');
+    // Guardar columna activa antes de cambiar fila
+    var trActual = document.getElementById('fpc-tr-' + fpc_filaActivaId);
+    var inputs = trActual ? Array.from(trActual.querySelectorAll('input,select')) : [];
+    var colIdx = inputs.indexOf(document.activeElement);
+    // Mover foco a la nueva fila
+    fpc_activarFila(nuevoId);
+    sig.scrollIntoView({ block: 'nearest' });
+    // Enfocar la misma columna en la nueva fila y seleccionar contenido
+    var inpSig = Array.from(sig.querySelectorAll('input,select'));
+    var dest = colIdx >= 0 ? (inpSig[colIdx] || inpSig[0]) : inpSig[0];
+    if (dest) { dest.focus(); if (dest.select) dest.select(); }
+  }
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    var trActivo = document.getElementById('fpc-tr-' + fpc_filaActivaId); if (!trActivo) return;
+    var celdas = Array.from(trActivo.querySelectorAll('input,select')); if (!celdas.length) return;
+    var fIdx = celdas.indexOf(document.activeElement);
+    if (fIdx === -1) {
+      if (e.key === 'ArrowRight') { e.preventDefault(); celdas[0].focus(); if (celdas[0].select) celdas[0].select(); }
+      return;
+    }
+    e.preventDefault();
+    var dest2 = e.key === 'ArrowRight' ? celdas[fIdx + 1] : celdas[fIdx - 1];
+    if (dest2) { dest2.focus(); if (dest2.select) dest2.select(); }
+  }
+}
+
+// Registrar el listener de teclado para captura (una sola vez)
+(function() {
+  if (window._fpc_keyNavRegistrado) return;
+  window._fpc_keyNavRegistrado = true;
+  document.addEventListener('keydown', fpc_keyNav);
+})();
+
+/* ── FIN CAPTURA FORJA ── */
+
+/* ══════════════════════════════════════════════════════════════
+   EXPORTAR PLAN DIARIO — PDF profesional
+   ══════════════════════════════════════════════════════════════ */
+
+function fpd_exportarPlanPDF() {
+  var ordenes = (typeof fpd_getOrdenes === 'function') ? fpd_getOrdenes() : [];
+  if (!ordenes.length) { sAlert('No hay datos en Plan Diario para exportar'); return; }
+
+  function getMaqGrupo(maq) {
+    var maqUp = String(maq).toUpperCase();
+    for (var g in fpd_gruposData) {
+      var maqs = fpd_gruposData[g] || [];
+      for (var i = 0; i < maqs.length; i++) {
+        if (maqs[i].toUpperCase() === maqUp) return g;
+      }
+    }
+    return 'SIN GRUPO';
+  }
+
+  var estructura = {};
+  var procesosOrden = [];
+  ordenes.forEach(function(o) {
+    var proc = (o.proceso || 'SIN PROCESO').toUpperCase();
+    var grp  = getMaqGrupo(o.maquina);
+    if (!estructura[proc]) { estructura[proc] = {}; procesosOrden.push(proc); }
+    if (!estructura[proc][grp]) estructura[proc][grp] = {};
+    if (!estructura[proc][grp][o.maquina]) estructura[proc][grp][o.maquina] = [];
+    estructura[proc][grp][o.maquina].push(o);
+  });
+  procesosOrden = procesosOrden.filter(function(p,i){ return procesosOrden.indexOf(p)===i; });
+
+  var gruposPorProceso = {};
+  procesosOrden.forEach(function(proc) {
+    gruposPorProceso[proc] = Object.keys(estructura[proc]);
+  });
+
+  var PROC_COLORES_MODAL = {
+    'FORJA':             '#1a237e',
+    'ROLADO TORN':       '#1b5e20',
+    'LAVADO':            '#006064',
+    'TEMPLE Y REVENIDO': '#bf360c',
+    'ENDEREZADO PIJA':   '#4a148c',
+    'PUNTEADO':          '#37474f'
+  };
+  function getModalBg(proc) {
+    for (var k in PROC_COLORES_MODAL) { if (proc && proc.indexOf(k)>=0) return PROC_COLORES_MODAL[k]; }
+    return '#263238';
+  }
+
+  // ── Modal de selección ──
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+  var selHtml = '<div style="background:white;border-radius:14px;width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.45);overflow:hidden;">';
+
+  // Header modal
+  selHtml += '<div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">';
+  selHtml += '<div><div style="font-size:17px;font-weight:900;letter-spacing:.02em;">📄 EXPORTAR PLAN DIARIO</div>';
+  selHtml += '<div style="font-size:11px;opacity:.75;margin-top:3px;">Selecciona los procesos y grupos a incluir</div></div>';
+  selHtml += '<button id="fpdExp-cerrar" style="background:rgba(255,255,255,.15);border:none;color:white;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;">✕</button>';
+  selHtml += '</div>';
+
+  // Cuerpo scrolleable
+  selHtml += '<div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;">';
+
+  procesosOrden.forEach(function(proc) {
+    var bg    = getModalBg(proc);
+    var grupos = gruposPorProceso[proc];
+    var procSafe = proc.replace(/[^a-zA-Z0-9]/g,'_');
+
+    selHtml += '<div style="border:2.5px solid ' + bg + ';border-radius:10px;overflow:hidden;">';
+
+    // Header proceso — click en toda la barra togglea el proceso
+    selHtml += '<div style="background:' + bg + ';color:white;padding:9px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="fpdExp_toggleProceso(\'' + proc + '\')">';
+    selHtml += '<input type="checkbox" id="fpdExp-proc-' + procSafe + '" checked '
+      + 'style="width:17px;height:17px;cursor:pointer;accent-color:white;flex-shrink:0;" '
+      + 'onclick="event.stopPropagation();fpdExp_toggleProceso(\'' + proc + '\')">';
+    selHtml += '<span style="font-weight:900;font-size:14px;letter-spacing:.06em;">' + proc + '</span>';
+    selHtml += '</div>';
+
+    // Grupos — en fila con wrap
+    selHtml += '<div id="fpdExp-grupos-' + procSafe + '" style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;background:#f8fafc;">';
+    grupos.forEach(function(grp) {
+      var grpId = 'fpdExp-grp-' + (proc+'__'+grp).replace(/[^a-zA-Z0-9]/g,'_');
+      selHtml += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:white;border:1.5px solid #e2e8f0;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#334155;transition:border-color .15s;" '
+        + 'onmouseover="this.style.borderColor=\'' + bg + '\'" onmouseout="this.style.borderColor=\'#e2e8f0\'">';
+      selHtml += '<input type="checkbox" id="' + grpId + '" data-proc="' + proc + '" class="fpdExp-grp-cb" checked '
+        + 'style="width:14px;height:14px;cursor:pointer;accent-color:' + bg + ';" '
+        + 'onchange="fpdExp_actualizarProc(\'' + proc + '\')">';
+      selHtml += '<span>' + grp + '</span></label>';
+    });
+    selHtml += '</div></div>';
+  });
+
+  selHtml += '</div>';
+
+  // Footer modal
+  selHtml += '<div style="padding:14px 22px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f8fafc;">';
+  selHtml += '<button id="fpdExp-cancelar" style="background:#94a3b8;color:white;border:none;border-radius:8px;padding:11px 24px;font-weight:800;font-size:13px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#64748b\'" onmouseout="this.style.background=\'#94a3b8\'">Cancelar</button>';
+  selHtml += '<button id="fpdExp-generar" style="background:linear-gradient(135deg,#1a237e,#283593);color:white;border:none;border-radius:8px;padding:11px 28px;font-weight:900;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(26,35,126,.35);">📄 GENERAR PDF</button>';
+  selHtml += '</div></div>';
+
+  overlay.innerHTML = selHtml;
+  document.body.appendChild(overlay);
+
+  window.fpdExp_toggleProceso = function(proc) {
+    var procSafe = proc.replace(/[^a-zA-Z0-9]/g,'_');
+    var cbProc   = document.getElementById('fpdExp-proc-' + procSafe);
+    if (!cbProc) return;
+    var nuevoEstado = cbProc.checked;
+    var grpCbs = document.querySelectorAll('#fpdExp-grupos-' + procSafe + ' .fpdExp-grp-cb');
+    grpCbs.forEach(function(cb){ cb.checked = nuevoEstado; });
+  };
+
+  window.fpdExp_actualizarProc = function(proc) {
+    var procSafe = proc.replace(/[^a-zA-Z0-9]/g,'_');
+    var grpCbs   = document.querySelectorAll('#fpdExp-grupos-' + procSafe + ' .fpdExp-grp-cb');
+    var alguno = false, todos = true;
+    grpCbs.forEach(function(cb){ if (cb.checked) alguno=true; else todos=false; });
+    var cbProc = document.getElementById('fpdExp-proc-' + procSafe);
+    if (cbProc) { cbProc.checked = alguno; cbProc.indeterminate = alguno && !todos; }
+  };
+
+  function cerrarOverlay() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+  document.getElementById('fpdExp-cerrar').addEventListener('click', cerrarOverlay);
+  document.getElementById('fpdExp-cancelar').addEventListener('click', cerrarOverlay);
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) cerrarOverlay(); });
+
+  document.getElementById('fpdExp-generar').addEventListener('click', function() {
+    var seleccion = {};
+    procesosOrden.forEach(function(proc) {
+      var procSafe = proc.replace(/[^a-zA-Z0-9]/g,'_');
+      var cbProc   = document.getElementById('fpdExp-proc-' + procSafe);
+      if (!cbProc || !cbProc.checked) return;
+      var grpCbs = document.querySelectorAll('#fpdExp-grupos-' + procSafe + ' .fpdExp-grp-cb');
+      var grpsSelec = [];
+      grpCbs.forEach(function(cb){ if (cb.checked) grpsSelec.push(cb.parentNode.querySelector('span').textContent.trim()); });
+      if (grpsSelec.length) seleccion[proc] = grpsSelec;
+    });
+    cerrarOverlay();
+    fpd_generarPDF(estructura, procesosOrden, seleccion);
+  });
+}
+
+// ── Genera y abre la ventana de impresión ──
+function fpd_generarPDF(estructura, procesosOrden, seleccion) {
+  var hoy = new Date();
+  var fechaImpresion = hoy.toLocaleDateString('es-MX', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  var horaImpresion  = hoy.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+
+  var PROC_COLORES = {
+    'FORJA':             { bg:'#1a237e', accent:'#3949ab', light:'#e8eaf6' },
+    'ROLADO TORN':       { bg:'#1b5e20', accent:'#388e3c', light:'#e8f5e9' },
+    'LAVADO':            { bg:'#006064', accent:'#00838f', light:'#e0f7fa' },
+    'TEMPLE Y REVENIDO': { bg:'#bf360c', accent:'#e64a19', light:'#fbe9e7' },
+    'ENDEREZADO PIJA':   { bg:'#4a148c', accent:'#7b1fa2', light:'#f3e5f5' },
+    'PUNTEADO':          { bg:'#37474f', accent:'#546e7a', light:'#eceff1' }
+  };
+  var COL_DEFAULT = { bg:'#263238', accent:'#546e7a', light:'#eceff1' };
+  function getProcColor(proc) {
+    for (var k in PROC_COLORES) { if (proc && proc.toUpperCase().indexOf(k)>=0) return PROC_COLORES[k]; }
+    return COL_DEFAULT;
+  }
+
+  // ── Badge de acero (texto, sin SVG) ──
+  function aceroBadge(txt) {
+    if (!txt || txt==='—' || txt.toUpperCase()==='UNDEFINED') return '<span style="color:#bbb;">—</span>';
+    var fill='#263238', fg='white', borde='transparent';
+    var t = txt.toUpperCase();
+    if      (t==='1004')                              { fill='#fff'; fg='#000'; borde='#2E7D32'; }
+    else if (t==='1006')                              { fill='#fff'; fg='#000'; borde='#212121'; }
+    else if (t==='1008')                              { fill='#fff'; fg='#000'; borde='#9e9e9e'; }
+    else if (t==='1018')                              { fill='#2E7D32'; fg='#fff'; }
+    else if (t.indexOf('10B21')>=0)                   { fill='#fff'; fg='#000'; borde='#7B1FA2'; }
+    else if (t==='1038')                              { fill='#FFD600'; fg='#000'; }
+    else if (t==='1033')                              { fill='#FFD600'; fg='#000'; borde='#212121'; }
+    else if (t==='1541')                              { fill='#FF6F00'; fg='#000'; }
+    else if (t==='4140')                              { fill='#F06292'; fg='#000'; }
+    else if (t==='1060')                              { fill='#0D47A1'; fg='#fff'; }
+    else if (t==='1055')                              { fill='#1565C0'; fg='#fff'; borde='#212121'; }
+    else if (t==='1045')                              { fill='#C62828'; fg='#fff'; }
+    else if (t==='1006 REC')                          { fill='#fff'; fg='#000'; borde='#7B1FA2'; }
+    else if (t==='1008 REC')                          { fill='#fff'; fg='#000'; borde='#212121'; }
+    else if (t==='1018 REC')                          { fill='#2E7D32'; fg='#fff'; borde='#7B1FA2'; }
+    else if (t.indexOf('INOX')>=0||t.indexOf('304')>=0) { fill='#00BCD4'; fg='#fff'; }
+    var bStr = borde!=='transparent' ? borde : fill;
+    return '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:900;background:' + fill + ';color:' + fg + ';border:1.5px solid ' + bStr + ';">' + txt + '</span>';
+  }
+
+  // ── Fila de orden ──
+  function htmlOrden(o, idx, col) {
+    var r = o._raw || {};
+    var cantidad  = parseFloat(r.cantidad)  || 0;
+    var pesoPza   = parseFloat(r.peso_pza)  || 0;
+    var pesoMerma = parseFloat(r.peso_merma)|| 0;
+    var pesoCon   = pesoPza + pesoMerma;
+    var producido = parseFloat(r.producido) || 0;
+    var pzasProd  = (producido>0 && pesoPza>0) ? Math.round(producido/pesoPza) : 0;
+    var mpKgReq   = cantidad * pesoCon;
+    var mpActual  = mpKgReq - producido;
+
+    // % STOCK = EFECT = estado_inv → BUENO / MALO
+    var exist  = parseFloat(r.existencia);
+    var minVal = parseFloat(r.minimo);
+    var estadoInvTxt, estadoInvBg, estadoInvFg;
+    if (r.existencia===null||r.existencia===undefined||isNaN(exist)||isNaN(minVal)) {
+      estadoInvTxt='—'; estadoInvBg='#e2e8f0'; estadoInvFg='#64748b';
+    } else if (exist < minVal/2) {
+      estadoInvTxt='MALO'; estadoInvBg='#fee2e2'; estadoInvFg='#991b1b';
+    } else {
+      estadoInvTxt='BUENO'; estadoInvBg='#dcfce7'; estadoInvFg='#166534';
+    }
+
+    // ESTADO orden
+    var estadoLabel = o.estado || 'ACTIVE';
+    var estBg = estadoLabel==='TERMINADO'?'#166534':(estadoLabel==='SOBREPRODUCCION'?'#1d4ed8':(estadoLabel==='PAUSADO'?'#92400e':'#374151'));
+
+    // % avance barra
+    var pct   = o.avance || 0;
+    var barW  = Math.min(100, pct).toFixed(0);
+    var barColor = pct>=100?'#6366f1':(pct>=98?'#22c55e':(pct>=60?'#f59e0b':'#ef4444'));
+
+    var serieOrden = (o.serie||'F') + '.' + (o.orden||'');
+    var mpAlambre  = String(r.mp_especif||'').trim() || '—';
+
+    // Fila con fuente 10.5px y bordes más marcados
+    return '<tr>'
+      + '<td class="tc" style="font-weight:900;color:' + col.accent + ';width:22px;">' + (idx+1) + '</td>'
+      + '<td class="tc">' + (o.pedido||'—') + '</td>'
+      + '<td class="tl">' + (o.codigo||'—') + '</td>'
+      + '<td class="tc">' + serieOrden + '</td>'
+      + '<td class="tc" style="color:#d32f2f;font-weight:900;">' + (cantidad>0?cantidad.toLocaleString('es-MX',{maximumFractionDigits:0}):'—') + '</td>'
+      + '<td class="tc"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:800;background:' + estadoInvBg + ';color:' + estadoInvFg + ';">' + estadoInvTxt + '</span></td>'
+      + '<td class="tc"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:800;background:' + estBg + ';color:white;">' + estadoLabel + '</span></td>'
+      + '<td class="tl">' + (r.desc_tipo||'—') + '</td>'
+      + '<td class="tc">' + (r.diametro||'—') + '</td>'
+      + '<td class="tc">' + (r.longitud||'—') + '</td>'
+      + '<td class="tc">' + (r.cuerda||'—') + '</td>'
+      + '<td class="tc">' + (r.cuerpo||'—') + '</td>'
+      + '<td class="tc">' + aceroBadge(String(r.acero||'').trim()) + '</td>'
+      + '<td class="tc">' + mpAlambre + '</td>'
+      + '<td class="tr">' + (mpKgReq>0?mpKgReq.toLocaleString('es-MX',{maximumFractionDigits:0}):'—') + '</td>'
+      + '<td class="tr">' + mpActual.toLocaleString('es-MX',{maximumFractionDigits:0}) + '</td>'
+      + '<td class="tr">' + (pzasProd>0?pzasProd.toLocaleString('es-MX',{maximumFractionDigits:0}):'—') + '</td>'
+      + '<td class="tr">' + (producido>0?producido.toLocaleString('es-MX',{maximumFractionDigits:0}):'—') + '</td>'
+      + '<td class="tr" style="font-weight:900;">' + mpActual.toLocaleString('es-MX',{maximumFractionDigits:0}) + '</td>'
+      + '<td class="tc" style="min-width:65px;padding:3px 6px;">'
+      +   '<div style="background:#e2e8f0;border-radius:4px;height:10px;overflow:hidden;position:relative;">'
+      +   '<div style="position:absolute;left:0;top:0;height:100%;width:' + barW + '%;background:' + barColor + ';border-radius:4px;"></div>'
+      +   '</div>'
+      +   '<div style="text-align:center;font-size:8.5px;font-weight:800;color:#334155;margin-top:2px;">' + pct.toFixed(1) + '%</div>'
+      + '</td>'
+      + '</tr>';
+  }
+
+  // ── Bloque máquina — sin KPIs en header, solo nombre ──
+  function htmlMaquina(maq, ords, col) {
+    var top5 = ords.slice(0,5);
+    var html = '<div class="maq-bloque">';
+
+    // Header: solo nombre de máquina, sin KPIs
+    html += '<div style="background:' + col.accent + ';color:white;padding:7px 14px;">'
+      + '<span style="font-size:12px;font-weight:900;letter-spacing:.04em;">⚙ ' + maq + '</span>'
+      + '</div>';
+
+    // Tabla con bordes más marcados
+    html += '<table><thead><tr>'
+      + '<th class="th">#</th>'
+      + '<th class="th">PEDIDO</th>'
+      + '<th class="th">CÓDIGO</th>'
+      + '<th class="th">ORDEN</th>'
+      + '<th class="th" style="color:#d32f2f;">CANT PZS</th>'
+      + '<th class="th">STOCK</th>'
+      + '<th class="th">ESTADO</th>'
+      + '<th class="th">DESC</th>'
+      + '<th class="th">Ø</th>'
+      + '<th class="th">L</th>'
+      + '<th class="th">CDA</th>'
+      + '<th class="th">CPO</th>'
+      + '<th class="th">ACERO</th>'
+      + '<th class="th">MP ALAMBRE</th>'
+      + '<th class="th">MP REQUER KG</th>'
+      + '<th class="th">MP ACTUAL KG</th>'
+      + '<th class="th">PZS FABRIC</th>'
+      + '<th class="th">KG FABRIC</th>'
+      + '<th class="th" style="font-weight:900;">KG RESTAN</th>'
+      + '<th class="th">% AVZ</th>'
+      + '</tr></thead><tbody>';
+
+    top5.forEach(function(o,idx){ html += htmlOrden(o,idx,col); });
+
+    if (ords.length>5) {
+      html += '<tr><td colspan="20" style="text-align:center;padding:5px;color:#94a3b8;font-style:italic;font-size:9px;">... y ' + (ords.length-5) + ' órdenes más</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  // ── CSS ──
+  var css = [
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'body{font-family:"Segoe UI",Arial,sans-serif;background:#fff;color:#1a1a1a;font-size:10.5px;}',
+    // Clases de celda — bordes más marcados (#c8d0da)
+    '.th{padding:5px 7px;text-align:left;font-size:8.5px;font-weight:800;text-transform:uppercase;',
+    '  color:#334155;border-bottom:2px solid #94a3b8;border-right:1.5px solid #b0bec5;white-space:nowrap;background:#f1f5f9;}',
+    '.tc{padding:4px 7px;border-bottom:1.5px solid #c8d0da;border-right:1.5px solid #c8d0da;text-align:center;vertical-align:middle;white-space:nowrap;}',
+    '.tr{padding:4px 7px;border-bottom:1.5px solid #c8d0da;border-right:1.5px solid #c8d0da;text-align:right;vertical-align:middle;white-space:nowrap;}',
+    '.tl{padding:4px 7px;border-bottom:1.5px solid #c8d0da;border-right:1.5px solid #c8d0da;text-align:left;vertical-align:middle;white-space:nowrap;}',
+    'table{width:100%;border-collapse:collapse;}',
+    'tbody tr:nth-child(even) td{background:#f4f7fb;}',
+    'tbody tr:last-child td{border-bottom:none;}',
+    // Bloque máquina — nunca cortar
+    '.maq-bloque{break-inside:avoid;page-break-inside:avoid;margin:0 10px 14px 10px;',
+    '  border:2px solid #94a3b8;border-radius:8px;overflow:hidden;',
+    '  box-shadow:0 2px 6px rgba(0,0,0,.1);}',
+    // Grupo — encabezado siempre pegado a primera máquina
+    '.grupo-wrap{break-inside:avoid;page-break-inside:avoid;}',
+    '.grupo-header{padding:6px 14px;font-size:10px;font-weight:900;letter-spacing:.07em;',
+    '  text-transform:uppercase;color:white;}',
+    // Proceso
+    '.proc-section{break-before:page;page-break-before:always;}',
+    '.proc-section:first-child{break-before:auto;page-break-before:auto;}',
+    '.proc-portada{padding:16px 20px;color:white;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid rgba(255,255,255,.2);}',
+    '.pdf-header{padding:12px 20px;display:flex;justify-content:space-between;align-items:center;color:white;}',
+    '.pdf-footer{text-align:center;font-size:8px;color:#94a3b8;padding:10px 0 4px 0;border-top:1px solid #e2e8f0;margin:14px 10px 0 10px;}',
+    '@media print{',
+    '  body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}',
+    '  @page{margin:6mm;size:A4 landscape;}',
+    '  .maq-bloque{break-inside:avoid;page-break-inside:avoid;}',
+    '  .grupo-wrap{break-inside:avoid;page-break-inside:avoid;}',
+    '  .proc-section{break-before:page;page-break-before:always;}',
+    '  .proc-section:first-child{break-before:auto;page-break-before:auto;}',
+    '}'
+  ].join('\n');
+
+  // ── Construir body ──
+  var body = '';
+  var esPrimerProc = true;
+
+  procesosOrden.forEach(function(proc) {
+    if (!seleccion[proc]) return;
+    var col = getProcColor(proc);
+
+    var todosGrupos = Object.keys(estructura[proc]);
+    var gruposOrdenProc = [];
+    if (fpd_gruposOrden && fpd_gruposOrden.length) {
+      fpd_gruposOrden.forEach(function(g){ if (todosGrupos.indexOf(g)>=0) gruposOrdenProc.push(g); });
+      todosGrupos.forEach(function(g){ if (gruposOrdenProc.indexOf(g)<0) gruposOrdenProc.push(g); });
+    } else {
+      gruposOrdenProc = todosGrupos;
+    }
+
+    var grpsSelec = seleccion[proc];
+    gruposOrdenProc = gruposOrdenProc.filter(function(g){ return grpsSelec.indexOf(g)>=0; });
+    if (!gruposOrdenProc.length) return;
+
+    body += '<div class="' + (esPrimerProc?'':'proc-section') + '">';
+    esPrimerProc = false;
+
+    // Portada del proceso
+    body += '<div class="proc-portada" style="background:' + col.bg + ';">'
+      + '<div><div style="font-size:20px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;">' + proc + '</div>'
+      + '<div style="font-size:10px;opacity:.8;margin-top:4px;">Plan Diario — ' + fechaImpresion + '</div></div>'
+      + '<div style="text-align:right;font-size:11px;opacity:.85;">' + horaImpresion + '</div>'
+      + '</div>';
+
+    gruposOrdenProc.forEach(function(grp) {
+      var maqsDelGrupo = estructura[proc][grp];
+      if (!maqsDelGrupo) return;
+      var maqKeys = Object.keys(maqsDelGrupo);
+      if (!maqKeys.length) return;
+
+      // grupo-wrap: encabezado de grupo + primera máquina siempre juntos
+      body += '<div class="grupo-wrap">';
+      body += '<div class="grupo-header" style="background:' + col.bg + ';border-top:2px solid rgba(255,255,255,.25);">'
+        + '▸ ' + grp
+        + '</div>';
+      // Primera máquina dentro del grupo-wrap
+      body += htmlMaquina(maqKeys[0], maqsDelGrupo[maqKeys[0]], col);
+      body += '</div>';
+
+      // Resto de máquinas fuera del grupo-wrap (cada una es inseparable por sí sola)
+      for (var mi=1; mi<maqKeys.length; mi++) {
+        body += htmlMaquina(maqKeys[mi], maqsDelGrupo[maqKeys[mi]], col);
+      }
+    });
+
+    body += '</div>';
+  });
+
+  body += '<div class="pdf-footer">Generado el ' + hoy.toLocaleString('es-MX') + ' — Sistema PCP ToolCN &nbsp;·&nbsp; Se muestran las primeras 5 órdenes por máquina</div>';
+
+  var htmlPDF = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+    + '<title>Plan Diario Forja</title>'
+    + '<style>' + css + '</style></head><body>'
+    + '<div class="pdf-header" style="background:linear-gradient(135deg,#0f172a,#1e3a5f);">'
+    + '<div><div style="font-size:18px;font-weight:900;">🔧 TOOLCN</div>'
+    + '<div style="font-size:10px;opacity:.8;margin-top:2px;">Sistema de Control de Producción</div></div>'
+    + '<div style="text-align:right;"><div style="font-size:15px;font-weight:900;">PLAN DIARIO — FORJA</div>'
+    + '<div style="font-size:9px;opacity:.85;margin-top:2px;">' + fechaImpresion + ' · ' + horaImpresion + '</div></div>'
+    + '</div>'
+    + body
+    + '</body></html>';
+
+  var win = window.open('', '_blank', 'width=1300,height=850');
+  if (!win) { sAlert('El navegador bloqueó la ventana emergente. Permite las ventanas emergentes.','warning'); return; }
+  win.document.write(htmlPDF);
+  win.document.close();
+  win.onload = function() { win.focus(); win.print(); };
+}
+
 
 function fprogCargarDatos() {
   showLoader('Cargando datos Forja...');
@@ -6475,8 +8273,11 @@ function fprogCargarDatos() {
     try {
       var data = JSON.parse(resRaw);
       fprog_datosOriginales = data;
-      fprog_filtros = {};
-      fprog_orden = { col: null, dir: 'asc' };
+      fprog_filtros         = {};
+      fprog_ordenMedida     = [];
+      fprog_ordenGeneral    = { col: null, dir: 'asc' };
+      fprog_orden           = { col: null, dir: 'asc' };
+      fprog_segundoOrden    = { col: null, dir: 'asc' };
       fprogRenderTabla();
     } catch(e) {
       sAlert('Error al cargar datos de Forja: ' + e.message, 'error');
@@ -6489,6 +8290,7 @@ function fprogCargarDatos() {
 
 function fprogGetDatosFiltrados() {
   var datos = fprog_datosOriginales.slice();
+
   // Aplicar filtros
   Object.keys(fprog_filtros).forEach(function(col) {
     var activos = fprog_filtros[col];
@@ -6497,20 +8299,30 @@ function fprogGetDatosFiltrados() {
       return activos.has(String(r[col] == null ? '' : r[col]));
     });
   });
-  // Aplicar orden
-  if (fprog_orden.col) {
+
+  // Lógica de prioridad:
+  //   1. Stack de medidas SIEMPRE primero (son criterios fijos que persisten)
+  //   2. Orden general solo actúa cuando NO hay stack de medidas activo,
+  //      o como desempate final cuando el stack de medidas empata
+  var hayMedidas = fprog_ordenMedida.length > 0;
+
+  if (hayMedidas || fprog_ordenGeneral.col) {
     datos.sort(function(a, b) {
-      var va = a[fprog_orden.col]; var vb = b[fprog_orden.col];
-      var cmp = fprogCompareVal(va, vb, fprog_orden.col);
-      if (cmp === 0 && fprog_segundoOrden.col) {
-        var va2 = a[fprog_segundoOrden.col]; var vb2 = b[fprog_segundoOrden.col];
-        cmp = fprogCompareVal(va2, vb2, fprog_segundoOrden.col);
-        if (fprog_segundoOrden.dir === 'desc') cmp = -cmp;
+      // Primero: stack de medidas en cascada
+      for (var i = 0; i < fprog_ordenMedida.length; i++) {
+        var s  = fprog_ordenMedida[i];
+        var cmp = fprogCompareVal(a[s.col], b[s.col], s.col);
+        if (cmp !== 0) return s.dir === 'desc' ? -cmp : cmp;
       }
-      if (fprog_orden.dir === 'desc') cmp = -cmp;
-      return cmp;
+      // Desempate: orden general (si existe)
+      if (fprog_ordenGeneral.col) {
+        var cmpG = fprogCompareVal(a[fprog_ordenGeneral.col], b[fprog_ordenGeneral.col], fprog_ordenGeneral.col);
+        if (cmpG !== 0) return fprog_ordenGeneral.dir === 'desc' ? -cmpG : cmpG;
+      }
+      return 0;
     });
   }
+
   return datos;
 }
 
@@ -6604,44 +8416,422 @@ function fprogInvPctColor(pct) {
   return { bg:'#2e7d32', blink: pct > 105, fg:'#fff' };
 }
 
-function fprogMkSumable(colKey, valor, contenido, extraStyle) {
-  // Genera td con clase sumable y onclick para columnas que permiten selección
+function fprogMkSumable(colKey, valor, contenido, extraStyle, extraAttr) {
   var numVal = parseFloat(valor) || 0;
-  var style  = 'text-align:right;' + (extraStyle || '');
-  return '<td class="fprog-celda-sumable" style="' + style + '"'
-    + ' onclick="fprogClickCelda(event,\'' + colKey + '\',' + numVal + ')">'
+  var style  = 'text-align:right;user-select:none;' + (extraStyle || '');
+  return '<td class="fprog-celda-sumable"' + (extraAttr || '') + ' style="' + style + '"'
+    + ' data-colkey="' + colKey + '"'
+    + ' onmousedown="fprogIniciarDrag(event,\'' + colKey + '\',' + numVal + ')"'
+    + ' onmouseenter="fprogExtenderDrag(event,\'' + colKey + '\',' + numVal + ')">'
     + contenido + '</td>';
+}
+
+// Campos editables directamente en la tabla (double-click activa el input)
+var FPROG_CAMPOS_EDITABLES = {
+  'fecha':1,
+  'desc_tipo':1,'diametro':1,'longitud':1,'cuerda':1,'cuerpo':1,
+  'mp_especif':1,
+  'observaciones':1
+};
+
+function fprogMkEditable(col, r, contenidoHtml, extraStyle) {
+  if (!FPROG_CAMPOS_EDITABLES[col.key]) return null; // no editable
+  if (!r.fila_hoja || r.fila_hoja < 2) return null;  // sin pedido vivo no edita
+  var ck       = ' data-colkey="' + col.key + '"';
+  var style    = (extraStyle || '') + 'cursor:text;';
+  var filaH    = r.fila_hoja;
+  var valEsc   = String(r[col.key] != null ? r[col.key] : '').replace(/'/g,"\\'");
+  var numOrd   = String(r.num_orden  || r.orden || '').replace(/'/g,"\\'");
+  var nomPed   = String(r.nom_pedido || '').replace(/'/g,"\\'");
+  var partida  = String(r.partida    || '').replace(/'/g,"\\'");
+  return '<td' + ck + ' style="' + style + '"'
+    + ' title="Clic para editar"'
+    + ' onclick="fprogActivarEdicion(this,\'' + col.key + '\',' + filaH + ',\'' + valEsc + '\',\'' + numOrd + '\',\'' + nomPed + '\',\'' + partida + '\')">'
+    + contenidoHtml + '</td>';
+}
+
+function fprogActivarEdicion(td, campo, filaHoja, valorActual, numOrden, nomPedido, partida) {
+  if (td.querySelector('input')) return; // ya está editando
+  var ancho = td.offsetWidth;
+  var valEsc  = (valorActual || '').replace(/"/g,'&quot;');
+  var numOEsc = (numOrden  || '').replace(/'/g,"\\'");
+  var nomPEsc = (nomPedido || '').replace(/'/g,"\\'");
+  var partEsc = (partida   || '').replace(/'/g,"\\'");
+  var tipoCampo = (campo === 'fecha') ? 'text' : 'text';
+  var placeholder = (campo === 'fecha') ? 'dd/mm/aaaa' : '';
+  td.innerHTML = '<input type="' + tipoCampo + '" value="' + valEsc + '"'
+    + (placeholder ? ' placeholder="' + placeholder + '"' : '')
+    + ' style="width:' + Math.max(ancho - 8, 60) + 'px;border:2px solid #6366f1;border-radius:4px;'
+    + 'padding:2px 4px;font-size:.78rem;font-weight:700;outline:none;background:#eef2ff;"'
+    + ' onblur="fprogGuardarEdicion(this,\'' + campo + '\',' + filaHoja + ',\'' + numOEsc + '\',\'' + nomPEsc + '\',\'' + partEsc + '\')"'
+    + ' onkeydown="if(event.key===\'Enter\'){this.blur();}if(event.key===\'Escape\'){fprogCancelarEdicion(this,\'' + campo + '\',' + filaHoja + ',\'' + (valorActual||'').replace(/'/g,"\\'") + '\');}"'
+    + '>';
+  var inp = td.querySelector('input');
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function fprogGuardarEdicion(inp, campo, filaHoja, numOrden, nomPedido, partida) {
+  var td     = inp.closest('td');
+  var nuevoV = inp.value.trim();
+  // Restaurar display inmediatamente
+  td.innerHTML = nuevoV || '—';
+
+  // Validación de fecha
+  if (campo === 'fecha') {
+    var regFecha = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!regFecha.test(nuevoV)) {
+      sAlert('Formato de fecha inválido. Use dd/mm/aaaa', 'warning');
+      return;
+    }
+  }
+
+  toggleSaving(true, 'Guardando...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      toggleSaving(false);
+      try {
+        var r = JSON.parse(res);
+        if (!r.ok) sAlert('Error al guardar: ' + r.msg, 'error');
+      } catch(e) { toggleSaving(false); }
+    })
+    .withFailureHandler(function(e) {
+      toggleSaving(false);
+      sAlert('Error al guardar: ' + e.message, 'error');
+    })
+    .fprogGuardarCampo({
+      campo:      campo,
+      fila_hoja:  filaHoja,
+      valor:      nuevoV,
+      num_orden:  numOrden  || '',
+      nom_pedido: nomPedido || '',
+      partida:    partida   || ''
+    });
+}
+
+function fprogCancelarEdicion(inp, campo, filaHoja, valorOriginal) {
+  var td = inp.closest('td');
+  td.innerHTML = valorOriginal || '—';
+}
+
+// ── Modales FORJA: Máquina ──
+function fprogAbrirModalMaquina(filaHoja, orden, maqActual, codigo) {
+  fprog_filaEditandoMaq = { fila_hoja: filaHoja, orden: orden, maquina_actual: maqActual, codigo: codigo };
+
+  // Buscar máquinas permitidas en RUTAS para este código + proceso FORJA
+  showLoader('Buscando máquinas...');
+  google.script.run.withSuccessHandler(function(resRaw) {
+    hideLoader();
+    try {
+      var res = JSON.parse(resRaw);
+      var maqsPosibles = res.maquinas || [];
+      var maqActualUp  = String(maqActual).trim().toUpperCase();
+
+      document.getElementById('planif-lblCambioMaqInfo').innerHTML =
+        '<b>Orden:</b> ' + orden +
+        ' &nbsp;|&nbsp; <b>Proceso:</b> FORJA' +
+        ' &nbsp;|&nbsp; <b>Máquina actual:</b> ' + (maqActualUp || 'Sin asignar');
+
+      // Configurar botón engrane para editar máquinas permitidas en RUTAS
+      var btnEngrane = document.getElementById('planif-btnEngraneRuta');
+      if (btnEngrane) {
+        btnEngrane.style.display = '';
+        btnEngrane.setAttribute('onclick', 'fprogAbrirRutaMaquinaForja()');
+        btnEngrane.dataset.codigo = fprog_filaEditandoMaq ? fprog_filaEditandoMaq.codigo : '';
+        btnEngrane.dataset.proceso = 'FORJA';
+        btnEngrane.dataset.permitidas = maqsPosibles.join(', ');
+      }
+
+      var html = '';
+      if (maqsPosibles.length === 0) {
+        html = '<p style="color:#b91c1c;font-weight:700;padding:10px;">Sin máquinas asignadas en RUTAS para este código.</p>';
+      } else {
+        maqsPosibles.forEach(function(m) {
+          var mUp = String(m).trim().toUpperCase();
+          var esActual = mUp === maqActualUp;
+          html += '<button onclick="fprogConfirmarCambioMaquina(\'' + m.replace(/'/g,"\\'") + '\')" ' +
+            'style="padding:10px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;border:2px solid ' +
+            (esActual ? '#1a237e' : '#d1d5db') + ';background:' +
+            (esActual ? '#1a237e' : '#f9fafb') + ';color:' +
+            (esActual ? 'white' : '#1f2937') + ';">' +
+            (esActual ? '✔ ' : '') + m +
+          '</button>';
+        });
+      }
+      document.getElementById('planif-listaCambioMaq').innerHTML = html;
+      document.getElementById('planif-modalCambioMaq').style.display = 'flex';
+    } catch(e) {
+      sAlert('Error al cargar máquinas: ' + e.message, 'error');
+    }
+  }).withFailureHandler(function(e) {
+    hideLoader();
+    sAlert('Error: ' + e.message, 'error');
+  }).fprogObtenerMaquinasForja(codigo);
+}
+
+function fprogConfirmarCambioMaquina(nuevaMaq) {
+  if (!fprog_filaEditandoMaq) return;
+  var maqNuevaUp  = String(nuevaMaq).trim().toUpperCase();
+  var maqActualUp = String(fprog_filaEditandoMaq.maquina_actual).trim().toUpperCase();
+  planifCerrarModal('planif-modalCambioMaq');
+  // Restaurar botón engrane al comportamiento original del planificador
+  var btnEngrane = document.getElementById('planif-btnEngraneRuta');
+  if (btnEngrane) {
+    btnEngrane.style.display = '';
+    btnEngrane.setAttribute('onclick', 'planifAbrirRutaDesdeModal()');
+  }
+  if (maqNuevaUp === maqActualUp) return; // sin cambio
+  toggleSaving(true, 'Guardando máquina...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      toggleSaving(false);
+      try {
+        var r = JSON.parse(res);
+        if (!r.ok) { sAlert('Error: ' + r.msg, 'error'); return; }
+        // Actualizar dato local y re-renderizar
+        fprog_datosOriginales.forEach(function(d) {
+          if (String(d.fila_hoja) === String(fprog_filaEditandoMaq.fila_hoja)) {
+            d.maquina = nuevaMaq;
+          }
+        });
+        fprogRenderTabla();
+      } catch(e) { sAlert('Error: ' + e.message, 'error'); }
+    })
+    .withFailureHandler(function(e) {
+      toggleSaving(false);
+      sAlert('Error: ' + e.message, 'error');
+    })
+    .fprogGuardarCampo({ campo: 'maquina', fila_hoja: fprog_filaEditandoMaq.fila_hoja, valor: nuevaMaq });
+}
+
+// ── FORJA: abre modal de máquinas de RUTA (⚙️) desde el modal de cambio de máquina ──
+function fprogAbrirRutaMaquinaForja() {
+  if (!fprog_filaEditandoMaq) return;
+  var codigo  = fprog_filaEditandoMaq.codigo;
+  var proceso = 'FORJA';
+  // Leer las permitidas actuales del botón engrane
+  var btnEngrane = document.getElementById('planif-btnEngraneRuta');
+  var permitidasStr = btnEngrane ? (btnEngrane.dataset.permitidas || '') : '';
+  // Cerrar el modal de cambio de máquina primero
+  planifCerrarModal('planif-modalCambioMaq');
+  // Reusar el modal de máquinas de RUTA del planificador
+  planif_codRutaEditando  = codigo;
+  planif_procRutaEditando = proceso;
+  document.getElementById('planif-lblMaqRutaTitle').innerText = 'MAQUINAS PERMITIDAS';
+  document.getElementById('planif-lblMaqRutaInfo').innerText  = 'Producto: ' + codigo + ' | Proceso: ' + proceso;
+  var maqsPosibles = planif_catalogo && planif_catalogo[proceso] ? planif_catalogo[proceso] : [];
+  planif_maqsRutaSeleccionadas = permitidasStr.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s !== ''; });
+  planifRenderListaMaqsRuta(maqsPosibles);
+  // Redirigir el ACTUALIZAR RUTA para que al guardar vuelva a abrir el modal de máquina FORJA
+  var btnAct = document.querySelector('#planif-modalMaqsRuta button[onclick="planifConfirmarMaqsRuta()"]');
+  if (btnAct) btnAct.setAttribute('onclick', 'fprogConfirmarRutaMaquinaForja()');
+  document.getElementById('planif-modalMaqsRuta').style.display = 'flex';
+}
+
+function fprogConfirmarRutaMaquinaForja() {
+  if (planif_maqsRutaSeleccionadas.length === 0) { sAlert('Selecciona al menos una máquina'); return; }
+  var maqsString = planif_maqsRutaSeleccionadas.join(', ');
+  planifCerrarModal('planif-modalMaqsRuta');
+  // Restaurar onclick original del botón ACTUALIZAR RUTA
+  var btnAct = document.querySelector('#planif-modalMaqsRuta button[onclick="fprogConfirmarRutaMaquinaForja()"]');
+  if (btnAct) btnAct.setAttribute('onclick', 'planifConfirmarMaqsRuta()');
+  toggleSaving(true, 'Actualizando ruta...');
+  google.script.run.withSuccessHandler(function() {
+    toggleSaving(false);
+    // Reabrir el modal de cambio de máquina con las nuevas opciones
+    if (fprog_filaEditandoMaq) {
+      fprogAbrirModalMaquina(
+        fprog_filaEditandoMaq.fila_hoja,
+        fprog_filaEditandoMaq.orden,
+        fprog_filaEditandoMaq.maquina_actual,
+        fprog_filaEditandoMaq.codigo
+      );
+    }
+  }).withFailureHandler(function(e) {
+    toggleSaving(false);
+    sAlert('Error al actualizar ruta: ' + e.message, 'error');
+  }).actualizarMaquinasRutaPlanif(planif_codRutaEditando, planif_procRutaEditando, maqsString);
+}
+
+// ── Modales FORJA: Acero ──
+function fprogAbrirModalAcero(filaHoja, orden, aceroActual) {
+  fprog_filaEditandoAcero = { fila_hoja: filaHoja, orden: orden };
+  document.getElementById('planif-lblOrdenAcero').innerText = 'Orden: ' + orden;
+  document.getElementById('planif-txtNuevoAcero').value = aceroActual !== '—' ? aceroActual : '';
+  // Redirigir el botón GUARDAR al confirmador de FORJA
+  var btnGuardar = document.querySelector('#planif-modalAcero button[onclick="planifConfirmarCambioAcero()"]');
+  if (btnGuardar) btnGuardar.setAttribute('onclick', 'fprogConfirmarCambioAcero()');
+  document.getElementById('planif-modalAcero').style.display = 'flex';
+  setTimeout(function() { document.getElementById('planif-txtNuevoAcero').select(); }, 100);
+}
+
+function fprogConfirmarCambioAcero() {
+  var nuevoValor = document.getElementById('planif-txtNuevoAcero').value.toUpperCase().trim();
+  if (!nuevoValor) { sAlert('Escribe un valor de acero'); return; }
+  if (!fprog_filaEditandoAcero) return;
+  planifCerrarModal('planif-modalAcero');
+  // Restaurar el onclick original del botón
+  var btnGuardar = document.querySelector('#planif-modalAcero button[onclick="fprogConfirmarCambioAcero()"]');
+  if (btnGuardar) btnGuardar.setAttribute('onclick', 'planifConfirmarCambioAcero()');
+  toggleSaving(true, 'Guardando acero...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      toggleSaving(false);
+      try {
+        var r = JSON.parse(res);
+        if (!r.ok) { sAlert('Error: ' + r.msg, 'error'); return; }
+        fprog_datosOriginales.forEach(function(d) {
+          if (String(d.fila_hoja) === String(fprog_filaEditandoAcero.fila_hoja)) {
+            d.acero = nuevoValor;
+          }
+        });
+        fprogRenderTabla();
+      } catch(e) { sAlert('Error: ' + e.message, 'error'); }
+    })
+    .withFailureHandler(function(e) {
+      toggleSaving(false);
+      sAlert('Error: ' + e.message, 'error');
+    })
+    .fprogGuardarCampo({ campo: 'acero', fila_hoja: fprog_filaEditandoAcero.fila_hoja, valor: nuevoValor });
+}
+
+// ── Modales FORJA: Peso ──
+function fprogAbrirModalPeso(filaHoja, orden, pesoActual) {
+  fprog_filaEditandoPeso = { fila_hoja: filaHoja, orden: orden };
+  document.getElementById('planif-lblOrdenPeso').innerText = 'Orden: ' + orden;
+  document.getElementById('planif-txtNuevoPeso').value = pesoActual > 0 ? parseFloat(pesoActual).toFixed(6) : '';
+  // Redirigir botón GUARDAR al confirmador de FORJA
+  var btnGuardar = document.querySelector('#planif-modalPeso button[onclick="planifConfirmarCambioPeso()"]');
+  if (btnGuardar) btnGuardar.setAttribute('onclick', 'fprogConfirmarCambioPeso()');
+  document.getElementById('planif-modalPeso').style.display = 'flex';
+  setTimeout(function() { document.getElementById('planif-txtNuevoPeso').select(); }, 150);
+}
+
+function fprogConfirmarCambioPeso() {
+  var nPeso = parseFloat(document.getElementById('planif-txtNuevoPeso').value);
+  if (!nPeso || nPeso <= 0) { sAlert('Ingresa un peso válido'); return; }
+  if (!fprog_filaEditandoPeso) return;
+  planifCerrarModal('planif-modalPeso');
+  // Restaurar onclick original
+  var btnGuardar = document.querySelector('#planif-modalPeso button[onclick="fprogConfirmarCambioPeso()"]');
+  if (btnGuardar) btnGuardar.setAttribute('onclick', 'planifConfirmarCambioPeso()');
+  toggleSaving(true, 'Guardando peso...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      toggleSaving(false);
+      try {
+        var r = JSON.parse(res);
+        if (!r.ok) { sAlert('Error: ' + r.msg, 'error'); return; }
+        fprog_datosOriginales.forEach(function(d) {
+          if (String(d.fila_hoja) === String(fprog_filaEditandoPeso.fila_hoja)) {
+            d.peso_pza = nPeso;
+          }
+        });
+        fprogRenderTabla();
+      } catch(e) { sAlert('Error: ' + e.message, 'error'); }
+    })
+    .withFailureHandler(function(e) {
+      toggleSaving(false);
+      sAlert('Error: ' + e.message, 'error');
+    })
+    .fprogGuardarCampo({ campo: 'peso_pza', fila_hoja: fprog_filaEditandoPeso.fila_hoja, valor: nPeso });
+}
+
+// ── Modales FORJA: Cantidad ──
+function fprogAbrirModalCantidad(idOrden, orden) {
+  fprog_filaEditandoCantidad = { id_orden: idOrden, orden: orden };
+  // Reusar modal de planificador (planif-modalCantidad)
+  planif_idCantidadEditando = idOrden;
+  showLoader('Cargando datos...');
+  google.script.run.withSuccessHandler(function(resRaw) {
+    hideLoader();
+    try {
+      planif_datosCantidadOrden = JSON.parse(resRaw);
+      if (!planif_datosCantidadOrden || planif_datosCantidadOrden.length === 0) {
+        sAlert('No se encontraron datos de la orden', 'error'); return;
+      }
+      var primer = planif_datosCantidadOrden[0];
+      var lblPed = document.getElementById('planif-lblPedidoCantidad');
+      if (lblPed) lblPed.innerText = orden;
+      document.getElementById('planif-lblOrdenCantidad').innerText =
+        'Orden: ' + (primer.serie || '') + '.' + String(primer.orden || '').padStart(4, '0') + ' - ' + (primer.descripcion || '');
+      document.getElementById('planif-txtNuevaCantidad').value = primer.cantidad;
+      var tabla = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+      tabla += '<thead style="background:#1a237e;color:white;"><tr>';
+      tabla += '<th style="padding:8px;">PROCESO</th><th style="padding:8px;">UNIDAD</th>';
+      tabla += '<th style="padding:8px;">CANTIDAD</th><th style="padding:8px;">SOLICITADO</th><th style="padding:8px;">PRODUCIDO</th>';
+      tabla += '</tr></thead><tbody>';
+      planif_datosCantidadOrden.forEach(function(p) {
+        tabla += '<tr style="border-bottom:1px solid #ddd;"><td style="padding:8px;">' + p.proceso + '</td><td style="padding:8px;">' + p.unidad + '</td>';
+        tabla += '<td style="padding:8px;text-align:right;font-weight:bold;">' + planifFormatN(p.cantidad) + '</td>';
+        tabla += '<td style="padding:8px;text-align:right;">' + planifFormatN(p.solicitado) + '</td>';
+        tabla += '<td style="padding:8px;text-align:right;">' + planifFormatN(p.producido) + '</td></tr>';
+      });
+      tabla += '</tbody></table>';
+      document.getElementById('planif-tablaProcesos').innerHTML = tabla;
+      // Redirigir botón GUARDAR al confirmador de FORJA
+      var btnGuardar = document.querySelector('#planif-modalCantidad button[onclick="planifConfirmarCambioCantidad()"]');
+      if (btnGuardar) btnGuardar.setAttribute('onclick', 'fprogConfirmarCambioCantidad()');
+      document.getElementById('planif-modalCantidad').style.display = 'flex';
+      setTimeout(function() { document.getElementById('planif-txtNuevaCantidad').select(); }, 100);
+    } catch(e) {
+      sAlert('Error al cargar datos: ' + e.message, 'error');
+    }
+  }).withFailureHandler(function(e) {
+    hideLoader();
+    sAlert('Error: ' + e.message, 'error');
+  }).obtenerDatosCantidadOrden(idOrden);
+}
+
+function fprogConfirmarCambioCantidad() {
+  var nuevaCantidad = parseFloat(document.getElementById('planif-txtNuevaCantidad').value);
+  if (!nuevaCantidad || nuevaCantidad <= 0) { sAlert('Ingresa una cantidad válida'); return; }
+  planifCerrarModal('planif-modalCantidad');
+  // Restaurar onclick original
+  var btnGuardar = document.querySelector('#planif-modalCantidad button[onclick="fprogConfirmarCambioCantidad()"]');
+  if (btnGuardar) btnGuardar.setAttribute('onclick', 'planifConfirmarCambioCantidad()');
+  showLoader('Actualizando cantidad...');
+  google.script.run.withSuccessHandler(function() {
+    hideLoader();
+    fprogCargarDatos(); // recargar tabla completa (cantidad afecta a todos los procesos)
+  }).withFailureHandler(function(e) {
+    hideLoader();
+    sAlert('Error al actualizar cantidad: ' + e, 'error');
+  }).actualizarCantidadOrden(fprog_filaEditandoCantidad.id_orden, nuevaCantidad);
 }
 
 function fprogCeldaValor(col, r) {
   var val = r[col.key];
+  var ck  = ' data-colkey="' + col.key + '"'; // atributo para navegación teclado
 
   // Numéricas de inventario — sumables
   if (col.key === 'cantidad' || col.key === 'backorder' || col.key === 'minimo' || col.key === 'maximo' || col.key === 'existencia') {
     if (val === null || val === undefined)
-      return '<td style="text-align:right;color:#bbb;">—</td>';
-    return fprogMkSumable(col.key, val, fprogFmtNum(val));
+      return '<td' + ck + ' style="text-align:right;color:#bbb;">—</td>';
+    if (col.key === 'cantidad' && r.fila_hoja && r.fila_hoja >= 2 && r.id_orden) {
+      return '<td' + ck + ' style="text-align:right;cursor:pointer;font-weight:900;" title="Doble clic para modificar cantidad" ondblclick="fprogAbrirModalCantidad(\'' + (r.id_orden+'').replace(/'/g,"\\'") + '\',\'' + (r.orden+'').replace(/'/g,"\\'") + '\')">' + fprogFmtNum(val) + '</td>';
+    }
+    return fprogMkSumable(col.key, val, fprogFmtNum(val), '', ck);
   }
 
   // ESTADO inventario
   if (col.key === 'estado_inv') {
     var exist = parseFloat(r.existencia), min = parseFloat(r.minimo);
     if (r.existencia === null || r.existencia === undefined || isNaN(exist) || isNaN(min) || min === 0)
-      return '<td style="text-align:center;color:#bbb;">—</td>';
+      return '<td' + ck + ' style="text-align:center;color:#bbb;">—</td>';
     return exist < min / 2
-      ? '<td style="text-align:center;"><span class="fprog-estado-malo">MALO</span></td>'
-      : '<td style="text-align:center;"><span class="fprog-estado-bueno">BUENO</span></td>';
+      ? '<td' + ck + ' style="text-align:center;"><span class="fprog-estado-malo">MALO</span></td>'
+      : '<td' + ck + ' style="text-align:center;"><span class="fprog-estado-bueno">BUENO</span></td>';
   }
 
   // EFECT
   if (col.key === 'efect') {
     var exist2 = parseFloat(r.existencia), max2 = parseFloat(r.maximo);
     if (r.existencia === null || r.existencia === undefined || isNaN(exist2) || isNaN(max2) || max2 === 0)
-      return '<td style="text-align:center;color:#bbb;">—</td>';
+      return '<td' + ck + ' style="text-align:center;color:#bbb;">—</td>';
     var pct = Math.round((exist2 / max2) * 100);
     var ci = fprogInvPctColor(pct);
     var blinkStyle = ci.blink ? 'animation:planifBlink 1s step-start infinite;' : '';
-    return '<td style="text-align:center;padding:3px 6px;"><span class="fprog-efect" style="background:' + ci.bg + ';color:' + ci.fg + ';' + blinkStyle + '">' + pct + '%</span></td>';
+    return '<td' + ck + ' style="text-align:center;padding:3px 6px;"><span class="fprog-efect" style="background:' + ci.bg + ';color:' + ci.fg + ';' + blinkStyle + '">' + pct + '%</span></td>';
   }
 
   // PEDIDO y TIPO — parpadeo rojo si sin_pedido_vivo
@@ -6651,10 +8841,15 @@ function fprogCeldaValor(col, r) {
     return '<td style="text-align:center;"><span class="fprog-sin-pedido">' + etiq + '</span></td>';
   }
 
-  // MAQUINA — rojo negritas
+  // MAQUINA — doble clic abre modal cambio de máquina
   if (col.key === 'maquina') {
-    var m = String(val || '').trim();
-    return '<td style="text-align:center;"><span class="fprog-maquina">' + (m || '—') + '</span></td>';
+    var m   = String(val || '').trim();
+    var html = '<span class="fprog-maquina">' + (m || '—') + '</span>';
+    if (r.fila_hoja && r.fila_hoja >= 2) {
+      var rEsc = JSON.stringify({ fila_hoja: r.fila_hoja, orden: r.orden, maquina_actual: m, codigo: r.codigo || '', proceso: 'FORJA' }).replace(/"/g,'&quot;');
+      return '<td data-colkey="maquina" style="text-align:center;cursor:pointer;" title="Doble clic para cambiar máquina" ondblclick="fprogAbrirModalMaquina(' + r.fila_hoja + ',\'' + (r.orden+'').replace(/'/g,"\\'") + '\',\'' + m.replace(/'/g,"\\'") + '\',\'' + (r.codigo||'').replace(/'/g,"\\'") + '\')">' + html + '</td>';
+    }
+    return '<td data-colkey="maquina" style="text-align:center;">' + html + '</td>';
   }
 
   // ACERO — badge de color
@@ -6678,7 +8873,7 @@ function fprogCeldaValor(col, r) {
     else if (txt === '1008 REC')                     { fill='#FFF'; fg='#000'; stripe='#212121'; }
     else if (txt === '1018 REC')                     { fill='#2E7D32'; fg='#FFF'; stripe='#7B1FA2'; }
     else if (txt.indexOf('INOX') >= 0 || txt.indexOf('304') >= 0) { fill='#00BCD4'; fg='#FFF'; }
-    if (txt === '—') return '<td style="text-align:center;color:#bbb;">—</td>';
+    if (txt === '—') return '<td data-colkey="acero" style="text-align:center;color:#bbb;">—</td>';
     var safe = 'fa' + txt.replace(/[^a-zA-Z0-9]/g,'') + Math.random().toString(36).slice(2,6);
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 24" style="width:64px;height:auto;">';
     svg += '<rect width="80" height="24" rx="5" fill="' + fill + '" stroke="#000" stroke-width="1.2"/>';
@@ -6688,31 +8883,92 @@ function fprogCeldaValor(col, r) {
     }
     svg += '<text x="36" y="17" font-family="Arial" font-weight="900" font-size="11" text-anchor="middle" fill="' + fg + '">' + txt + '</text>';
     svg += '</svg>';
-    return '<td style="text-align:center;padding:2px 4px;">' + svg + '</td>';
+    if (r.fila_hoja && r.fila_hoja >= 2) {
+      return '<td data-colkey="acero" style="text-align:center;padding:2px 4px;cursor:pointer;" title="Doble clic para editar acero" ondblclick="fprogAbrirModalAcero(' + r.fila_hoja + ',\'' + (r.orden+'').replace(/'/g,"\\'") + '\',\'' + txt.replace(/'/g,"\\'") + '\')">' + svg + '</td>';
+    }
+    return '<td data-colkey="acero" style="text-align:center;padding:2px 4px;">' + svg + '</td>';
   }
 
-  // PESO PZA — con data-num para suma
+  // PESO PZA — doble clic abre modal peso
   if (col.key === 'peso_pza') {
     var pv = parseFloat(r.peso_pza) || 0;
-    return '<td style="text-align:right;" data-num="' + pv + '">' + (pv > 0 ? pv.toFixed(4) : '—') + '</td>';
+    var pvTxt = pv > 0 ? pv.toFixed(4) : '—';
+    if (r.fila_hoja && r.fila_hoja >= 2) {
+      return '<td data-colkey="peso_pza" style="text-align:right;cursor:pointer;" title="Doble clic para editar peso" ondblclick="fprogAbrirModalPeso(' + r.fila_hoja + ',\'' + (r.orden+'').replace(/'/g,"\\'") + '\',' + pv + ')">' + pvTxt + '</td>';
+    }
+    return fprogMkSumable('peso_pza', pv, pvTxt, '');
   }
-  // PESO MERMA — siempre 0.0000
+  // PESO MERMA — Col AE (índice 30) de ORDENES
   if (col.key === 'peso_merma') {
-    return '<td style="text-align:right;" data-num="0">0.0000</td>';
+    var pm = parseFloat(r.peso_merma) || 0;
+    return fprogMkSumable(col.key, pm, pm > 0 ? pm.toFixed(4) : '0.0000', '');
   }
-  // PESO SIN MERMA = PESO - MERMA (MERMA=0)
-  if (col.key === 'peso_sin') {
-    var ps = parseFloat(r.peso_pza) || 0;
-    return '<td style="text-align:right;" data-num="' + ps + '">' + (ps > 0 ? ps.toFixed(4) : '—') + '</td>';
+  // PESO CON MERMA = PESO PZA + PESO MERMA
+  if (col.key === 'peso_con') {
+    var pcon = (parseFloat(r.peso_pza) || 0) + (parseFloat(r.peso_merma) || 0);
+    return fprogMkSumable(col.key, pcon, pcon > 0 ? pcon.toFixed(4) : '—', '');
   }
-  // Columnas MP — sumables aunque sin dato aún
-  if (col.key === 'mp_especif' || col.key === 'mp_kg_req' || col.key === 'mp_kg_usada' || col.key === 'mp_kg_fabric') {
-    return fprogMkSumable(col.key, 0, '—', 'text-align:center;color:#bbb;');
+  // MP ESPECIF — lee ALERTA_SECUENCIA (col AD) de ORDENES, editable inline
+  if (col.key === 'mp_especif') {
+    var mpVal = String(r.mp_especif || '').trim();
+    var mpTxt = mpVal || '—';
+    var ed = fprogMkEditable(col, r, mpTxt, 'text-align:center;');
+    if (ed) return ed;
+    return '<td data-colkey="mp_especif" style="text-align:center;color:#bbb;">' + mpTxt + '</td>';
+  }
+  // MP KG REQUER = CANTIDAD × PESO CON MERMA
+  if (col.key === 'mp_kg_req') {
+    var pcon2 = (parseFloat(r.peso_pza) || 0) + (parseFloat(r.peso_merma) || 0);
+    var req   = (parseFloat(r.cantidad) || 0) * pcon2;
+    return fprogMkSumable(col.key, req, req > 0 ? fprogFmtNum(req) : '—', '');
+  }
+  // MP KG USADA = PZAS PROD × PESO CON MERMA
+  if (col.key === 'mp_kg_usada') {
+    var pcon3  = (parseFloat(r.peso_pza) || 0) + (parseFloat(r.peso_merma) || 0);
+    var usada  = (parseFloat(r.producido) || 0) * pcon3;
+    return fprogMkSumable(col.key, usada, usada > 0 ? fprogFmtNum(usada) : '—', '');
+  }
+  // MP KG XFABRIC = MP KG REQ - MP KG USADA
+  if (col.key === 'mp_kg_xfabric') {
+    var pcon4  = (parseFloat(r.peso_pza) || 0) + (parseFloat(r.peso_merma) || 0);
+    var req2   = (parseFloat(r.cantidad) || 0) * pcon4;
+    var usada2 = (parseFloat(r.producido) || 0) * pcon4;
+    var xfab   = req2 - usada2;
+    var xfabTxt = xfab !== 0 ? fprogFmtNum(xfab) : '—';
+    return fprogMkSumable(col.key, xfab, xfabTxt, '');
+  }
+  // KG PROD = PRODUCIDO (Col O, kg)
+  if (col.key === 'kg_prod') {
+    var kgp = parseFloat(r.producido) || 0;
+    var estilo = 'color:#1565c0;font-weight:900;';
+    if (kgp > 0)
+      return fprogMkSumable(col.key, kgp, '<span style="' + estilo + '">' + fprogFmtNum(kgp) + '</span>', '');
+    return fprogMkSumable(col.key, 0, '—', '');
+  }
+  // PZAS PROD = PRODUCIDO / PESO PZA
+  if (col.key === 'pzas_prod') {
+    var prod2 = parseFloat(r.producido) || 0;
+    var ppza  = parseFloat(r.peso_pza)  || 0;
+    var pzas  = (prod2 > 0 && ppza > 0) ? Math.round(prod2 / ppza) : 0;
+    var estilo2 = 'color:#1565c0;font-weight:900;';
+    if (pzas > 0)
+      return fprogMkSumable(col.key, pzas, '<span style="' + estilo2 + '">' + fprogFmtNum(pzas) + '</span>', '');
+    return fprogMkSumable(col.key, 0, '—', '');
   }
 
-  // Default
+  // FECHA — editable inline, formato dd/mm/aaaa
+  if (col.key === 'fecha') {
+    var fVal = String(r.fecha || '').trim() || '—';
+    var edF  = fprogMkEditable(col, r, fVal, 'text-align:center;');
+    if (edF) return edF;
+    return '<td' + ck + ' style="text-align:center;">' + fVal + '</td>';
+  }
+
+  // Default — campos de texto editables (desc_tipo, longitud, cuerda, cuerpo, observaciones, etc.)
   if (val === null || val === undefined) val = '';
-  return '<td style="text-align:' + col.align + ';">' + val + '</td>';
+  var edDef = fprogMkEditable(col, r, val, 'text-align:' + col.align + ';');
+  if (edDef) return edDef;
+  return '<td' + ck + ' style="text-align:' + col.align + ';">' + val + '</td>';
 }
 
 function fprogRenderTabla() {
@@ -6738,8 +8994,26 @@ function fprogRenderTabla() {
     var c = col;
     var hayFiltro = fprog_filtros[col.key] && fprog_filtros[col.key].size > 0;
     var sortArrow = '';
-    if (fprog_orden.col === col.key) sortArrow = fprog_orden.dir === 'asc' ? '<span class="sort-arrow" style="color:#4ade80">▲</span>' : '<span class="sort-arrow" style="color:#f87171">▼</span>';
-    else if (fprog_segundoOrden.col === col.key) sortArrow = fprog_segundoOrden.dir === 'asc' ? '<span class="sort-arrow" style="color:#86efac;font-size:.55rem">▲</span>' : '<span class="sort-arrow" style="color:#fca5a5;font-size:.55rem">▼</span>';
+    // Buscar en orden general
+    if (fprog_ordenGeneral.col === col.key) {
+      sortArrow = fprog_ordenGeneral.dir === 'asc'
+        ? '<span class="sort-arrow" style="color:#4ade80">▲</span>'
+        : '<span class="sort-arrow" style="color:#f87171">▼</span>';
+    } else {
+      // Buscar en stack de medidas
+      for (var si = 0; si < fprog_ordenMedida.length; si++) {
+        if (fprog_ordenMedida[si].col === col.key) {
+          var esAsc = fprog_ordenMedida[si].dir === 'asc';
+          var nivel = fprog_ordenMedida.length > 1
+            ? '<sup style="font-size:.5rem">' + (si + 1) + '</sup>'
+            : '';
+          sortArrow = esAsc
+            ? '<span class="sort-arrow" style="color:#' + (si===0?'4ade80':'86efac') + ';font-size:' + (si===0?'.75':'.6') + 'rem">▲' + nivel + '</span>'
+            : '<span class="sort-arrow" style="color:#' + (si===0?'f87171':'fca5a5') + ';font-size:' + (si===0?'.75':'.6') + 'rem">▼' + nivel + '</span>';
+          break;
+        }
+      }
+    }
 
     // Botones de colapsar grupo
     var extraBtn = '';
@@ -6792,7 +9066,7 @@ function fprogRenderTabla() {
   if (padres.length === 0) {
     tbHtml = '<tr><td colspan="' + totalCols + '" style="padding:40px;text-align:center;color:#94a3b8;font-weight:700;">Sin registros</td></tr>';
   } else {
-    padres.forEach(function(r) {
+    padres.forEach(function(r, rowIdx) {
       var ord = r.orden;
       var expandido = fprog_expandidas.has(ord);
       var hijas = mapaHijas[ord] || [];
@@ -6806,7 +9080,7 @@ function fprogRenderTabla() {
       var clasesFila = r.sin_pedido_vivo ? ['fila-sin-pedido'] : [];
       var claseAttr  = clasesFila.length ? ' class="' + clasesFila.join(' ') + '"' : '';
       // Fila padre
-      tbHtml += '<tr' + claseAttr + '>';
+      tbHtml += '<tr' + claseAttr + ' data-rowidx="' + rowIdx + '">';
       tbHtml += '<td style="text-align:center;vertical-align:middle;">' + btnIcon + '</td>';
       colsVisibles.forEach(function(col) {
         tbHtml += fprogCeldaValor(col, r);
@@ -6897,40 +9171,93 @@ function fprogCiclarZoom() {
   if (btn) btn.textContent = '🔍 ' + pct + '%';
 }
 
-/* ── Selección de celdas numéricas ── */
-// Columnas que permiten selección para suma/promedio/conteo
+function fprogRefresh() {
+  var btn = document.getElementById('forja-refresh-btn');
+  if (btn) btn.classList.add('cargando');
+  showLoader('Actualizando datos Forja...');
+  google.script.run.withSuccessHandler(function(resRaw) {
+    hideLoader();
+    if (btn) btn.classList.remove('cargando');
+    try {
+      var data = JSON.parse(resRaw);
+      fprog_datosOriginales = data;
+      fprog_filtros         = {};
+      fprog_ordenMedida     = [];
+      fprog_ordenGeneral    = { col: null, dir: 'asc' };
+      fprog_orden           = { col: null, dir: 'asc' };
+      fprog_segundoOrden    = { col: null, dir: 'asc' };
+      fprog_expandidas      = new Set();
+      fprog_todoExpandido   = false;
+      fprogRenderTabla();
+      // Mostrar brevemente el ícono en verde para confirmar
+      if (btn) {
+        btn.style.background = 'rgba(46,125,50,.7)';
+        setTimeout(function() { btn.style.background = ''; }, 1200);
+      }
+    } catch(e) {
+      sAlert('Error al actualizar: ' + e.message, 'error');
+    }
+  }).withFailureHandler(function(e) {
+    hideLoader();
+    if (btn) btn.classList.remove('cargando');
+    sAlert('Error servidor: ' + e.message, 'error');
+  }).obtenerDatosProgramadorForja();
+}
+
+/* ── Selección de celdas numéricas (drag estilo Excel) ── */
 var FPROG_COLS_SUMABLES = {
   'cantidad':1,'backorder':1,'minimo':1,'maximo':1,'existencia':1,
-  'mp_especif':1,'mp_kg_req':1,'mp_kg_usada':1,'mp_kg_fabric':1
+  'mp_especif':1,'mp_kg_req':1,'mp_kg_usada':1,'mp_kg_xfabric':1,
+  'kg_prod':1,'pzas_prod':1,'peso_merma':1,'peso_con':1
 };
 
-var fprog_celdasSelec = []; // array de { valor, tdEl }
+var fprog_celdasSelec  = [];   // [{ valor, tdEl }]
+var fprog_dragActivo   = false;
+var fprog_dragColActiva = null; // solo se puede arrastrar dentro de la misma columna
 
-function fprogClickCelda(event, colKey, valor) {
-  event.stopPropagation();
+function fprogIniciarDrag(event, colKey, valor) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+
+  if (!event.ctrlKey && !event.metaKey) fprogLimpiarSeleccion();
+
+  fprog_dragActivo    = true;
+  fprog_dragColActiva = colKey;
+
+  fprogSeleccionarTd(event.currentTarget, valor);
+  fprogActualizarStatusBar();
+
+  // Actualizar foco de navegación teclado a la celda/fila donde se hizo clic
   var td = event.currentTarget;
-
-  if (event.ctrlKey || event.metaKey) {
-    // Ctrl+clic: toggle celda individual
-    var idx = fprog_celdasSelec.findIndex(function(c){ return c.tdEl === td; });
-    if (idx > -1) {
-      td.classList.remove('fprog-celda-selec');
-      fprog_celdasSelec.splice(idx, 1);
-    } else {
-      td.classList.add('fprog-celda-selec');
-      fprog_celdasSelec.push({ valor: parseFloat(valor) || 0, tdEl: td });
-    }
-  } else {
-    // Clic simple: limpiar todo y seleccionar solo esta celda
-    fprogLimpiarSeleccion();
-    td.classList.add('fprog-celda-selec');
-    fprog_celdasSelec.push({ valor: parseFloat(valor) || 0, tdEl: td });
+  var tr = td.closest('tr');
+  if (tr) {
+    var idx = parseInt(tr.getAttribute('data-rowidx'));
+    if (!isNaN(idx)) fprogNavPonerFoco(td, idx, colKey);
   }
+}
+
+function fprogExtenderDrag(event, colKey, valor) {
+  if (!fprog_dragActivo) return;
+  if (colKey !== fprog_dragColActiva) return; // solo misma columna
+  fprogSeleccionarTd(event.currentTarget, valor);
   fprogActualizarStatusBar();
 }
 
+function fprogSeleccionarTd(td, valor) {
+  // Si ya está seleccionada no duplicar
+  var yaEsta = fprog_celdasSelec.some(function(c){ return c.tdEl === td; });
+  if (yaEsta) return;
+  td.classList.add('fprog-celda-selec');
+  fprog_celdasSelec.push({ valor: parseFloat(valor) || 0, tdEl: td });
+}
+
+function fprogTerminarDrag() {
+  fprog_dragActivo    = false;
+  fprog_dragColActiva = null;
+}
+
 function fprogLimpiarSeleccion() {
-  fprog_celdasSelec.forEach(function(c) {
+  fprog_celdasSelec.forEach(function(c){
     if (c.tdEl) c.tdEl.classList.remove('fprog-celda-selec');
   });
   fprog_celdasSelec = [];
@@ -6938,10 +9265,10 @@ function fprogLimpiarSeleccion() {
 }
 
 function fprogActualizarStatusBar() {
-  var wrap    = document.getElementById('fsb-selec-wrap');
-  var selecV  = document.getElementById('fsb-selec-val');
-  var sumaV   = document.getElementById('fsb-suma-val');
-  var promV   = document.getElementById('fsb-prom-val');
+  var wrap   = document.getElementById('fsb-selec-wrap');
+  var selecV = document.getElementById('fsb-selec-val');
+  var sumaV  = document.getElementById('fsb-suma-val');
+  var promV  = document.getElementById('fsb-prom-val');
 
   if (fprog_celdasSelec.length === 0) {
     if (wrap) wrap.style.display = 'none';
@@ -6951,7 +9278,7 @@ function fprogActualizarStatusBar() {
 
   var cnt  = fprog_celdasSelec.length;
   var suma = fprog_celdasSelec.reduce(function(acc, c){ return acc + c.valor; }, 0);
-  var prom = suma / cnt;
+  var prom = cnt > 0 ? suma / cnt : 0;
 
   if (selecV) selecV.textContent = cnt;
   if (sumaV)  sumaV.textContent  = 'Σ ' + fprogFmtNum(suma);
@@ -6963,7 +9290,157 @@ function fprogActualizarStatusTotal() {
   if (!el) return;
   var padres = fprogGetDatosFiltrados().filter(function(r){ return r.operacion == 10; });
   el.textContent = padres.length;
+  fprogActualizarResetBtn();
 }
+
+function fprogActualizarResetBtn() {
+  var btn = document.getElementById('forja-reset-btn');
+  if (!btn) return;
+  var hayFiltros  = Object.keys(fprog_filtros).length > 0;
+  var hayOrden    = fprog_ordenMedida.length > 0 || fprog_ordenGeneral.col;
+  var visible     = hayFiltros || hayOrden;
+  btn.style.display = visible ? 'flex' : 'none';
+}
+
+function fprogResetFiltrosOrden() {
+  // Limpiar todos los filtros
+  fprog_filtros = {};
+  // Limpiar todos los ordenamientos
+  fprog_ordenMedida  = [];
+  fprog_ordenGeneral = { col: null, dir: 'asc' };
+  fprog_orden        = { col: null, dir: 'asc' };
+  fprog_segundoOrden = { col: null, dir: 'asc' };
+  // Colapsar expandidas
+  fprog_expandidas.clear();
+  fprog_todoExpandido = false;
+  // Ocultar botón reset
+  var btn = document.getElementById('forja-reset-btn');
+  if (btn) btn.style.display = 'none';
+  fprogRenderTabla();
+}
+
+// Listener global mouseup para terminar el drag aunque el cursor salga de la tabla
+document.addEventListener('mouseup', fprogTerminarDrag);
+document.addEventListener('mouseup', function() {
+  fpd_isDragging   = false;
+});
+
+/* ── Navegación teclado + Shift+flechas ── */
+var fprog_navFilaIdx  = -1;   // fila actualmente con foco
+var fprog_navColKey   = null; // columna sumable activa (para shift+flechas)
+var fprog_navTdActual = null; // <td> con el foco visual actual
+
+// Quita el marcado visual de la celda navegada actual
+function fprogNavQuitarFoco() {
+  if (fprog_navTdActual) {
+    fprog_navTdActual.classList.remove('fprog-nav-celda');
+    fprog_navTdActual = null;
+  }
+}
+
+// Pone foco visual en una celda concreta
+function fprogNavPonerFoco(td, filaIdx, colKey) {
+  fprogNavQuitarFoco();
+  if (!td) return;
+  td.classList.add('fprog-nav-celda');
+  fprog_navTdActual = td;
+  fprog_navFilaIdx  = filaIdx;
+  if (colKey !== undefined) fprog_navColKey = colKey;
+  td.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// Devuelve todas las filas padre visibles (con data-rowidx)
+function fprogNavGetFilas() {
+  return Array.from(document.querySelectorAll('#forja-prog-tbody tr[data-rowidx]'));
+}
+
+// Devuelve la celda de una fila para una colKey dada (sumable o no)
+function fprogNavCeldaDeFila(tr, colKey) {
+  return tr.querySelector('td[data-colkey="' + colKey + '"]') || null;
+}
+
+// Devuelve las columnas visibles en orden (excluyendo la col de expand)
+function fprogNavGetColsVisibles() {
+  return FPROG_COLS.filter(function(c) {
+    if (c.grupo === 'inv'  && !fprog_invVisible)  return false;
+    if (c.grupo === 'prod' && !fprog_prodVisible) return false;
+    return true;
+  });
+}
+
+// Extrae el valor numérico del atributo onmousedown de una celda sumable
+function fprogNavValorDeTd(td) {
+  var od = td ? (td.getAttribute('onmousedown') || '') : '';
+  var m  = od.match(/,(-?[\d.]+)\)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+// Listener global de teclado — activo solo cuando el panel Forja está abierto
+document.addEventListener('keydown', function(e) {
+  var panel = document.getElementById('planif-forja-panel');
+  if (!panel || !panel.classList.contains('activo')) return;
+
+  var key = e.key;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Escape'].indexOf(key) === -1) return;
+
+  // No interferir si el foco está en un input/button
+  var tag = (document.activeElement || {}).tagName || '';
+  if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'SELECT') return;
+
+  e.preventDefault();
+
+  var filas = fprogNavGetFilas();
+  if (filas.length === 0) return;
+
+  if (key === 'Escape') {
+    fprogNavQuitarFoco();
+    fprog_navFilaIdx = -1;
+    fprog_navColKey  = null;
+    return;
+  }
+
+  // ── Movimiento horizontal: navega por TODAS las columnas visibles ──
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+    var todasCols = fprogNavGetColsVisibles();
+    if (todasCols.length === 0) return;
+    var curIdx = -1;
+    for (var ci = 0; ci < todasCols.length; ci++) {
+      if (todasCols[ci].key === fprog_navColKey) { curIdx = ci; break; }
+    }
+    var newColIdx = Math.max(0, Math.min(todasCols.length - 1,
+      curIdx + (key === 'ArrowRight' ? 1 : -1)));
+    fprog_navColKey = todasCols[newColIdx].key;
+    if (fprog_navFilaIdx >= 0 && fprog_navFilaIdx < filas.length) {
+      var tdNuevo = fprogNavCeldaDeFila(filas[fprog_navFilaIdx], fprog_navColKey);
+      fprogNavPonerFoco(tdNuevo, fprog_navFilaIdx, fprog_navColKey);
+    }
+    return;
+  }
+
+  // ── Movimiento vertical ──
+  var curFila = fprog_navFilaIdx < 0 ? 0 : fprog_navFilaIdx;
+  var nuevoIdx = Math.max(0, Math.min(filas.length - 1,
+    curFila + (key === 'ArrowDown' ? 1 : -1)));
+
+  // Si no hay columna activa, tomar la primera columna visible
+  if (!fprog_navColKey) {
+    var todasCols2 = fprogNavGetColsVisibles();
+    if (todasCols2.length > 0) fprog_navColKey = todasCols2[0].key;
+  }
+
+  var tdDestino = fprogNavCeldaDeFila(filas[nuevoIdx], fprog_navColKey);
+
+  if (e.shiftKey) {
+    // Shift+flecha: selecciona solo si la celda es sumable
+    if (tdDestino && tdDestino.classList.contains('fprog-celda-sumable')) {
+      fprogSeleccionarTd(tdDestino, fprogNavValorDeTd(tdDestino));
+      fprogActualizarStatusBar();
+    }
+  }
+
+  // Mover foco (siempre, con o sin shift)
+  fprogNavPonerFoco(tdDestino, nuevoIdx, fprog_navColKey);
+});
 
 var _fprogDropActivo = null;
 function fprogClickHeader(event, colKey) {
@@ -7116,6 +9593,8 @@ function fprogAplicarFiltro(colKey) {
   } else {
     fprog_filtros[colKey] = new Set(activos);
   }
+  // IMPORTANTE: NO se toca fprog_ordenMedida ni fprog_ordenGeneral
+  // El ordenamiento se preserva completamente al filtrar
   // Al cambiar filtros, colapsar todo para coherencia visual
   fprog_expandidas.clear();
   fprog_todoExpandido = false;
@@ -7125,15 +9604,20 @@ function fprogAplicarFiltro(colKey) {
 }
 
 function fprogOrdenar(colKey, dir) {
-  // Si ya hay un orden activo diferente a esta col, pasa a segundo orden
-  if (fprog_orden.col && fprog_orden.col !== colKey) {
-    fprog_segundoOrden = { col: fprog_orden.col, dir: fprog_orden.dir };
-  } else if (fprog_orden.col === colKey) {
-    // mismo col, mantener segundo orden
+  if (FPROG_COLS_MEDIDA_SET[colKey]) {
+    // Columna de medida: acumula en el stack (mueve al frente si ya existía)
+    fprog_ordenMedida = fprog_ordenMedida.filter(function(s){ return s.col !== colKey; });
+    fprog_ordenMedida.unshift({ col: colKey, dir: dir });
+    // Limpiar orden general cuando se activa una medida
+    // (las medidas siempre dominan, el general queda como puro desempate)
+    fprog_ordenGeneral = { col: null, dir: 'asc' };
   } else {
-    fprog_segundoOrden = { col: null, dir: 'asc' };
+    // Columna general: solo reemplaza el slot general, NO toca el stack de medidas
+    fprog_ordenGeneral = { col: colKey, dir: dir };
   }
-  fprog_orden = { col: colKey, dir: dir };
+  // Sincronizar legacy para render de flechas
+  fprog_orden        = fprog_ordenMedida[0] || fprog_ordenGeneral;
+  fprog_segundoOrden = fprog_ordenMedida[1] || { col: null, dir: 'asc' };
   fprogCerrarDrop();
   document.removeEventListener('click', fprogOutsideDrop, true);
   fprogRenderTabla();
@@ -7399,8 +9883,15 @@ function planifRenderBoardTabla() {
           return;
         }
         if (c.soloC7 && !tieneC7) return;
-        var sortInfo = planif_tablaOrdenColumnas.find(function(s){ return s.col === c.key && s.maqKey === maqKey; });
-        var arrow = sortInfo ? (sortInfo.dir === 'asc' ? ' <span style="color:#388e3c;font-size:11px;">▲</span>' : ' <span style="color:#d32f2f;font-size:11px;">▼</span>') : '';
+        var sortsMaqRend = planif_tablaOrdenColumnas.filter(function(s){ return s.maqKey===maqKey; }).sort(function(a,b){return a.tick-b.tick;});
+        var sortInfo = sortsMaqRend.find(function(s){ return s.col === c.key; });
+        var arrow = '';
+        if (sortInfo) {
+          var nivelR = sortsMaqRend.length > 1 ? '<sup style="font-size:.55rem">'+(sortsMaqRend.indexOf(sortInfo)+1)+'</sup>' : '';
+          arrow = sortInfo.dir === 'asc'
+            ? ' <span style="color:#388e3c;font-size:11px;">▲'+nivelR+'</span>'
+            : ' <span style="color:#d32f2f;font-size:11px;">▼'+nivelR+'</span>';
+        }
         if (c.noClick) {
           html += '<th style="padding:6px 8px;border-bottom:2px solid #9fa8da;white-space:nowrap;">' + c.label + '</th>';
         } else {
@@ -8173,10 +10664,19 @@ function planifTablaOrdenarCol(maqKey, maqSafe, colKey) {
         return o[s.col] !== undefined ? o[s.col] : '';
       };
       var vA = getVal(oA), vB = getVal(oB);
-      var nA = parseFloat(vA), nB = parseFloat(vB);
       var cmp;
-      if (!isNaN(nA) && !isNaN(nB)) { cmp = nA - nB; }
-      else { cmp = String(vA).localeCompare(String(vB)); }
+      // Usar fprogParseMedida para dia y long (fracciones, mm, mixtos)
+      if (s.col === 'dia' || s.col === 'long') {
+        var mA = fprogParseMedida(vA), mB = fprogParseMedida(vB);
+        if (mA === null && mB === null) cmp = 0;
+        else if (mA === null) cmp = 1;
+        else if (mB === null) cmp = -1;
+        else cmp = mA - mB;
+      } else {
+        var nA = parseFloat(vA), nB = parseFloat(vB);
+        if (!isNaN(nA) && !isNaN(nB)) { cmp = nA - nB; }
+        else { cmp = String(vA).localeCompare(String(vB), 'es', {sensitivity:'base'}); }
+      }
       if (cmp !== 0) return s.dir === 'asc' ? cmp : -cmp;
     }
     return 0;
@@ -8247,8 +10747,15 @@ function planifTablaRefrescarEncabezados(maqKey, maqSafe) {
     var th = ths[i+6];
     if (!th) return;
     if (key === '_drag2' || key === '_drag3' || key === '_docs') return;
-    var sortInfo = planif_tablaOrdenColumnas.find(function(s){ return s.col === key && s.maqKey === maqKey; });
-    var arrow = sortInfo ? (sortInfo.dir === 'asc' ? ' <span style="color:#388e3c;font-size:11px;">▲</span>' : ' <span style="color:#d32f2f;font-size:11px;">▼</span>') : '';
+    var sortsMaqRef = planif_tablaOrdenColumnas.filter(function(s){ return s.maqKey === maqKey; }).sort(function(a,b){ return a.tick-b.tick; });
+    var sortInfo = sortsMaqRef.find(function(s){ return s.col === key; });
+    var arrow = '';
+    if (sortInfo) {
+      var nivel = sortsMaqRef.length > 1 ? '<sup style="font-size:.55rem">' + (sortsMaqRef.indexOf(sortInfo)+1) + '</sup>' : '';
+      arrow = sortInfo.dir === 'asc'
+        ? ' <span style="color:#388e3c;font-size:11px;">▲' + nivel + '</span>'
+        : ' <span style="color:#d32f2f;font-size:11px;">▼' + nivel + '</span>';
+    }
     th.innerHTML = colsLabels[i] + arrow;
   });
 }

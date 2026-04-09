@@ -11749,11 +11749,24 @@ function obtenerDatosProgramadorForja() {
     var dataRut = shRut ? shRut.getDataRange().getValues() : [];
     var tz      = Session.getScriptTimeZone();
 
+    // ORDENES índices: [1]=PEDIDO [2]=PARTIDA [4]=SERIE [5]=ORDEN [6]=CODIGO
+    // [11]=PROCESO [12]=MAQUINA [14]=PRODUCIDO [15]=ESTADO [18]=PESO [19]=TIPO
+    // [20]=DIAMETRO [21]=LONGITUD [22]=CUERDA [23]=CUERPO [24]=ACERO [30]=MERMA [38]=NOTE
+    // PEDIDOS índices: [1]=PEDIDO [2]=FECHA [3]=CODIGO [4]=DESCRIPCION
+    // [5]=PARTIDA [6]=CANTIDAD [8]=ESTADO
+
     var PROC_OP_MAP = {
       'FORJA':10,'PUNTEADO':25,'ROLADO TORN':30,'LAVADO':40,'TEMPLE Y REVENIDO':50
     };
 
-    // ── 1. Mapa INVENTARIO_EXTERNO (excluye código negro = empieza con 7) ──
+    // Normaliza nombre de pedido: quita espacios, corrige Z- → ZEQ-
+    function normPed(p) {
+      var s = String(p||'').trim().replace(/\s+/g,' ');
+      if (/^Z-\d/.test(s)) s = 'ZEQ-' + s.substring(2);
+      return s;
+    }
+
+    // ── 1. Mapa INVENTARIO_EXTERNO (excluye código negro) ──
     var mapaInv = {};
     if (dataInv.length > 1) {
       var hInv = dataInv[0];
@@ -11778,18 +11791,15 @@ function obtenerDatosProgramadorForja() {
       }
     }
 
-    // ── 2. Mapa RUTAS por código → datos de la fila con proceso FORJA ──
-    // Col B=CODIGO(1), Col E=PROCESO(4), Col F=MAQUINA(5)
-    // Col G=TIPO(6), Col H=DIAMETRO(7), Col I=LONGITUD(8)
-    // Col J=CUERDA(9), Col K=CUERPO(10), Col L=ACERO(11)
-    // (para PESO: la tabla RUTAS no lo tiene con certeza, se dejará en 0)
-    var mapaRutas = {}; // codigo → { maquina, tipo, diametro, longitud, cuerda, cuerpo, acero }
-    var codigosForja = {}; // codigo → true
+    // ── 2. Mapa RUTAS: código → datos de fila FORJA ──
+    var mapaRutas   = {};
+    var codigosForja = {};
     if (dataRut.length > 1) {
-      var hRut = dataRut[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var hRut  = dataRut[0].map(function(h){ return String(h).toUpperCase().trim(); });
       var rCOD  = hRut.indexOf('CODIGO');
       var rPROC = hRut.indexOf('PROCESO');
       var rMAQ  = hRut.indexOf('MAQUINA');
+      var rDESC = hRut.indexOf('DESCRIPCION');
       var rTIPO = hRut.indexOf('TIPO');
       var rDIA  = hRut.indexOf('DIAMETRO');
       var rLONG = hRut.indexOf('LONGITUD');
@@ -11797,64 +11807,48 @@ function obtenerDatosProgramadorForja() {
       var rCPO  = hRut.indexOf('CUERPO');
       var rACE  = hRut.indexOf('ACERO');
       var rPESO = hRut.indexOf('PESO');
-
       for (var r=1;r<dataRut.length;r++) {
-        var rCodV  = String(dataRut[r][rCOD]  ||'').trim();
-        var rProcV = String(dataRut[r][rPROC] ||'').trim().toUpperCase();
+        var rCodV  = String(dataRut[r][rCOD] ||'').trim();
+        var rProcV = String(dataRut[r][rPROC]||'').trim().toUpperCase();
         if(!rCodV||rCodV.charAt(0)==='7') continue;
         if(rProcV==='FORJA') codigosForja[rCodV]=true;
-        // Solo guardar datos si aún no hay entrada (tomar la primera fila FORJA del código)
-        if(!mapaRutas[rCodV]) {
-          // Maquina: primera de la lista separada por comas
-          var maqRaw = rMAQ>-1?String(dataRut[r][rMAQ]||'').trim():'';
-          var maqPrimera = maqRaw.split(',')[0].trim();
+        if(!mapaRutas[rCodV]||(!mapaRutas[rCodV]._forjaSet&&rProcV==='FORJA')) {
+          var maqRaw=rMAQ>-1?String(dataRut[r][rMAQ]||'').trim():'';
           mapaRutas[rCodV]={
-            maquina:  maqPrimera,
-            tipo:     rTIPO>-1?String(dataRut[r][rTIPO] ||'').trim():'',
-            diametro: rDIA >-1?String(dataRut[r][rDIA]  ||'').trim():'',
-            longitud: rLONG>-1?String(dataRut[r][rLONG] ||'').trim():'',
-            cuerda:   rCDA >-1?String(dataRut[r][rCDA]  ||'').trim():'',
-            cuerpo:   rCPO >-1?String(dataRut[r][rCPO]  ||'').trim():'',
-            acero:    rACE >-1?String(dataRut[r][rACE]  ||'').trim():'',
-            peso:     rPESO>-1?Number(dataRut[r][rPESO])||0:0
-          };
-        } else if(rProcV==='FORJA' && !mapaRutas[rCodV]._forjaSet) {
-          // Si la primera entrada no era FORJA, sobrescribir con la fila FORJA
-          var maqRaw2 = rMAQ>-1?String(dataRut[r][rMAQ]||'').trim():'';
-          mapaRutas[rCodV]={
-            maquina:  maqRaw2.split(',')[0].trim(),
-            tipo:     rTIPO>-1?String(dataRut[r][rTIPO] ||'').trim():'',
-            diametro: rDIA >-1?String(dataRut[r][rDIA]  ||'').trim():'',
-            longitud: rLONG>-1?String(dataRut[r][rLONG] ||'').trim():'',
-            cuerda:   rCDA >-1?String(dataRut[r][rCDA]  ||'').trim():'',
-            cuerpo:   rCPO >-1?String(dataRut[r][rCPO]  ||'').trim():'',
-            acero:    rACE >-1?String(dataRut[r][rACE]  ||'').trim():'',
+            maquina:  maqRaw.split(',')[0].trim(),
+            desc:     rDESC>-1?String(dataRut[r][rDESC] ||'').trim():'',
+            tipo:     rTIPO>-1?String(dataRut[r][rTIPO]||'').trim():'',
+            diametro: rDIA >-1?String(dataRut[r][rDIA] ||'').trim():'',
+            longitud: rLONG>-1?String(dataRut[r][rLONG]||'').trim():'',
+            cuerda:   rCDA >-1?String(dataRut[r][rCDA] ||'').trim():'',
+            cuerpo:   rCPO >-1?String(dataRut[r][rCPO] ||'').trim():'',
+            acero:    rACE >-1?String(dataRut[r][rACE] ||'').trim():'',
             peso:     rPESO>-1?Number(dataRut[r][rPESO])||0:0,
-            _forjaSet:true
+            _forjaSet:rProcV==='FORJA'
           };
         }
       }
     }
 
-    // ── 3. Mapa todos los pedidos: último por código (para mostrar pedido anterior) ──
-    var mapUltimoPed = {};
-    // Mapa pedidos VIVOS: clave = nomPed + '_' + partida
-    var mapPedVivo = {};
+    // ── 3. Mapa PEDIDOS: vivos y último por código ──
+    var mapPedVivo  = {};  // nomPedNorm + '_' + partida → info
+    var mapUltimoPed = {}; // codigo → info del pedido más reciente
 
     for(var p=1;p<dataPed.length;p++) {
-      var rp=dataPed[p];
+      var rp = dataPed[p];
       if(!rp[1]||!rp[3]) continue;
-      var nomPed  = String(rp[1]).trim();
-      var codPed  = String(rp[3]).trim();
+      var nomPed  = normPed(rp[1]);
+      var codPed  = String(rp[3]||'').trim();
       if(codPed.charAt(0)==='7') continue;
       var estPed  = String(rp[8]||'').trim().toUpperCase();
-      var fechaPed= rp[2] instanceof Date?rp[2]:null;
-      var fechaStr= fechaPed?Utilities.formatDate(fechaPed,tz,'dd/MM/yyyy'):(rp[2]?String(rp[2]).trim():'');
+      var fechaPed= rp[2] instanceof Date ? rp[2] : null;
+      var fechaStr= fechaPed
+        ? Utilities.formatDate(fechaPed,tz,'dd/MM/yyyy')
+        : (rp[2]?String(rp[2]).trim():'');
 
-      // Último pedido por código (cualquier estado, más reciente por fecha)
+      // Último pedido por código (cualquier estado)
       if(!mapUltimoPed[codPed]||
-        (fechaPed&&mapUltimoPed[codPed].fechaRaw&&fechaPed>mapUltimoPed[codPed].fechaRaw)||
-        (!mapUltimoPed[codPed].fechaRaw&&fechaPed)) {
+        (fechaPed&&(!mapUltimoPed[codPed].fechaRaw||fechaPed>mapUltimoPed[codPed].fechaRaw))) {
         mapUltimoPed[codPed]={
           pedidoRaw:   nomPed,
           fecha:       fechaStr,
@@ -11867,7 +11861,7 @@ function obtenerDatosProgramadorForja() {
 
       // Pedidos vivos
       if(estPed!=='TERMINADO'&&estPed!=='CANCELADO') {
-        var keyP=nomPed+'_'+Math.trunc(rp[5]);
+        var keyP = nomPed + '_' + Math.trunc(rp[5]);
         mapPedVivo[keyP]={
           pedidoRaw:   nomPed,
           fecha:       fechaStr,
@@ -11881,133 +11875,141 @@ function obtenerDatosProgramadorForja() {
 
     // ── 4. Recorrer ORDENES SERIE=F con pedido vivo ──
     var resultado = [];
-    var vistos = {};
+    var vistos    = {};
     var codigosConPedidoVivo = {};
 
     for(var i=1;i<dataOrd.length;i++) {
-      var ro=dataOrd[i];
+      var ro = dataOrd[i];
       if(String(ro[4]||'').trim().toUpperCase()!=='F') continue;
+
       var ordenNum  = String(ro[5]||'').trim();
-      var nomPedOrd = String(ro[1]||'').trim();
+      var nomPedOrd = normPed(ro[1]);  // ← normalizar igual que en mapPedVivo
       var partida   = Math.trunc(ro[2]);
       var proceso   = String(ro[11]||'').trim().toUpperCase();
       if(!ordenNum||!nomPedOrd) continue;
 
-      var keyExacto=nomPedOrd+'_'+partida;
-      var pedInfo=mapPedVivo[keyExacto];
+      // Buscar en pedidos vivos: exacto primero, luego solo por nombre
+      var keyExacto = nomPedOrd + '_' + partida;
+      var pedInfo   = mapPedVivo[keyExacto];
       if(!pedInfo) {
+        // Fallback: cualquier partida del mismo pedido
+        var prefixBusq = nomPedOrd + '_';
         for(var kk in mapPedVivo) {
-          if(kk.indexOf(nomPedOrd+'_')===0){pedInfo=mapPedVivo[kk];break;}
+          if(kk.indexOf(prefixBusq)===0){ pedInfo=mapPedVivo[kk]; break; }
         }
       }
       if(!pedInfo) continue;
 
-      var operacion=PROC_OP_MAP[proceso]||0;
-      var opInt=ordenNum+'.'+operacion;
+      var operacion = PROC_OP_MAP[proceso]||0;
+      var opInt     = ordenNum + '.' + operacion;
       if(vistos[opInt]) continue;
-      vistos[opInt]=true;
+      vistos[opInt] = true;
 
-      var codOrden=String(ro[6]||pedInfo.codigo||'').trim();
-      codigosConPedidoVivo[codOrden]=true;
+      var codOrden = String(ro[6]||pedInfo.codigo||'').trim();
+      codigosConPedidoVivo[codOrden] = true;
 
-      var pedRaw=pedInfo.pedidoRaw;
-      var guion=pedRaw.indexOf('-');
-      var tipo2=guion>-1?pedRaw.substring(0,guion):pedRaw.substring(0,3);
-      var numPed=guion>-1?pedRaw.substring(guion+1):pedRaw;
-      var invData=mapaInv[pedInfo.codigo]||null;
+      // Separar tipo y número del pedido normalizado
+      var pedRaw = pedInfo.pedidoRaw;
+      var guion  = pedRaw.indexOf('-');
+      var tipoPed= guion>-1 ? pedRaw.substring(0,guion)  : pedRaw.substring(0,3);
+      var numPed = guion>-1 ? pedRaw.substring(guion+1)  : pedRaw;
 
-      // Datos de ORDENES primero; si vacíos, fallback a RUTAS
-      var rut=mapaRutas[pedInfo.codigo]||{};
-      var maqOrd   = String(ro[12]||'').trim();
-      var tipoOrd  = String(ro[19]||'').trim();
-      var diaOrd   = String(ro[20]||'').trim();
-      var longOrd  = String(ro[21]||'').trim();
-      var cdaOrd   = String(ro[22]||'').trim();
-      var cpoOrd   = String(ro[23]||'').trim();
-      var aceOrd   = String(ro[24]||'').trim();
-      var pesoOrd  = Number(ro[18])||0;
+      var invData = mapaInv[pedInfo.codigo] || null;
+      var rut     = mapaRutas[pedInfo.codigo] || {};
 
       resultado.push({
+        id_orden:      String(ro[0]||'').trim(),
         orden:         ordenNum,
+        num_orden:     String(ro[5]||'').trim(),
+        nom_pedido:    normPed(ro[1]),
         operacion:     operacion,
         op_int:        opInt,
         fecha:         pedInfo.fecha,
-        tipo:          tipo2,
+        tipo:          tipoPed,
         pedido:        numPed,
         partida:       pedInfo.partida,
         codigo:        pedInfo.codigo,
         cantidad:      pedInfo.cantidad,
-        backorder:     invData?invData.backorder:null,
-        minimo:        invData?invData.minimo:null,
-        maximo:        invData?invData.maximo:null,
-        existencia:    invData?invData.existencia:null,
+        backorder:     invData ? invData.backorder  : null,
+        minimo:        invData ? invData.minimo     : null,
+        maximo:        invData ? invData.maximo     : null,
+        existencia:    invData ? invData.existencia : null,
         descripcion:   pedInfo.descripcion,
-        maquina:       maqOrd  ||rut.maquina  ||'',
-        desc_tipo:     tipoOrd ||rut.tipo      ||'',
-        diametro:      diaOrd  ||rut.diametro  ||'',
-        longitud:      longOrd ||rut.longitud   ||'',
-        cuerda:        cdaOrd  ||rut.cuerda     ||'',
-        cuerpo:        cpoOrd  ||rut.cuerpo     ||'',
-        acero:         aceOrd  ||rut.acero      ||'',
-        peso_pza:      pesoOrd ||rut.peso       ||0,
-        observaciones: String(ro.length>38?ro[38]||'':'').trim(),
+        maquina:       String(ro[12]||'').trim() || rut.maquina  || '',
+        desc_tipo:     String(ro[19]||'').trim() || rut.tipo     || '',
+        diametro:      String(ro[20]||'').trim() || rut.diametro || '',
+        longitud:      String(ro[21]||'').trim() || rut.longitud || '',
+        cuerda:        String(ro[22]||'').trim() || rut.cuerda   || '',
+        cuerpo:        String(ro[23]||'').trim() || rut.cuerpo   || '',
+        acero:         String(ro[24]||'').trim() || rut.acero    || '',
+        peso_pza:      Number(ro[18]) || rut.peso || 0,
+        producido:     Number(ro[14]) || 0,
+        peso_merma:    Number(ro.length > 30 ? ro[30]||0 : 0),
+        mp_especif:    String(ro.length>29 ? ro[29]||'' : '').trim(),
+        observaciones: String(ro.length>38 ? ro[38]||'' : '').trim(),
+        fila_hoja:     i + 1,
         sin_pedido_vivo: false
       });
     }
 
-    // ── 5. Códigos FORJA en RUTAS+INV sin pedido vivo — filas independientes ──
+    // ── 5. Códigos FORJA sin pedido vivo (solo los que están en INVENTARIO_EXTERNO) ──
+    // Regla: sin pedido vivo → DEBE existir en mapaInv (INVENTARIO_EXTERNO, no empieza con 7)
     Object.keys(codigosForja).forEach(function(cod) {
       if(codigosConPedidoVivo[cod]) return;
-      if(!mapaInv[cod]) return;
-
-      var inv=mapaInv[cod];
-      var ultPed=mapUltimoPed[cod]||null;
-      var rut=mapaRutas[cod]||{};
+      var inv    = mapaInv[cod] || null;
+      if(!inv) return;  // ← excluir si no aparece en INVENTARIO_EXTERNO
+      var ultPed = mapUltimoPed[cod]||null;
+      var rut    = mapaRutas[cod]||{};
 
       var pedTipo='',pedNum='SIN PEDIDO',pedFecha='',pedDesc='',pedPart='',pedCant=0;
       if(ultPed) {
-        var pr=ultPed.pedidoRaw;
-        var g=pr.indexOf('-');
-        pedTipo = g>-1?pr.substring(0,g):pr.substring(0,3);
-        pedNum  = g>-1?pr.substring(g+1):pr;
-        pedFecha= ultPed.fecha;
-        pedDesc = ultPed.descripcion;
-        pedPart = ultPed.partida;
-        pedCant = ultPed.cantidad;
+        var pr = ultPed.pedidoRaw;
+        var g  = pr.indexOf('-');
+        pedTipo  = g>-1?pr.substring(0,g):pr.substring(0,3);
+        pedNum   = g>-1?pr.substring(g+1):pr;
+        pedFecha = ultPed.fecha;
+        pedDesc  = ultPed.descripcion || rut.desc || '';
+        pedPart  = ultPed.partida;
+        pedCant  = ultPed.cantidad;
       }
 
       resultado.push({
-        orden:         '—',
-        operacion:     10,
-        op_int:        '—',
-        fecha:         pedFecha,
-        tipo:          pedTipo,
-        pedido:        pedNum,
-        partida:       pedPart,
-        codigo:        cod,
-        cantidad:      pedCant,
-        backorder:     inv.backorder,
-        minimo:        inv.minimo,
-        maximo:        inv.maximo,
-        existencia:    inv.existencia,
-        descripcion:   pedDesc,
-        maquina:       rut.maquina  ||'',
-        desc_tipo:     rut.tipo     ||'',
-        diametro:      rut.diametro ||'',
-        longitud:      rut.longitud  ||'',
-        cuerda:        rut.cuerda   ||'',
-        cuerpo:        rut.cuerpo   ||'',
-        acero:         rut.acero    ||'',
-        peso_pza:      rut.peso     ||0,
-        observaciones: '',
+        id_orden:       '',
+        orden:          '—',
+        operacion:      10,
+        op_int:         '—',
+        fecha:          pedFecha,
+        tipo:           pedTipo,
+        pedido:         pedNum,
+        partida:        pedPart,
+        codigo:         cod,
+        cantidad:       pedCant,
+        backorder:      inv ? inv.backorder  : null,
+        minimo:         inv ? inv.minimo     : null,
+        maximo:         inv ? inv.maximo     : null,
+        existencia:     inv ? inv.existencia : null,
+        descripcion:    pedDesc || rut.desc || '',
+        maquina:        rut.maquina  ||'',
+        desc_tipo:      rut.tipo     ||'',
+        diametro:       rut.diametro ||'',
+        longitud:       rut.longitud ||'',
+        cuerda:         rut.cuerda   ||'',
+        cuerpo:         rut.cuerpo   ||'',
+        acero:          rut.acero    ||'',
+        peso_pza:       rut.peso     ||0,
+        producido:      0,
+        peso_merma:     0,
+        mp_especif:     '',
+        observaciones:  '',
+        fila_hoja:      -1,
         sin_pedido_vivo: true
       });
     });
 
-    // Ordenar: con pedido vivo por número de orden; sin pedido por codigo al final
+    // Ordenar: vivos primero por número de orden, sin pedido al final por código
     resultado.sort(function(a,b) {
       if(a.sin_pedido_vivo!==b.sin_pedido_vivo) return a.sin_pedido_vivo?1:-1;
-      var na=parseInt(a.orden)||0,nb=parseInt(b.orden)||0;
+      var na=parseInt(a.orden)||0, nb=parseInt(b.orden)||0;
       if(na!==nb) return na-nb;
       return (a.operacion||0)-(b.operacion||0);
     });
@@ -12015,5 +12017,160 @@ function obtenerDatosProgramadorForja() {
     return JSON.stringify(resultado);
   } catch(e) {
     return JSON.stringify({error:e.message+'|'+e.stack});
+  }
+}
+
+// ── Guarda un campo desde la vista Forja ──
+// Campos por fila individual: maquina, acero, peso_pza, observaciones
+// Campos por orden completa (todos los procesos): desc_tipo, diametro, longitud, cuerda, cuerpo, mp_especif
+// Campos especiales: fecha → actualiza PEDIDOS col B (índice 2)
+function fprogGuardarCampo(payload) {
+  try {
+    var ss    = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
+    var shOrd = ss.getSheetByName('ORDENES');
+    if (!shOrd) return JSON.stringify({ ok:false, msg:'Hoja ORDENES no encontrada' });
+
+    var fila      = parseInt(payload.fila_hoja);
+    var campo     = String(payload.campo||'').trim();
+    var valor     = payload.valor;
+    var numOrden  = String(payload.num_orden||'').trim();
+    var nomPedido = String(payload.nom_pedido||'').trim();
+    var partida   = String(payload.partida||'').trim();
+
+    // ── Campos individuales por fila ──
+    var CAMPO_COL_INDIVIDUAL = {
+      'maquina':13, 'acero':25, 'peso_pza':19, 'observaciones':39, 'cantidad':9
+    };
+
+    // ── Campos que se actualizan en TODOS los procesos de la misma orden ──
+    var CAMPO_COL_ORDEN = {
+      'desc_tipo':20, 'diametro':21, 'longitud':22, 'cuerda':23, 'cuerpo':24, 'mp_especif':30
+    };
+
+    // ── FECHA: actualiza PEDIDOS ──
+    if (campo === 'fecha') {
+      if (!nomPedido) return JSON.stringify({ ok:false, msg:'Falta nom_pedido para actualizar fecha' });
+      var shPed = ss.getSheetByName('PEDIDOS');
+      if (!shPed) return JSON.stringify({ ok:false, msg:'Hoja PEDIDOS no encontrada' });
+      // Parsear fecha dd/mm/aaaa → objeto Date
+      var partes = String(valor).trim().split('/');
+      if (partes.length !== 3) return JSON.stringify({ ok:false, msg:'Formato de fecha inválido, use dd/mm/aaaa' });
+      var d = parseInt(partes[0]), m = parseInt(partes[1])-1, y = parseInt(partes[2]);
+      if (isNaN(d)||isNaN(m)||isNaN(y)) return JSON.stringify({ ok:false, msg:'Fecha inválida' });
+      var fechaDate = new Date(y, m, d);
+      var dataPed = shPed.getDataRange().getValues();
+      var actualizados = 0;
+      for (var p = 1; p < dataPed.length; p++) {
+        var nomFila    = String(dataPed[p][1]||'').trim();
+        var partidaFila= String(dataPed[p][5]||'').trim();
+        // Normalizar: Z- → ZEQ-
+        if (/^Z-\d/.test(nomFila)) nomFila = 'ZEQ-' + nomFila.substring(2);
+        if (nomFila === nomPedido && (partida === '' || partidaFila === partida)) {
+          shPed.getRange(p+1, 3).setValue(fechaDate); // col C (índice 2 base-0 = col 3 base-1)
+          actualizados++;
+        }
+      }
+      if (actualizados === 0) return JSON.stringify({ ok:false, msg:'No se encontró el pedido: ' + nomPedido });
+      return JSON.stringify({ ok:true, actualizados:actualizados });
+    }
+
+    // ── Campos individuales ──
+    if (CAMPO_COL_INDIVIDUAL[campo]) {
+      if (!fila || fila < 2) return JSON.stringify({ ok:false, msg:'Fila inválida' });
+      shOrd.getRange(fila, CAMPO_COL_INDIVIDUAL[campo]).setValue(valor);
+      return JSON.stringify({ ok:true });
+    }
+
+    // ── Campos por orden completa ──
+    if (CAMPO_COL_ORDEN[campo]) {
+      if (!numOrden) return JSON.stringify({ ok:false, msg:'Falta num_orden para actualizar por orden' });
+      var colIdx  = CAMPO_COL_ORDEN[campo]; // base-1
+      var dataOrd = shOrd.getDataRange().getValues();
+      var hOrd    = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var iOrden  = hOrd.indexOf('ORDEN'); // col de número de orden
+      if (iOrden < 0) iOrden = 5; // fallback índice 5 (col F)
+      var filasActualizadas = [];
+      for (var i = 1; i < dataOrd.length; i++) {
+        if (String(dataOrd[i][iOrden]||'').trim() === numOrden) {
+          filasActualizadas.push(i + 1);
+        }
+      }
+      if (filasActualizadas.length === 0) return JSON.stringify({ ok:false, msg:'No se encontraron filas para orden: ' + numOrden });
+      filasActualizadas.forEach(function(f) {
+        shOrd.getRange(f, colIdx).setValue(valor);
+      });
+      return JSON.stringify({ ok:true, filasActualizadas: filasActualizadas.length });
+    }
+
+    return JSON.stringify({ ok:false, msg:'Campo no soportado: ' + campo });
+  } catch(e) {
+    return JSON.stringify({ ok:false, msg:e.message });
+  }
+}
+
+// ── Obtiene máquinas permitidas en RUTAS para un código con proceso FORJA ──
+function fprogObtenerMaquinasForja(codigo) {
+  try {
+    var ss   = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
+    var shRut = ss.getSheetByName('RUTAS');
+    if (!shRut) return JSON.stringify({ maquinas: [] });
+
+    var data = shRut.getDataRange().getValues();
+    if (data.length < 2) return JSON.stringify({ maquinas: [] });
+
+    var hdr   = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var iCod  = hdr.indexOf('CODIGO');
+    var iProc = hdr.indexOf('PROCESO');
+    var iMaq  = hdr.indexOf('MAQUINA');
+    if (iCod < 0 || iProc < 0 || iMaq < 0) return JSON.stringify({ maquinas: [] });
+
+    var maquinas = [];
+    for (var i = 1; i < data.length; i++) {
+      var cod  = String(data[i][iCod]  || '').trim();
+      var proc = String(data[i][iProc] || '').trim().toUpperCase();
+      var maq  = String(data[i][iMaq]  || '').trim();
+      if (cod !== codigo || proc !== 'FORJA' || !maq) continue;
+      // La columna MAQUINA puede tener múltiples separadas por coma
+      maq.split(',').forEach(function(m) {
+        var mt = m.trim();
+        if (mt && maquinas.indexOf(mt) < 0) maquinas.push(mt);
+      });
+    }
+    return JSON.stringify({ maquinas: maquinas });
+  } catch(e) {
+    return JSON.stringify({ maquinas: [], error: e.message });
+  }
+}
+
+// ── Plan Diario FORJA: grupos y máquinas desde ESTANDARES ──
+function fpd_obtenerGruposMaquinas() {
+  try {
+    var ss  = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
+    var shE = ss.getSheetByName('ESTANDARES');
+    if (!shE) return JSON.stringify({ grupos: {} });
+    var data = shE.getDataRange().getValues();
+    if (data.length < 2) return JSON.stringify({ grupos: {} });
+    var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var iProc  = hdr.indexOf('PROCESO');   // col C = índice 2
+    var iMaq   = hdr.indexOf('MAQUINA');   // col D = índice 3
+    var iGrupo = hdr.indexOf('GRUPO');     // col J = índice 9
+    if (iMaq < 0 || iGrupo < 0) return JSON.stringify({ grupos: {} });
+    // grupos = { nombreGrupo: [maq1, maq2, ...] }
+    var grupos = {};
+    var ordenGrupos = [];
+    for (var i = 1; i < data.length; i++) {
+      var maq   = String(data[i][iMaq]   || '').trim();
+      var grupo = String(data[i][iGrupo] || '').trim();
+      var proc  = iProc >= 0 ? String(data[i][iProc] || '').trim().toUpperCase() : '';
+      if (!maq || !grupo) continue;
+      // Solo procesos que FORJA maneja
+      var procsFORJA = ['FORJA','PUNTEADO','ROLADO TORN','LAVADO','TEMPLE Y REVENIDO'];
+      if (proc && procsFORJA.indexOf(proc) < 0) continue;
+      if (!grupos[grupo]) { grupos[grupo] = []; ordenGrupos.push(grupo); }
+      if (grupos[grupo].indexOf(maq) < 0) grupos[grupo].push(maq);
+    }
+    return JSON.stringify({ grupos: grupos, orden: ordenGrupos });
+  } catch(e) {
+    return JSON.stringify({ grupos: {}, error: e.message });
   }
 }
