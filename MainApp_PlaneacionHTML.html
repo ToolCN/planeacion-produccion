@@ -22,11 +22,47 @@
     #g-loader{position:fixed;inset:0;background:rgba(255,255,255,.6);backdrop-filter:blur(4px);z-index:9000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px}
     /* SweetAlert2 siempre por encima del loader */
     .swal2-container{z-index:99999!important}
+    /* ── Loader animado vista FORJA ── */
+    #fprog-loader-overlay { display:none; position:absolute; inset:0; z-index:50; background:#0f172a; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
+    #fprog-loader-overlay.activo { display:flex; }
+    #fprog-loader-bar-wrap { width:280px; background:#1e293b; border-radius:99px; height:10px; overflow:hidden; box-shadow:0 0 0 1px #334155; }
+    #fprog-loader-bar { height:100%; width:0%; background:linear-gradient(90deg,#ef5350,#ff7043,#ffa726); border-radius:99px; transition:width .4s ease; }
+    #fprog-loader-pct { font-size:1.1rem; font-weight:900; color:#ef5350; letter-spacing:.08em; font-family:'Rajdhani',sans-serif; min-width:60px; text-align:center; }
+    #fprog-loader-msg { font-size:.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.1em; }
+    #fprog-loader-icon { font-size:2.4rem; animation:fprogIconPulse 1.4s ease-in-out infinite; }
+    @keyframes fprogIconPulse { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.18);opacity:1} }
+    /* Modal Actualizar Stock — vista FORJA (independiente de #pi-panel) */
+    #fprog-modalStock { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:5000; justify-content:center; align-items:center; }
+    #fprog-modalStock.open { display:flex; }
+    #fprog-modalStock .fms-box { background:#1e2a3a; border-radius:10px; padding:22px; max-width:95vw; max-height:90vh; overflow-y:auto; color:#eceff1; position:relative; width:900px; }
+    #fprog-modalStock .fms-title { font-size:15px; font-weight:900; color:#ffe082; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    #fprog-modalStock .fms-close { background:none; border:none; color:#90caf9; font-size:18px; cursor:pointer; line-height:1; padding:2px 6px; }
+    #fprog-modalStock .fms-footer { display:none; gap:8px; align-items:center; }
+    #fprog-modalStock .fms-btn-cancel { background:#37474f; color:white; border:none; border-radius:7px; padding:8px 18px; font-weight:700; cursor:pointer; font-size:13px; }
+    #fprog-modalStock .fms-btn-apply  { background:#e65100; color:white; border:none; border-radius:7px; padding:8px 18px; font-weight:700; cursor:pointer; font-size:13px; }
+    #fprog-modalStock .fms-btn-cancel:hover { background:#546e7a; }
+    #fprog-modalStock .fms-btn-apply:hover  { background:#bf360c; }
+    #fprog-modalStock .fms-ej-item { background:#0f1e2d; border-radius:8px; padding:12px; margin-bottom:12px; }
+    #fprog-modalStock .fms-ej-row { display:grid; grid-template-columns:28px 1fr 80px 80px 1fr 80px; gap:6px; align-items:center; font-size:11px; padding:4px 0; border-bottom:1px solid #1e3a4a; }
+    #fprog-modalStock .fms-ej-row.head { font-weight:900; color:#90caf9; font-size:10px; text-transform:uppercase; }
+    @keyframes fprogPulsoRojo { 0%,100%{ box-shadow:0 0 0 0 rgba(239,83,80,.7); } 50%{ box-shadow:0 0 0 5px rgba(239,83,80,0); } }
     .swal2-popup{z-index:100000!important}
     #g-loader-txt{font-size:.85rem;font-weight:700;color:#0f172a;text-transform:uppercase;letter-spacing:.05em}
     .dot-row{display:flex;gap:8px;height:14px;align-items:center}
     .ldot{width:9px;height:9px;border-radius:50%;background:#6366f1;opacity:.2;transition:opacity .25s,transform .25s}
     .ldot.on{opacity:1;transform:scale(1.3)}
+    /* ── GEN PROGRESS LOADER ── */
+    #gen-progress-wrap{display:none;flex-direction:column;align-items:center;gap:10px;width:280px;margin-top:4px}
+    #gen-progress-title{font-size:1rem;font-weight:900;color:#0f172a;text-align:center}
+    #gen-progress-bar-bg{width:100%;height:14px;background:#e2e8f0;border-radius:99px;overflow:hidden;position:relative}
+    #gen-progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,#4f46e5,#818cf8);border-radius:99px;transition:width .6s ease;position:relative;overflow:hidden}
+    #gen-progress-bar-fill::after{content:'';position:absolute;top:0;left:-60%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:gen-shimmer 1.4s infinite}
+    @keyframes gen-shimmer{0%{left:-60%}100%{left:120%}}
+    #gen-progress-timer{font-size:.78rem;color:#64748b;font-weight:700}
+    #gen-progress-spinner{display:none;flex-direction:column;align-items:center;gap:8px;margin-top:4px}
+    #gen-progress-spinner .gps-spin{width:30px;height:30px;border:4px solid #e2e8f0;border-top-color:#4f46e5;border-radius:50%;animation:gen-spin .7s linear infinite}
+    #gen-progress-spinner .gps-msg{font-size:.75rem;color:#64748b;text-align:center;font-weight:700}
+    @keyframes gen-spin{to{transform:rotate(360deg)}}
     #saving-toast{position:fixed;bottom:24px;right:24px;background:white;padding:12px 18px;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18);display:none;z-index:9998;border-left:4px solid #6366f1;min-width:220px}
     #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e293b);display:flex;align-items:center;justify-content:center;z-index:9999}
     .login-card{background:white;padding:3rem;border-radius:24px;width:100%;max-width:420px;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);text-align:center}
@@ -934,6 +970,15 @@
   <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" height="48" style="opacity:.6;cursor:pointer" onclick="refreshCurrentModuleFromLoader()" onerror="this.style.display='none'">
   <div id="g-loader-txt">Cargando...</div>
   <div class="dot-row"><div class="ldot" id="ld0"></div><div class="ldot" id="ld1"></div><div class="ldot" id="ld2"></div></div>
+  <div id="gen-progress-wrap">
+    <div id="gen-progress-title">Subiendo órdenes 0 de 0</div>
+    <div id="gen-progress-bar-bg"><div id="gen-progress-bar-fill"></div></div>
+    <div id="gen-progress-timer">-- seg restantes</div>
+    <div id="gen-progress-spinner">
+      <div class="gps-spin"></div>
+      <div class="gps-msg">Esto está tardando un poco más de lo habitual.<br>Por favor espera un momento…</div>
+    </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -5119,7 +5164,7 @@ function genRender() {
       '<td><b>' + r.folio + '</b>' + folioPreviewHtml + '</td>' +
       '<td>' + r.codigo + '</td>' +
       '<td>' + r.descripcion + '</td>' +
-      '<td class="gen-col-plan" onclick="genVerDetalle(\'' + r.folio + '\')">' +
+      '<td class="gen-col-plan" onclick="genVerDetalle(\'' + r.folio + '\',\'' + (r.partida||'') + '\')">' +
         '<b>' + (r.planeado||0).toLocaleString('es-MX') + ' / ' + (r.cantidad||0).toLocaleString('es-MX') + '</b><br>' +
         '<small style="font-weight:400;color:#555;">' + (r.unidad||'') + ' (Ver órdenes)</small>' +
       '</td>' +
@@ -5131,10 +5176,11 @@ function genRender() {
   genUpdateFab();
 }
 
-function genVerDetalle(folio) {
+function genVerDetalle(folio, partida) {
   var modal = document.getElementById('gen-modalDetalle');
   if (!modal) return;
-  document.getElementById('gen-detTitle').innerText = 'Pedido: ' + folio;
+  var tituloPartida = (partida !== undefined && partida !== '') ? ' — Partida ' + partida : '';
+  document.getElementById('gen-detTitle').innerText = 'Pedido: ' + folio + tituloPartida;
   document.getElementById('gen-detBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Cargando...</td></tr>';
   modal.style.display = 'flex';
   google.script.run
@@ -5155,7 +5201,7 @@ function genVerDetalle(folio) {
           '</tr>';
       }).join('');
     })
-    .obtenerDetalleOrdenes(folio);
+    .obtenerDetalleOrdenes(folio, partida);
 }
 
 function genCancelarOrdenIndividual(folio, serie, numero) {
@@ -5280,6 +5326,78 @@ function genUpdateFab() {
   if (cnt) cnt.innerText = n;
 }
 
+// ── GEN PROGRESS LOADER ─────────────────────────────
+var _genProgTimer = null;
+var _genProgDone  = false;
+
+function genProgStart(totalOrdenes) {
+  _genProgDone = false;
+  var SEGS_POR_ORDEN = 20;
+  var totalSeg = totalOrdenes * SEGS_POR_ORDEN;
+  var elapsed  = 0;
+  var ordenesShown = 0;
+
+  // Mostrar sección de progreso, ocultar dots normales
+  document.getElementById('gen-progress-wrap').style.display = 'flex';
+  document.querySelector('.dot-row').style.display = 'none';
+  document.getElementById('g-loader-txt').style.display = 'none';
+
+  function actualizarUI() {
+    var pct = Math.min((elapsed / totalSeg) * 100, 100);
+    var ordenesActuales = Math.min(Math.floor(elapsed / SEGS_POR_ORDEN), totalOrdenes);
+    if (ordenesActuales !== ordenesShown) {
+      ordenesShown = ordenesActuales;
+      document.getElementById('gen-progress-title').innerText =
+        'Subiendo órdenes ' + ordenesShown + ' de ' + totalOrdenes;
+    }
+    document.getElementById('gen-progress-bar-fill').style.width = pct + '%';
+    var restantes = Math.max(totalSeg - elapsed, 0);
+    document.getElementById('gen-progress-timer').innerText = restantes + ' seg restantes';
+
+    if (elapsed >= totalSeg && !_genProgDone) {
+      // Tiempo agotado, mostrar spinner de espera
+      document.getElementById('gen-progress-bar-fill').style.width = '95%';
+      document.getElementById('gen-progress-timer').innerText = 'Esperando respuesta del servidor…';
+      document.getElementById('gen-progress-spinner').style.display = 'flex';
+    }
+  }
+
+  actualizarUI();
+  if (_genProgTimer) clearInterval(_genProgTimer);
+  _genProgTimer = setInterval(function() {
+    if (_genProgDone) return;
+    elapsed++;
+    actualizarUI();
+  }, 1000);
+}
+
+function genProgFinish(totalOrdenes) {
+  _genProgDone = true;
+  if (_genProgTimer) { clearInterval(_genProgTimer); _genProgTimer = null; }
+  // Llenar barra de golpe y mostrar TERMINADO
+  document.getElementById('gen-progress-bar-fill').style.width = '100%';
+  document.getElementById('gen-progress-bar-fill').style.transition = 'width .3s ease';
+  document.getElementById('gen-progress-title').innerText = '¡TERMINADO! ✅';
+  document.getElementById('gen-progress-title').style.color = '#16a34a';
+  document.getElementById('gen-progress-timer').innerText = totalOrdenes + ' de ' + totalOrdenes + ' órdenes generadas';
+  document.getElementById('gen-progress-spinner').style.display = 'none';
+}
+
+function genProgReset() {
+  _genProgDone = false;
+  if (_genProgTimer) { clearInterval(_genProgTimer); _genProgTimer = null; }
+  document.getElementById('gen-progress-wrap').style.display = 'none';
+  document.querySelector('.dot-row').style.display = 'flex';
+  document.getElementById('g-loader-txt').style.display = 'block';
+  document.getElementById('gen-progress-bar-fill').style.width = '0%';
+  document.getElementById('gen-progress-bar-fill').style.transition = 'width .6s ease';
+  document.getElementById('gen-progress-title').innerText = 'Subiendo órdenes 0 de 0';
+  document.getElementById('gen-progress-title').style.color = '#0f172a';
+  document.getElementById('gen-progress-timer').innerText = '-- seg restantes';
+  document.getElementById('gen-progress-spinner').style.display = 'none';
+}
+// ────────────────────────────────────────────────────
+
 function genPreviaGuardar() {
   var cambiosList = Object.values(gen_cambios);
   if (cambiosList.length === 0) return;
@@ -5321,16 +5439,41 @@ function genPreviaGuardar() {
     reverseButtons: true
   }).then(function(result) {
     if (!result.isConfirmed) return;
-    showLoader('Aplicando cambios...');
+    var totalOrdenesGEN = cambiosList.filter(function(c){ return c.accion === 'GENERAR'; }).length;
+    var nOrdTotal = 0;
+    cambiosList.forEach(function(c){ if(c.accion==='GENERAR') nOrdTotal += (c.nOrdenes||1); });
+    var usarProgress = nOrdTotal > 0;
+    if (usarProgress) {
+      showLoader('');
+      genProgStart(nOrdTotal);
+    } else {
+      showLoader('Aplicando cambios...');
+    }
     google.script.run
       .withSuccessHandler(function(res) {
-        hideLoader();
-        if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
-        sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
-        gen_cambios = {}; gen_foliosPreview = {};
-        genRecargarTodo();
+        if (usarProgress) {
+          genProgFinish(nOrdTotal);
+          setTimeout(function() {
+            genProgReset();
+            hideLoader();
+            if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
+            sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
+            gen_cambios = {}; gen_foliosPreview = {};
+            genRecargarTodo();
+          }, 1200);
+        } else {
+          hideLoader();
+          if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
+          sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
+          gen_cambios = {}; gen_foliosPreview = {};
+          genRecargarTodo();
+        }
       })
-      .withFailureHandler(function(err) { hideLoader(); sAlert('Error: ' + err, 'error'); })
+      .withFailureHandler(function(err) {
+        if (usarProgress) genProgReset();
+        hideLoader();
+        sAlert('Error: ' + err, 'error');
+      })
       .ejecutarCambiosGenerador(cambiosList);
   });
 }
@@ -5961,7 +6104,7 @@ function loadPlanificador() {
 #fpc-tablaProd td { border-bottom:1px solid #eee; padding:5px; vertical-align:middle; }
 #fpc-tablaProd tr:nth-child(even) td { background:#f9fafb; }
 #fpc-tablaProd tr:hover td { background:#fef9c3 !important; }
-#fpc-tablaProd tr.fpc-modified td { background:#fff9c4; }
+#fpc-tablaProd tr.fpc-modified td { background:#ffebee !important; }
 #fpc-tablaProd tr.fpc-deleted td { background:#ffcdd2 !important; color:#b71c1c; }
 #fpc-tablaProd tr.fpc-deleted input, #fpc-tablaProd tr.fpc-deleted select { text-decoration:line-through; pointer-events:none; opacity:0.6; }
 #fpc-tablaProd tr.fpc-fila-activa td { background:#ccff00 !important; font-weight:900 !important; }
@@ -6287,6 +6430,7 @@ function loadPlanificador() {
       <button class="ftab activo" onclick="planifForjaIrTab('programador')" id="ftab-programador">Programador</button>
       <button class="ftab" onclick="planifForjaIrTab('plandiario')" id="ftab-plandiario">Plan Diario</button>
       <button class="ftab" onclick="planifForjaIrTab('captura')" id="ftab-captura">Captura</button>
+      <button class="ftab" onclick="planifForjaIrTab('historial')" id="ftab-historial">Historial</button>
     </div>
     <!-- Controles CAPTURA (visibles solo en tab captura) -->
     <div id="fpc-topbar-ctrl" style="display:none;align-items:center;gap:8px;padding:0 12px;">
@@ -6298,14 +6442,24 @@ function loadPlanificador() {
     </div>
     <!-- Botón EXPORTA PLAN (visible solo en tab plandiario) -->
     <button id="fpd-btnExportaPlan" onclick="fpd_exportarPlanPDF()" style="display:none;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:5px 14px;font-size:.78rem;font-weight:900;cursor:pointer;white-space:nowrap;margin-right:4px;">📄 EXPORTA PLAN</button>
+    <!-- Botón ACTUALIZAR visible solo en tab plandiario -->
+    <button id="fpd-btnRefresh" onclick="fpd_refrescarConCheck()" style="display:none;background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:5px 12px;font-size:.78rem;font-weight:900;cursor:pointer;display:none;align-items:center;gap:5px;white-space:nowrap;margin-right:4px;"><i class="fpd-refresh-icon" style="display:inline-block;font-style:normal;">↻</i> Actualizar</button>
     <button id="forja-reset-btn" onclick="fprogResetFiltrosOrden()" title="Quitar todos los filtros y ordenamientos">✕ Reset</button>
+    <button id="forja-stock-btn" onclick="fprogAbrirActualizarStock()" title="Actualizar Stock" style="background:rgba(230,81,0,.85);color:white;border:1px solid rgba(255,255,255,.3);border-radius:7px;padding:5px 12px;font-size:.78rem;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;">⚙️ Actualizar Stock</button>
     <button id="forja-zoom-btn" onclick="fprogCiclarZoom()" title="Cambiar zoom de tabla">🔍 100%</button>
     <button id="forja-refresh-btn" onclick="fprogRefresh()" title="Actualizar datos"><i class="fprog-refresh-icon">↻</i> Actualizar</button>
   </div>
   <div id="planif-forja-content">
     <!-- Pestaña 1: Programador -->
     <div class="fv-tab-pane activo" id="fpane-programador">
-      <div id="forja-prog-wrap">
+      <div id="forja-prog-wrap" style="position:relative;">
+        <!-- Loader animado propio de la vista FORJA -->
+        <div id="fprog-loader-overlay">
+          <div id="fprog-loader-icon">🔩</div>
+          <div id="fprog-loader-bar-wrap"><div id="fprog-loader-bar"></div></div>
+          <div id="fprog-loader-pct">0%</div>
+          <div id="fprog-loader-msg">Espere un momento...</div>
+        </div>
         <div id="forja-prog-tbl-wrap">
           <table id="forja-prog-tbl">
             <thead>
@@ -6337,8 +6491,9 @@ function loadPlanificador() {
       <!-- Toolbar con filtros (igual que EDP paso 3) -->
       <div id="fpc-toolbar" style="display:none;background:white;padding:6px 12px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
         <button style="background:#607d8b;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_limpiarFiltros()">🌪️ Limpiar Filtros</button>
-        <button style="background:#546e7a;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_undoAll()">↩️ Deshacer Todo</button>
+        <button id="fpc-btnUndoAll" style="display:none;background:#546e7a;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_undoAll()">↩️ Deshacer Todo</button>
         <button style="background:#2e7d32;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fpc_exportarExcel()">📊 EXCEL</button>
+        <button id="fpc-btnSaveAll" style="display:none;background:#d32f2f;color:white;border:none;border-radius:6px;padding:6px 18px;font-size:13px;font-weight:900;cursor:pointer;margin-left:auto;box-shadow:0 2px 8px rgba(211,47,47,.4);" onclick="fpc_guardarCambios()">💾 GUARDAR (<span id="fpc-lblCount">0</span>)</button>
       </div>
       <!-- Tabla (misma estructura que EDP) -->
       <div id="fpc-table-container" style="overflow-x:auto;overflow-y:auto;background:white;flex:1;min-height:0;">
@@ -6367,7 +6522,7 @@ function loadPlanificador() {
         </table>
       </div>
       <!-- Botón guardar flotante -->
-      <button id="fpc-btnSaveAll" style="display:none;position:fixed;bottom:30px;right:30px;background:#d32f2f;color:white;padding:20px 40px;border-radius:50px;font-size:18px;font-weight:900;box-shadow:0 8px 20px rgba(0,0,0,0.5);border:2px solid white;cursor:pointer;z-index:1100;" onclick="fpc_guardarCambios()">💾 GUARDAR (<span id="fpc-lblCount">0</span>)</button>
+      <!-- fpc-btnSaveAll movido a fpc-toolbar -->
       <!-- Modal filtro (idéntico a EDP) -->
       <div id="fpc-filterPopup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:2000;justify-content:center;align-items:center;background:rgba(0,0,0,0.4);">
         <div style="background:white;border-radius:8px;width:300px;max-height:500px;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,0.3);">
@@ -6418,6 +6573,43 @@ function loadPlanificador() {
       </div>
     </div>
   </div>
+    <!-- Pestaña 4: Historial -->
+    <div class="fv-tab-pane" id="fpane-historial" style="flex-direction:column;overflow:hidden;">
+      <!-- Barra de fechas -->
+      <div id="fph-datebar" style="background:#1e293b;padding:8px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:2px solid #334155;">
+        <label style="color:rgba(255,255,255,.7);font-size:.72rem;font-weight:700;white-space:nowrap;">INICIO</label>
+        <input type="date" id="fph-fechaIni" style="background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:4px 8px;font-size:.78rem;font-weight:700;outline:none;">
+        <label style="color:rgba(255,255,255,.7);font-size:.72rem;font-weight:700;white-space:nowrap;">FIN</label>
+        <input type="date" id="fph-fechaFin" style="background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:4px 8px;font-size:.78rem;font-weight:700;outline:none;">
+        <button onclick="fph_consultar()" style="background:#ef5350;color:white;border:none;border-radius:7px;padding:5px 16px;font-size:.78rem;font-weight:900;cursor:pointer;white-space:nowrap;">⚡ CONSULTAR</button>
+        <span id="fph-resumen" style="color:rgba(255,255,255,.6);font-size:.72rem;font-weight:700;margin-left:8px;"></span>
+      </div>
+      <!-- Toolbar filtros + Excel -->
+      <div id="fph-toolbar" style="display:none;background:white;padding:6px 12px;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+        <button style="background:#607d8b;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fph_limpiarFiltros()">🌪️ Limpiar Filtros</button>
+        <button style="background:#2e7d32;color:white;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;" onclick="fph_exportarExcel()">📊 EXCEL</button>
+      </div>
+      <!-- Tabla -->
+      <div id="fph-container" style="flex:1;overflow:auto;position:relative;">
+        <div id="fph-placeholder" style="padding:30px;text-align:center;color:#94a3b8;font-weight:700;">Selecciona un rango de fechas y presiona CONSULTAR</div>
+        <table id="fph-tabla" style="display:none;width:100%;border-collapse:collapse;font-size:.78rem;font-family:'Roboto',sans-serif;">
+          <thead><tr id="fph-thead-row"></tr></thead>
+          <tbody id="fph-tbody"></tbody>
+        </table>
+      </div>
+      <!-- Statusbar -->
+      <div id="fph-statusbar" style="display:none;background:#1e293b;color:white;padding:5px 16px;display:flex;align-items:center;gap:16px;font-size:.75rem;font-weight:700;flex-shrink:0;border-top:2px solid #334155;">
+        <span class="fsb-item">📋 <span id="fph-total-val" class="fsb-val">0</span> registros</span>
+        <span id="fph-selec-wrap" style="display:none;align-items:center;gap:6px;">
+          ✅ <span id="fph-selec-val" class="fsb-val">0</span> celdas
+          &nbsp;|&nbsp; Σ <span id="fph-suma-val" class="fsb-val">—</span>
+          &nbsp;|&nbsp; x̄ <span id="fph-prom-val" class="fsb-val">—</span>
+          <button class="fsb-clear" onclick="fph_limpiarSeleccion()">✕ Limpiar</button>
+        </span>
+        <span style="margin-left:auto;color:rgba(255,255,255,.5);font-size:.68rem;">Arrastra sobre celdas numéricas para seleccionar | Ctrl: acumular</span>
+      </div>
+    </div>
+
   <button id="fpd-btnGuardar" style="display:none;position:fixed;bottom:80px;right:30px;background:#fdd835;color:#1a1a1a;padding:14px 28px;border-radius:50px;font-weight:900;box-shadow:0 6px 20px rgba(0,0,0,0.35);border:2px solid #f9a825;cursor:pointer;z-index:1001;animation:planif-pulse-yellow 1.4s ease-in-out infinite;" onclick="fpd_guardarPrioridades()">💾 GUARDAR PRIORIDADES</button>
   <div id="fpc-toast-lotes" style="display:none;position:fixed;bottom:24px;right:24px;background:#37474f;color:white;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:9000;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.45);"><div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:edpSpin .7s linear infinite;"></div>Cargando lotes...</div>
   <div id="fpc-toast-maqs"  style="display:none;position:fixed;bottom:64px;right:24px;background:#1a3a5c;color:white;padding:10px 18px;border-radius:8px;font-size:12px;font-weight:700;z-index:9000;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.45);"><div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#90caf9;border-radius:50%;animation:edpSpin .7s linear infinite;"></div>Cargando máquinas...</div>
@@ -6521,13 +6713,22 @@ function planifInit() {
         html += '<div style="visibility:hidden;"></div>';
         return;
       }
-      html += '<div class="proc-card" id="planif-proc-' + item.key + '"'
-        + ' onclick="planifToggleProc(\'' + item.key.replace(/'/g,"\\'") + '\')"'
-        + ' ondblclick="planifSeleccionarSoloProceso(\'' + item.key.replace(/'/g,"\\'") + '\')"'
-        + ' title="Clic: seleccionar | Doble clic: avanzar directamente">'
-        + item.svg
-        + '<span class="proc-label">' + item.label + '</span>'
-        + '</div>';
+      if (item.key === 'FORJA') {
+        html += '<div class="proc-card" id="planif-proc-' + item.key + '"'
+          + ' onclick="planifAbrirVistaForja()"'
+          + ' title="Clic para abrir planificador FORJA">'
+          + item.svg
+          + '<span class="proc-label">' + item.label + '</span>'
+          + '</div>';
+      } else {
+        html += '<div class="proc-card" id="planif-proc-' + item.key + '"'
+          + ' onclick="planifToggleProc(\'' + item.key.replace(/'/g,"\\'") + '\')"'
+          + ' ondblclick="planifSeleccionarSoloProceso(\'' + item.key.replace(/'/g,"\\'") + '\')"'
+          + ' title="Clic: seleccionar | Doble clic: avanzar directamente">'
+          + item.svg
+          + '<span class="proc-label">' + item.label + '</span>'
+          + '</div>';
+      }
     });
 
     document.getElementById('planif-procContainer').innerHTML = html;
@@ -6624,17 +6825,33 @@ function planifForjaIrTab(tab) {
   var ctrl = document.getElementById('fpc-topbar-ctrl');
   if (ctrl) ctrl.style.display = (tab === 'captura') ? 'flex' : 'none';
 
+  // Pane historial: inicializar fechas por defecto si es la primera vez
+  if (tab === 'historial') {
+    var hoy = new Date();
+    var hace7 = new Date(); hace7.setDate(hoy.getDate() - 7);
+    var fi = document.getElementById('fph-fechaIni');
+    var ff = document.getElementById('fph-fechaFin');
+    if (fi && !fi.value) fi.value = hace7.toISOString().split('T')[0];
+    if (ff && !ff.value) ff.value = hoy.toISOString().split('T')[0];
+  }
+
   // Botón EXPORTA PLAN: solo visible en PLAN DIARIO
   var exportBtn = document.getElementById('fpd-btnExportaPlan');
   if (exportBtn) exportBtn.style.display = (tab === 'plandiario') ? '' : 'none';
 
-  // Botones de PROGRAMADOR: zoom, reset, refresh — solo en PROGRAMADOR
+  // Botón ACTUALIZAR PLAN DIARIO: solo visible en PLAN DIARIO
+  var fpdRefBtn = document.getElementById('fpd-btnRefresh');
+  if (fpdRefBtn) fpdRefBtn.style.display = (tab === 'plandiario') ? 'flex' : 'none';
+
+  // Botones de PROGRAMADOR: zoom, reset, refresh, stock — solo en PROGRAMADOR
   var zoomBtn  = document.getElementById('forja-zoom-btn');
   var resetBtn = document.getElementById('forja-reset-btn');
   var refBtn   = document.getElementById('forja-refresh-btn');
+  var stockBtn = document.getElementById('forja-stock-btn');
   if (zoomBtn)  zoomBtn.style.display  = (tab === 'programador') ? '' : 'none';
   if (resetBtn) resetBtn.style.display = (tab === 'programador') ? '' : 'none';
   if (refBtn)   refBtn.style.display   = (tab === 'programador') ? '' : 'none';
+  if (stockBtn) stockBtn.style.display = (tab === 'programador') ? '' : 'none';
 
   if (tab === 'plandiario') fpd_init();
   if (tab === 'captura') {
@@ -6644,6 +6861,583 @@ function planifForjaIrTab(tab) {
     if (fi && !fi.value) fi.value = ayer.toISOString().split('T')[0];
     if (ff && !ff.value) ff.value = hoy.toISOString().split('T')[0];
   }
+}
+
+/* ══════════════════════════════════════════════
+   HISTORIAL FORJA (prefijo fph_)
+   ══════════════════════════════════════════════ */
+var fph_datos        = [];   // datos cargados del servidor
+var fph_filtros      = {};   // { colKey: Set de valores activos }
+var fph_orden        = { col: null, dir: 'asc' };
+var fph_celdasSelec  = [];
+var fph_dragActivo   = false;
+var fph_dragCol      = null;
+var _fphDropActivo   = null;
+
+var FPH_COLS = [
+  { key:'fecha',       label:'FECHA',     num:false },
+  { key:'turno',       label:'TURNO',     num:false },
+  { key:'maquina',     label:'MÁQUINA',   num:false },
+  { key:'lote',        label:'LOTE',      num:false },
+  { key:'tipo',        label:'TIPO',      num:false },
+  { key:'diametro',    label:'DIÁMETRO',  num:false },
+  { key:'longitud',    label:'LONGITUD',  num:false },
+  { key:'cuerpo',      label:'CUERPO',    num:false },
+  { key:'cuerda',      label:'CUERDA',    num:false },
+  { key:'acero',       label:'ACERO',     num:false },
+  { key:'operadorTxt', label:'OPERADOR',  num:false },
+  { key:'pesoI',       label:'P. INI',    num:true  },
+  { key:'pesoF',       label:'P. FIN',    num:true  },
+  { key:'pesoTina',    label:'TINA',      num:true  },
+  { key:'producido',   label:'PROD',      num:true  },
+  { key:'horas',       label:'HRS',       num:true  },
+  { key:'sello',       label:'SELLO',     num:false },
+  { key:'comentario',  label:'COM',       num:false }
+];
+
+var FPH_COLS_NUM_SET = (function(){
+  var s = {};
+  FPH_COLS.forEach(function(c){ if(c.num) s[c.key]=1; });
+  return s;
+})();
+
+function fph_consultar() {
+  var fi = (document.getElementById('fph-fechaIni')||{}).value;
+  var ff = (document.getElementById('fph-fechaFin')||{}).value;
+  if (!fi || !ff) { sAlert('Selecciona ambas fechas'); return; }
+  var ph = document.getElementById('fph-placeholder');
+  var tbl = document.getElementById('fph-tabla');
+  var tb = document.getElementById('fph-toolbar');
+  var sb = document.getElementById('fph-statusbar');
+  if (ph)  { ph.style.display='block'; ph.innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:30px;"><div style="width:20px;height:20px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;"></div><span style="font-weight:700;color:#475569;">Cargando historial...</span></div>'; }
+  if (tbl) tbl.style.display = 'none';
+  if (tb)  tb.style.display  = 'none';
+  if (sb)  sb.style.display  = 'none';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      fph_datos   = res.registros || [];
+      fph_filtros = {};
+      fph_orden   = { col: null, dir: 'asc' };
+      fph_celdasSelec = [];
+      if (ph) ph.style.display = 'none';
+      if (fph_datos.length === 0) {
+        if (ph) { ph.style.display='block'; ph.innerHTML='<span style="color:#94a3b8;font-weight:700;">Sin registros en el rango seleccionado.</span>'; }
+        return;
+      }
+      if (tbl) tbl.style.display = '';
+      if (tb)  tb.style.display  = 'flex';
+      if (sb)  sb.style.display  = 'flex';
+      fph_renderTabla();
+    })
+    .withFailureHandler(function(e) {
+      if (ph) { ph.style.display='block'; ph.innerHTML='<span style="color:#ef4444;font-weight:700;">Error: ' + e + '</span>'; }
+    })
+    .buscarHistorialForja(fi, ff);
+}
+
+function fph_getDatosFiltrados() {
+  var datos = fph_datos.slice();
+  Object.keys(fph_filtros).forEach(function(col) {
+    var activos = fph_filtros[col];
+    if (!activos || activos.size === 0) return;
+    datos = datos.filter(function(r) {
+      return activos.has(String(r[col] == null ? '' : r[col]));
+    });
+  });
+  if (fph_orden.col) {
+    var dir = fph_orden.dir;
+    var col = fph_orden.col;
+    var isNum = !!FPH_COLS_NUM_SET[col];
+    datos.sort(function(a, b) {
+      var av = a[col], bv = b[col];
+      var cmp = isNum ? (Number(av)||0) - (Number(bv)||0) : String(av||'').localeCompare(String(bv||''), 'es', {sensitivity:'base'});
+      return dir === 'desc' ? -cmp : cmp;
+    });
+  }
+  return datos;
+}
+
+function fph_renderTabla() {
+  var thead = document.getElementById('fph-thead-row');
+  var tbody = document.getElementById('fph-tbody');
+  if (!thead || !tbody) return;
+  var datos = fph_getDatosFiltrados();
+
+  // Thead
+  var thHtml = '';
+  FPH_COLS.forEach(function(col) {
+    var hasFiltro = fph_filtros[col.key] && fph_filtros[col.key].size > 0;
+    var sortIcon = '';
+    if (fph_orden.col === col.key) sortIcon = fph_orden.dir === 'asc' ? ' ▲' : ' ▼';
+    thHtml += '<th data-colkey="' + col.key + '" onclick="fph_abrirDrop(this,\'' + col.key + '\')" '
+      + 'style="background:#1e293b;color:white;padding:8px 10px;font-weight:800;font-size:.7rem;text-transform:uppercase;'
+      + 'letter-spacing:.05em;position:sticky;top:0;z-index:10;white-space:nowrap;border:1px solid #334155;cursor:pointer;user-select:none;'
+      + (hasFiltro ? 'color:#fbbf24;' : '')
+      + '">' + col.label + sortIcon + (hasFiltro ? ' ▾' : '') + '</th>';
+  });
+  thead.innerHTML = thHtml;
+
+  // Tbody
+  var rowsHtml = [];
+  datos.forEach(function(r, ri) {
+    var cells = '';
+    FPH_COLS.forEach(function(col, ci) {
+      var val = r[col.key];
+      var txt = (val == null || val === '') ? '—' : (col.num ? Number(val).toLocaleString('es-MX', {maximumFractionDigits:2}) : String(val));
+      if (col.num) {
+        cells += '<td data-ci="' + ci + '" data-ri="' + ri + '" data-val="' + (Number(val)||0) + '" data-colkey="' + col.key + '" '
+          + 'style="text-align:right;padding:6px 10px;border:1px solid #e2e8f0;white-space:nowrap;cursor:cell;user-select:none;" '
+          + 'onmousedown="fph_iniciarDrag(event,\'' + col.key + '\',' + (Number(val)||0) + ')" '
+          + 'onmousemove="fph_continuarDrag(event,this,' + (Number(val)||0) + ')" '
+          + 'onmouseup="fph_terminarDrag()">' + txt + '</td>';
+      } else {
+        cells += '<td style="padding:6px 10px;border:1px solid #e2e8f0;white-space:nowrap;">' + txt + '</td>';
+      }
+    });
+    rowsHtml.push('<tr style="background:' + (ri%2===0?'white':'#f8fafc') + ';" onmouseleave="fph_terminarDrag()">' + cells + '</tr>');
+  });
+  tbody.innerHTML = rowsHtml.length > 0
+    ? rowsHtml.join('')
+    : '<tr><td colspan="' + FPH_COLS.length + '" style="text-align:center;padding:20px;color:#94a3b8;">Sin resultados</td></tr>';
+
+  // Statusbar total
+  var totEl = document.getElementById('fph-total-val');
+  if (totEl) totEl.textContent = datos.length;
+  var resEl = document.getElementById('fph-resumen');
+  if (resEl) resEl.textContent = datos.length + ' registros';
+  fph_actualizarStatusSelec();
+}
+
+function fph_limpiarFiltros() {
+  fph_filtros = {};
+  fph_renderTabla();
+}
+
+// ── Drag selección numérica ──
+function fph_iniciarDrag(event, colKey, valor) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  if (!event.ctrlKey && !event.metaKey) fph_limpiarSeleccion();
+  fph_dragActivo = true;
+  fph_dragCol    = colKey;
+  fph_seleccionarTd(event.currentTarget, valor);
+  fph_actualizarStatusSelec();
+}
+
+function fph_continuarDrag(event, tdEl, valor) {
+  if (!fph_dragActivo || fph_dragCol !== tdEl.dataset.colkey) return;
+  fph_seleccionarTd(tdEl, valor);
+  fph_actualizarStatusSelec();
+}
+
+function fph_terminarDrag() { fph_dragActivo = false; }
+
+function fph_seleccionarTd(tdEl, valor) {
+  var yaEsta = fph_celdasSelec.find(function(x){ return x.tdEl === tdEl; });
+  if (!yaEsta) {
+    fph_celdasSelec.push({ tdEl: tdEl, valor: valor });
+    tdEl.style.outline = '2px solid #f59e0b';
+    tdEl.style.outlineOffset = '-2px';
+    tdEl.style.background = '#fef3c7';
+  }
+}
+
+function fph_limpiarSeleccion() {
+  fph_celdasSelec.forEach(function(c) {
+    c.tdEl.style.outline = '';
+    c.tdEl.style.outlineOffset = '';
+    c.tdEl.style.background = '';
+  });
+  fph_celdasSelec = [];
+  fph_actualizarStatusSelec();
+}
+
+function fph_actualizarStatusSelec() {
+  var wrap  = document.getElementById('fph-selec-wrap');
+  var selEl = document.getElementById('fph-selec-val');
+  var sumEl = document.getElementById('fph-suma-val');
+  var promEl= document.getElementById('fph-prom-val');
+  var cnt = fph_celdasSelec.length;
+  if (!wrap) return;
+  if (cnt === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  var suma = fph_celdasSelec.reduce(function(acc,c){ return acc + c.valor; }, 0);
+  var prom = suma / cnt;
+  if (selEl)  selEl.textContent  = cnt;
+  if (sumEl)  sumEl.textContent  = suma.toLocaleString('es-MX', {maximumFractionDigits:2});
+  if (promEl) promEl.textContent = prom.toLocaleString('es-MX', {maximumFractionDigits:2});
+}
+
+// ── Filtros en cascada (igual que PROGRAMADOR) ──
+function fph_abrirDrop(thEl, colKey) {
+  if (_fphDropActivo) { _fphDropActivo.remove(); _fphDropActivo = null; document.removeEventListener('click', fph_outsideDrop, true); }
+
+  // Datos pre-filtrados por todo excepto esta columna
+  var datos = fph_datos.slice();
+  Object.keys(fph_filtros).forEach(function(col) {
+    if (col === colKey) return;
+    var activos = fph_filtros[col];
+    if (!activos || activos.size === 0) return;
+    datos = datos.filter(function(r){ return activos.has(String(r[col]==null?'':r[col])); });
+  });
+
+  var valSet = {};
+  datos.forEach(function(r){ valSet[String(r[colKey]==null?'':r[colKey])] = true; });
+  var vals = Object.keys(valSet).sort(function(a,b){
+    var na=parseFloat(a), nb=parseFloat(b);
+    if (!isNaN(na)&&!isNaN(nb)) return na-nb;
+    return a.localeCompare(b,'es',{sensitivity:'base'});
+  });
+
+  var activos = fph_filtros[colKey] ? fph_filtros[colKey] : new Set(vals);
+  var todosAct = activos.size === vals.length;
+
+  var drop = document.createElement('div');
+  drop.id = 'fph-drop';
+  drop.style.cssText = 'position:fixed;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.15);z-index:9999;width:260px;max-height:360px;display:flex;flex-direction:column;font-size:.78rem;';
+  var rect = thEl.getBoundingClientRect();
+  drop.style.top  = (rect.bottom + 2) + 'px';
+  drop.style.left = Math.min(rect.left, window.innerWidth - 270) + 'px';
+
+  var itemsHtml = '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;border-bottom:1px solid #f1f5f9;" onclick="fph_toggleAllDrop()">'
+    + '<input type="checkbox" id="fph-chk-todos" ' + (todosAct?'checked':'') + ' onclick="event.stopPropagation()"><span style="font-weight:800;">(Seleccionar todo)</span></div>';
+  vals.forEach(function(v) {
+    var chk = activos.has(v) ? 'checked' : '';
+    var vEsc = v.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    itemsHtml += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;" onclick="fph_toggleItemDrop(\'' + vEsc + '\')">'
+      + '<input type="checkbox" ' + chk + ' onclick="event.stopPropagation()" data-val="' + vEsc + '">'
+      + '<span>' + (v===''?'(vacío)':v) + '</span></div>';
+  });
+
+  drop.innerHTML =
+    '<div style="padding:6px 8px;border-bottom:1px solid #f1f5f9;display:flex;gap:6px;">'
+      + '<input type="text" placeholder="🔍 Buscar..." oninput="fph_buscarDrop(this.value)" style="flex:1;padding:4px 8px;border:1px solid #e2e8f0;border-radius:5px;font-size:.75rem;outline:none;">'
+      + '<button onclick="fph_ordenarDrop(\'asc\')" style="border:none;background:#f1f5f9;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:.72rem;">▲</button>'
+      + '<button onclick="fph_ordenarDrop(\'desc\')" style="border:none;background:#f1f5f9;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:.72rem;">▼</button>'
+    + '</div>'
+    + '<div id="fph-drop-list" style="overflow-y:auto;flex:1;">' + itemsHtml + '</div>'
+    + '<div style="padding:6px 8px;border-top:1px solid #f1f5f9;display:flex;gap:6px;justify-content:flex-end;">'
+      + '<button onclick="fph_aplicarDrop(\'' + colKey + '\')" style="background:#1a237e;color:white;border:none;border-radius:5px;padding:5px 14px;font-weight:700;cursor:pointer;font-size:.75rem;">Aceptar</button>'
+      + '<button onclick="fph_cerrarDrop()" style="background:#f1f5f9;border:none;border-radius:5px;padding:5px 12px;font-weight:700;cursor:pointer;font-size:.75rem;">Cancelar</button>'
+    + '</div>';
+
+  drop._colKey = colKey;
+  drop._activos = new Set(activos);
+  drop._todosVals = vals;
+
+  document.body.appendChild(drop);
+  _fphDropActivo = drop;
+  setTimeout(function(){ document.addEventListener('click', fph_outsideDrop, true); }, 100);
+}
+
+function fph_outsideDrop(e) {
+  var d = document.getElementById('fph-drop');
+  if (d && !d.contains(e.target)) { fph_cerrarDrop(); document.removeEventListener('click', fph_outsideDrop, true); }
+}
+function fph_cerrarDrop() { var d=document.getElementById('fph-drop'); if(d){d.remove();_fphDropActivo=null;} }
+function fph_buscarDrop(q) {
+  var list=document.getElementById('fph-drop-list'); if(!list) return;
+  var ql=q.toLowerCase();
+  list.querySelectorAll('div:not(:first-child)').forEach(function(el){
+    var sp=el.querySelector('span'); if(!sp) return;
+    el.style.display=sp.textContent.toLowerCase().includes(ql)?'':'none';
+  });
+}
+function fph_toggleAllDrop() {
+  var d=document.getElementById('fph-drop'); if(!d) return;
+  var chkT=document.getElementById('fph-chk-todos');
+  var nuevo=!chkT.checked; chkT.checked=nuevo;
+  d._activos = nuevo ? new Set(d._todosVals) : new Set();
+  d.querySelectorAll('#fph-drop-list input[type=checkbox]').forEach(function(ch){ ch.checked=nuevo; });
+}
+function fph_toggleItemDrop(val) {
+  var d=document.getElementById('fph-drop'); if(!d) return;
+  d.querySelectorAll('#fph-drop-list div:not(:first-child)').forEach(function(el){
+    var sp=el.querySelector('span'); var ch=el.querySelector('input');
+    if(!sp||!ch) return;
+    var v=sp.textContent==='(vacío)'?'':sp.textContent;
+    if(v===val){ ch.checked=!ch.checked; if(ch.checked) d._activos.add(val); else d._activos.delete(val); }
+  });
+  var chkT=document.getElementById('fph-chk-todos');
+  if(chkT) chkT.checked = d._activos.size===d._todosVals.length;
+}
+function fph_aplicarDrop(colKey) {
+  var d=document.getElementById('fph-drop'); if(!d) return;
+  if(d._activos.size===d._todosVals.length) delete fph_filtros[colKey];
+  else fph_filtros[colKey]=new Set(d._activos);
+  fph_cerrarDrop();
+  fph_renderTabla();
+}
+function fph_ordenarDrop(dir) {
+  var d=document.getElementById('fph-drop'); if(!d) return;
+  fph_orden = { col: d._colKey, dir: dir };
+  fph_cerrarDrop();
+  fph_renderTabla();
+}
+
+// ── Exportar Excel con ExcelJS ──
+function fph_exportarExcel() {
+  var datos = fph_getDatosFiltrados();
+  if (!datos.length) { sAlert('No hay datos para exportar'); return; }
+
+  showLoader('Generando Excel...');
+
+  var cargarExcelJS = function(cb) {
+    if (window.ExcelJS) { cb(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+    s.onload = cb;
+    document.head.appendChild(s);
+  };
+
+  cargarExcelJS(function() {
+    try {
+      var wb = new ExcelJS.Workbook();
+      wb.creator = 'PCP - ToolCN';
+      var ws = wb.addWorksheet('Historial FORJA', { views:[{freezeRows:1}] });
+
+      // Encabezados
+      ws.columns = FPH_COLS.map(function(col) {
+        return { header: col.label, key: col.key, width: col.num ? 12 : (col.key==='operadorTxt'?20:(col.key==='lote'?18:14)) };
+      });
+
+      // Estilo encabezado
+      var headerRow = ws.getRow(1);
+      headerRow.eachCell(function(cell) {
+        cell.fill   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1E293B' } };
+        cell.font   = { bold:true, color:{ argb:'FFFFFFFF' }, size:9 };
+        cell.alignment = { horizontal:'center', vertical:'middle' };
+        cell.border = { top:{style:'thin',color:{argb:'FF334155'}}, left:{style:'thin',color:{argb:'FF334155'}}, bottom:{style:'thin',color:{argb:'FF334155'}}, right:{style:'thin',color:{argb:'FF334155'}} };
+      });
+      headerRow.height = 22;
+
+      // Filas de datos
+      datos.forEach(function(r, ri) {
+        var rowData = {};
+        FPH_COLS.forEach(function(col) {
+          rowData[col.key] = (r[col.key]==null||r[col.key]==='') ? '' : (col.num ? Number(r[col.key])||0 : r[col.key]);
+        });
+        var row = ws.addRow(rowData);
+        var bgColor = ri % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
+        row.eachCell(function(cell, cn) {
+          cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb: bgColor } };
+          cell.font = { size: 9 };
+          var col = FPH_COLS[cn-1];
+          if (col && col.num) {
+            cell.alignment = { horizontal:'right' };
+            cell.numFmt = '#,##0.00';
+          } else {
+            cell.alignment = { horizontal:'left' };
+          }
+          cell.border = { top:{style:'hair',color:{argb:'FFE2E8F0'}}, left:{style:'hair',color:{argb:'FFE2E8F0'}}, bottom:{style:'hair',color:{argb:'FFE2E8F0'}}, right:{style:'hair',color:{argb:'FFE2E8F0'}} };
+        });
+        row.height = 16;
+      });
+
+      // Fila de totales al final
+      var totRow = ws.addRow({});
+      FPH_COLS.forEach(function(col, ci) {
+        var cell = totRow.getCell(ci+1);
+        if (col.num) {
+          var suma = datos.reduce(function(acc,r){ return acc+(Number(r[col.key])||0); }, 0);
+          cell.value = suma;
+          cell.numFmt = '#,##0.00';
+          cell.font   = { bold:true, size:9, color:{ argb:'FF1E293B' } };
+        } else if (ci === 0) {
+          cell.value = 'TOTAL';
+          cell.font  = { bold:true, size:9 };
+        }
+        cell.fill   = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFDE68A' } };
+        cell.border = { top:{style:'medium',color:{argb:'FF92400E'}}, left:{style:'thin',color:{argb:'FFE2E8F0'}}, bottom:{style:'thin',color:{argb:'FFE2E8F0'}}, right:{style:'thin',color:{argb:'FFE2E8F0'}} };
+        cell.alignment = { horizontal: col.num ? 'right' : 'left' };
+      });
+      totRow.height = 18;
+
+      // Descargar
+      var fi = (document.getElementById('fph-fechaIni')||{}).value || '';
+      var ff = (document.getElementById('fph-fechaFin')||{}).value || '';
+      wb.xlsx.writeBuffer().then(function(buf) {
+        hideLoader();
+        var blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'HistorialFORJA_' + fi + '_' + ff + '.xlsx';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+    } catch(e) {
+      hideLoader();
+      sAlert('Error al generar Excel: ' + e.message, 'error');
+    }
+  });
+}
+
+document.addEventListener('mouseup', function(){ fph_terminarDrag(); });
+
+/* ══════════════════════════════════════════════
+   ACTUALIZAR STOCK — desde vista FORJA (modal propio, CSS global)
+   ══════════════════════════════════════════════ */
+var fprog_ejData        = [];
+var fprog_ejDataGrandes = []; // ítems con cantidad >= 500000 (requieren aprobación manual)
+
+function fprogAbrirActualizarStock() {
+  if (!document.getElementById('fprog-modalStock')) {
+    var overlay = document.createElement('div');
+    overlay.id = 'fprog-modalStock';
+    overlay.innerHTML =
+      '<div class="fms-box">' +
+        '<div class="fms-title">⚙️ ACTUALIZACIÓN DE STOCK' +
+          '<div class="fms-footer" id="fprog-stockFooter">' +
+            '<button class="fms-btn-cancel" onclick="fprog_cerrarModalStock()">Cancelar</button>' +
+            '<button class="fms-btn-apply"  onclick="fprog_aplicarStock()">✔ APLICAR CAMBIOS</button>' +
+          '</div>' +
+          '<button class="fms-close" onclick="fprog_cerrarModalStock()">✖</button>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">' +
+          '<input id="fprog-stockSearch" type="text" placeholder="🔍 Buscar código o pedido..." oninput="fprog_filtrarStock(this.value)" style="flex:1;padding:8px 12px;border:2px solid #37474f;border-radius:8px;background:#0f1e2d;color:white;font-size:13px;box-sizing:border-box;outline:none;">' +
+          '<button id="fprog-stockToggleBtn" onclick="fprog_toggleTodosStock()" style="padding:7px 14px;border-radius:8px;border:2px solid #37474f;background:#1a2e44;color:#90caf9;font-weight:900;font-size:12px;cursor:pointer;white-space:nowrap;">☑ Sel. Todos</button>' +
+        '</div>' +
+        '<div id="fprog-stockBody"><p style="color:#90caf9;padding:20px;text-align:center;">⏳ Calculando...</p></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+  }
+
+  var eb = document.getElementById('fprog-stockBody');
+  var ef = document.getElementById('fprog-stockFooter');
+  if (eb) eb.innerHTML = '<p style="color:#90caf9;padding:20px;text-align:center;">⏳ Calculando...</p>';
+  if (ef) ef.style.display = 'none';
+  document.getElementById('fprog-modalStock').classList.add('open');
+
+  google.script.run
+    .withSuccessHandler(function(json) {
+      var r = (typeof json === 'string') ? JSON.parse(json) : json;
+      var eb2 = document.getElementById('fprog-stockBody');
+      var ef2 = document.getElementById('fprog-stockFooter');
+      if (!r.success) {
+        if (eb2) eb2.innerHTML = '<p style="color:red;padding:16px;">' + r.msg + '</p>';
+        return;
+      }
+      var todos = r.cambios || [];
+      if (!todos.length) {
+        if (eb2) eb2.innerHTML = '<p style="color:#a5d6a7;text-align:center;padding:20px;">✔ Sin cambios necesarios.</p>';
+        return;
+      }
+
+      // Separar grandes (>=500000) del resto; los grandes van arriba
+      fprog_ejDataGrandes = todos.filter(function(c){ return Number(c.cantPedDespues) >= 500000; });
+      fprog_ejData        = todos.filter(function(c){ return Number(c.cantPedDespues) <  500000; });
+      // Índices globales: grandes primero
+      var allData = fprog_ejDataGrandes.concat(fprog_ejData);
+
+      var fmt = function(n) { return Number(n).toLocaleString(); };
+      var html = '<div style="font-size:12px;color:#90caf9;margin-bottom:12px;">' +
+        todos.length + ' código(s) con cambios — solo pedidos QSQ.' +
+        (fprog_ejDataGrandes.length ? ' <span style="color:#ff8a80;font-weight:900;">⚠ ' + fprog_ejDataGrandes.length + ' requieren aprobación manual.</span>' : '') +
+        '</div>';
+
+      allData.forEach(function(c, ci) {
+        var esGrande = Number(c.cantPedDespues) >= 500000;
+        var chkId    = 'fprog-ej-' + ci;
+        var pulso    = esGrande ? 'animation:fprogPulsoRojo 1s infinite;outline:2px solid #ef5350;border-radius:3px;' : '';
+        html += '<div class="fms-ej-item" data-search="' + (c.codigo + ' ' + (c.pedidoFolio || c.pedidoId)).toLowerCase() + '" ' +
+          (esGrande ? 'style="border-left:3px solid #ef5350;"' : '') + '>' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+            '<input type="checkbox" id="' + chkId + '" ' + (esGrande ? '' : 'checked') + ' style="width:18px;height:18px;' + pulso + '">' +
+            (esGrande ? '<span style="background:#b71c1c;color:white;font-size:10px;font-weight:900;padding:2px 7px;border-radius:4px;white-space:nowrap;">⚠ APROBACIÓN MANUAL</span>' : '') +
+            '<span style="font-weight:900;color:#ffe082;font-size:14px;">' + c.codigo + '</span>' +
+            '<span style="font-weight:700;color:#ffe0a0;font-size:13px;">' + (c.descripcion || '') + '</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:24px;font-size:11px;color:#90caf9;margin-bottom:8px;padding-left:28px;">' +
+            '<span><b style="color:#b0bec5;">Exist:</b> ' + fmt(c.existencia) + '</span>' +
+            '<span><b style="color:#b0bec5;">Mín:</b> ' + fmt(c.minimo) + '</span>' +
+            '<span><b style="color:#b0bec5;">Máx:</b> ' + fmt(c.maximo) + '</span>' +
+          '</div>' +
+          '<div class="fms-ej-row head"><div></div><div>PEDIDO</div><div>ANTES</div><div>DESPUÉS</div><div>RAZÓN</div><div>ORDEN</div></div>' +
+          '<div class="fms-ej-row"><div></div>' +
+            '<div style="font-weight:900;color:#ffe082;">' + (c.pedidoFolio || c.pedidoId) + '</div>' +
+            '<div>' + fmt(c.cantPedAntes) + '</div>' +
+            '<div style="color:#a5d6a7;font-weight:900;">' + fmt(c.cantPedDespues) + '</div>' +
+            '<div style="color:#b0bec5;">Cantidad pedido</div>' +
+            '<div style="color:#ffe082;font-weight:900;">' + (c.ordenElegidaKey || '—') + '</div>' +
+          '</div>' +
+        '</div>';
+      });
+
+      if (eb2) eb2.innerHTML = html;
+      if (ef2) ef2.style.display = 'flex';
+    })
+    .withFailureHandler(function(e) {
+      var eb3 = document.getElementById('fprog-stockBody');
+      if (eb3) eb3.innerHTML = '<p style="color:red;padding:16px;"><b>Error:</b> ' + e + '</p>';
+    })
+    .calcularActualizacionEjecucion();
+}
+
+function fprog_filtrarStock(q) {
+  var term = (q || '').toLowerCase();
+  document.querySelectorAll('#fprog-stockBody .fms-ej-item').forEach(function(el) {
+    el.style.display = (!term || (el.dataset.search || '').indexOf(term) > -1) ? '' : 'none';
+  });
+}
+
+function fprog_toggleTodosStock() {
+  var btn      = document.getElementById('fprog-stockToggleBtn');
+  var checks   = document.querySelectorAll('#fprog-stockBody input[type="checkbox"]');
+  var hayAlguno = false;
+  checks.forEach(function(ch){ if (ch.checked) hayAlguno = true; });
+  var nuevoVal = !hayAlguno;
+  checks.forEach(function(ch){ ch.checked = nuevoVal; });
+  if (btn) btn.textContent = nuevoVal ? '☐ Des. Todos' : '☑ Sel. Todos';
+}
+
+function fprog_cerrarModalStock() {
+  var modal = document.getElementById('fprog-modalStock');
+  if (modal) modal.classList.remove('open');
+}
+
+function fprog_aplicarStock() {
+  // Reconstruir lista completa en el mismo orden en que se renderizó (grandes primero)
+  var allData = fprog_ejDataGrandes.concat(fprog_ejData);
+  var sel = allData.filter(function(c, i) {
+    var x = document.getElementById('fprog-ej-' + i);
+    return x && x.checked;
+  });
+  if (!sel.length) {
+    Swal.fire({ icon: 'warning', title: 'Sin selección', text: 'No hay cambios seleccionados.', confirmButtonColor: '#e65100' });
+    return;
+  }
+  Swal.fire({
+    icon: 'question',
+    title: '¿Aplicar cambios?',
+    text: 'Se actualizarán ' + sel.length + ' código(s) con sus pedidos y órdenes.',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, aplicar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#e65100',
+    cancelButtonColor: '#546e7a'
+  }).then(function(res) {
+    if (!res.isConfirmed) return;
+    fprog_cerrarModalStock();
+    showLoader('Aplicando cambios...');
+    google.script.run
+      .withSuccessHandler(function(r) {
+        hideLoader();
+        var parsed = (typeof r === 'string') ? JSON.parse(r) : r;
+        var ok = parsed && parsed.success;
+        Swal.fire({
+          icon: ok ? 'success' : 'error',
+          title: ok ? '¡Listo!' : 'Error',
+          text: parsed ? parsed.msg : 'Sin respuesta',
+          confirmButtonColor: ok ? '#2e7d32' : '#c62828'
+        }).then(function() { if (ok) fprogRefresh(); });
+      })
+      .withFailureHandler(function(e) {
+        hideLoader();
+        Swal.fire({ icon: 'error', title: 'Error del servidor', text: String(e), confirmButtonColor: '#c62828' });
+      })
+      .aplicarActualizacionEjecucion(sel);
+  });
 }
 
 /* ══════════════════════════════════════════════
@@ -7177,27 +7971,30 @@ function fpd_inputKeyNav(e, maqKey, maqSafe, id, input) {
 function fpd_abrirCambioMaquina(idOrden) {
   var r = (fprog_datosOriginales || []).find(function(x){ return x.id_orden == idOrden; });
   if (!r) return;
-  // Inyectar temporalmente en planif_ordenesVivas para que el modal funcione
-  var maqActual = String(r.maquina || '').trim().toUpperCase();
-  var proceso   = FPD_OP_NOMBRE[r.operacion] || 'FORJA';
+  var maqActual      = String(r.maquina || '').trim().toUpperCase();
+  var proceso        = FPD_OP_NOMBRE[r.operacion] || 'FORJA';
+  var maqsPermitidas = r.maquinasPermitidas || '';
+
   var fake = {
-    id:                String(r.id_orden),
-    serie:             'F',
-    orden:             String(r.orden || ''),
-    maquina:           maqActual,
-    proceso:           proceso,
-    codigo:            r.codigo || '',
-    maquinasPermitidas:''  // sin permitidas → usará ⚙️ para configurar
+    id:                 String(r.id_orden),
+    serie:              'F',
+    orden:              String(r.orden || ''),
+    maquina:            maqActual,
+    proceso:            proceso,
+    codigo:             r.codigo || '',
+    maquinasPermitidas: maqsPermitidas
   };
-  // Buscar si ya existía en planif_ordenesVivas para preservar maquinasPermitidas
+
   var vivo = planif_ordenesVivas.find(function(x){ return String(x.id) === String(idOrden); });
-  if (vivo) { fake.maquinasPermitidas = vivo.maquinasPermitidas || ''; }
-  // Registrar temporalmente
-  var yaExistia = !!vivo;
-  if (!yaExistia) planif_ordenesVivas.push(fake);
+  if (vivo) {
+    vivo.maquinasPermitidas = maqsPermitidas;
+  } else {
+    planif_ordenesVivas.push(fake);
+  }
+
   planifAbrirCambioMaquina(String(idOrden));
-  // Limpiar temporal después de que el modal se abra
-  if (!yaExistia) {
+
+  if (!vivo) {
     setTimeout(function() {
       var idx = planif_ordenesVivas.indexOf(fake);
       if (idx > -1) planif_ordenesVivas.splice(idx, 1);
@@ -7239,6 +8036,80 @@ function fpd_abrirDocOrden(idOrden) {
       if (idx > -1) planif_ordenesVivas.splice(idx, 1);
     }, 500);
   }
+}
+
+// ── Actualizar Plan Diario con check de cambios pendientes ──
+function fpd_refrescarConCheck() {
+  var btnGuardar = document.getElementById('fpd-btnGuardar');
+  var hayCambios = btnGuardar && btnGuardar.style.display !== 'none';
+
+  if (hayCambios) {
+    Swal.fire({
+      icon: 'question',
+      title: 'Cambios pendientes',
+      html: 'Tienes cambios de prioridad sin guardar. Si continúas se perderán.<br><br><b>¿Guardar antes de actualizar?</b>',
+      showConfirmButton: true,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar y actualizar',
+      denyButtonText: 'Actualizar sin guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2e7d32',
+      denyButtonColor: '#d32f2f',
+      cancelButtonColor: '#94a3b8'
+    }).then(function(r) {
+      if (r.isDismissed) return;
+      if (r.isConfirmed) {
+        // Guardar primero y luego recargar
+        fpd_guardarPrioridades();
+        // fpd_guardarPrioridades ya oculta el botón al terminar;
+        // recargamos tras un breve delay para dar tiempo al servidor
+        showLoader('Guardando y actualizando...');
+        google.script.run
+          .withSuccessHandler(function() {
+            hideLoader();
+            if (btnGuardar) btnGuardar.style.display = 'none';
+            fpd_ejecutarRefresh();
+          })
+          .withFailureHandler(function(e) {
+            hideLoader();
+            sAlert('Error al guardar: ' + e, 'error');
+          })
+          .guardarPlanificacion((function() {
+            var lista = [];
+            Object.keys(fpd_tablaOrdenLocal).forEach(function(maqKey) {
+              fpd_tablaOrdenLocal[maqKey].forEach(function(id, index) {
+                if (id) lista.push({ id: id, prioridadNueva: index + 1 });
+              });
+            });
+            return lista;
+          })());
+      } else if (r.isDenied) {
+        // Descartar cambios y recargar
+        if (btnGuardar) btnGuardar.style.display = 'none';
+        fpd_ejecutarRefresh();
+      }
+    });
+    return;
+  }
+  fpd_ejecutarRefresh();
+}
+
+// ── Ejecutar refresh de Plan Diario con animación en botón ──
+function fpd_ejecutarRefresh() {
+  var btn = document.getElementById('fpd-btnRefresh');
+  var icon = btn ? btn.querySelector('.fpd-refresh-icon') : null;
+  if (icon) icon.style.animation = 'spin .7s linear infinite';
+  if (btn)  btn.disabled = true;
+  fpd_tablaOrdenLocal  = {};
+  fpd_tablaChecks      = {};
+  fpd_tablaOrdenColumnas = [];
+  fpd_tablaOrdenTick   = 0;
+  fpd_init();
+  setTimeout(function() {
+    if (icon) icon.style.animation = '';
+    if (btn)  btn.disabled = false;
+  }, 1500);
 }
 
 // ── Marcar cambios pendientes y mostrar botón guardar ──
@@ -7480,7 +8351,6 @@ function fpc_renderTabla() {
     if (row.borrar) {
       actionBtns = '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#2e7d32;" title="Restaurar" onclick="fpc_marcarBorrar(\'' + row.id + '\',false)">↩️</button>';
     } else {
-      actionBtns += '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#ef6c00;" title="Transferir" onclick="fpc_abrirTransfer(\'' + row.id + '\',' + row.producido + ',\'' + row.ordenRef + '\')">⇄</button>';
       if (modClass.includes('modified')) actionBtns += '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#546e7a;" title="Deshacer" onclick="fpc_undo(\'' + row.id + '\')">↩️</button>';
       actionBtns += '<button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#c62828;" title="Eliminar" onclick="fpc_marcarBorrar(\'' + row.id + '\',true)">✕</button>';
     }
@@ -7550,14 +8420,28 @@ function fpc_undo(id) {
 }
 
 function fpc_undoAll() {
-  fpc_datosProduccion = JSON.parse(JSON.stringify(fpc_datosOriginales));
-  fpc_cambiosPendientes.clear();
-  fpc_renderTabla();
+  Swal.fire({
+    icon: 'warning',
+    title: '¿Deshacer todos los cambios?',
+    text: 'Se revertirán todos los cambios pendientes y los renglones volverán a su estado original.',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, deshacer todo',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#546e7a',
+    cancelButtonColor: '#94a3b8'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+    fpc_datosProduccion = JSON.parse(JSON.stringify(fpc_datosOriginales));
+    fpc_cambiosPendientes.clear();
+    fpc_renderTabla();
+  });
 }
 
 function fpc_updateGlobalBtn() {
   var c = fpc_cambiosPendientes.size;
-  var btn = document.getElementById('fpc-btnSaveAll');
+  var btn    = document.getElementById('fpc-btnSaveAll');
+  var btnUndo = document.getElementById('fpc-btnUndoAll');
+  if (btnUndo) btnUndo.style.display = c > 0 ? '' : 'none';
   if (!btn) return;
   btn.style.display = c > 0 ? 'block' : 'none';
   var lbl = document.getElementById('fpc-lblCount');
@@ -8267,36 +9151,126 @@ function fpd_generarPDF(estructura, procesosOrden, seleccion) {
 
 
 function fprogCargarDatos() {
-  showLoader('Cargando datos Forja...');
-  google.script.run.withSuccessHandler(function(resRaw) {
-    hideLoader();
-    try {
-      var data = JSON.parse(resRaw);
-      fprog_datosOriginales = data;
-      fprog_filtros         = {};
-      fprog_ordenMedida     = [];
-      fprog_ordenGeneral    = { col: null, dir: 'asc' };
-      fprog_orden           = { col: null, dir: 'asc' };
-      fprog_segundoOrden    = { col: null, dir: 'asc' };
-      fprogRenderTabla();
-    } catch(e) {
-      sAlert('Error al cargar datos de Forja: ' + e.message, 'error');
+  // Mostrar loader animado propio (no el global)
+  var overlay = document.getElementById('fprog-loader-overlay');
+  var bar     = document.getElementById('fprog-loader-bar');
+  var pctEl   = document.getElementById('fprog-loader-pct');
+  var msgEl   = document.getElementById('fprog-loader-msg');
+
+  // Ocultar tabla mientras carga
+  var tblWrap = document.getElementById('forja-prog-tbl-wrap');
+  if (tblWrap) tblWrap.style.visibility = 'hidden';
+  if (overlay) overlay.classList.add('activo');
+  if (bar)     bar.style.width = '0%';
+  if (pctEl)   pctEl.textContent = '0%';
+  if (msgEl)   msgEl.textContent = 'Espere un momento...';
+
+  // Animación de progreso: sube de 0 a 95% en 12 segundos
+  var fprogLoaderPct    = 0;
+  var fprogDatosCargados = false;
+  var fprogDatosPendientes = null;
+  var DURACION_MS = 12000;
+  var INTERVALO_MS = 120;
+  var incremento = 95 / (DURACION_MS / INTERVALO_MS);
+
+  var fprogLoaderTimer = setInterval(function() {
+    if (fprogLoaderPct < 95) {
+      fprogLoaderPct = Math.min(fprogLoaderPct + incremento, 95);
+      var p = Math.round(fprogLoaderPct);
+      if (bar)   bar.style.width = p + '%';
+      if (pctEl) pctEl.textContent = p + '%';
+    } else {
+      // Llegó al 95% y aún no hay datos — mantener lleno y esperar
+      if (bar)   bar.style.width = '95%';
+      if (pctEl) pctEl.textContent = '95%';
     }
-  }).withFailureHandler(function(e) {
-    hideLoader();
-    sAlert('Error servidor Forja: ' + e.message, 'error');
-  }).obtenerDatosProgramadorForja();
+    // Si los datos ya llegaron, terminar animación
+    if (fprogDatosCargados) {
+      clearInterval(fprogLoaderTimer);
+      if (bar)   bar.style.width = '100%';
+      if (pctEl) pctEl.textContent = '100%';
+      setTimeout(function() {
+        if (overlay) overlay.classList.remove('activo');
+        if (tblWrap) tblWrap.style.visibility = '';
+        if (fprogDatosPendientes !== null) {
+          try {
+            var data = JSON.parse(fprogDatosPendientes);
+            fprog_datosOriginales = data;
+            fprog_filtros         = {};
+            fprog_ordenMedida     = [];
+            fprog_ordenGeneral    = { col: null, dir: 'asc' };
+            fprog_orden           = { col: null, dir: 'asc' };
+            fprog_segundoOrden    = { col: null, dir: 'asc' };
+            fprogRenderTabla();
+          } catch(e) {
+            sAlert('Error al cargar datos de Forja: ' + e.message, 'error');
+          }
+        }
+      }, 300);
+    }
+  }, INTERVALO_MS);
+
+  google.script.run
+    .withSuccessHandler(function(resRaw) {
+      fprogDatosCargados   = true;
+      fprogDatosPendientes = resRaw;
+      // Si el timer ya terminó (datos llegaron después de 12s y timer se detuvo),
+      // procesar directamente
+      if (fprogLoaderPct >= 95) {
+        clearInterval(fprogLoaderTimer);
+        if (bar)   bar.style.width = '100%';
+        if (pctEl) pctEl.textContent = '100%';
+        setTimeout(function() {
+          if (overlay) overlay.classList.remove('activo');
+          if (tblWrap) tblWrap.style.visibility = '';
+          try {
+            var data = JSON.parse(resRaw);
+            fprog_datosOriginales = data;
+            fprog_filtros         = {};
+            fprog_ordenMedida     = [];
+            fprog_ordenGeneral    = { col: null, dir: 'asc' };
+            fprog_orden           = { col: null, dir: 'asc' };
+            fprog_segundoOrden    = { col: null, dir: 'asc' };
+            fprogRenderTabla();
+          } catch(e) {
+            sAlert('Error al cargar datos de Forja: ' + e.message, 'error');
+          }
+        }, 300);
+      }
+    })
+    .withFailureHandler(function(e) {
+      clearInterval(fprogLoaderTimer);
+      if (overlay) overlay.classList.remove('activo');
+      if (tblWrap) tblWrap.style.visibility = '';
+      sAlert('Error servidor Forja: ' + e.message, 'error');
+    })
+    .obtenerDatosProgramadorForja();
 }
 
 function fprogGetDatosFiltrados() {
   var datos = fprog_datosOriginales.slice();
+
+  // Helper para columnas calculadas (estado_inv, efect)
+  function fprogValParaFiltro(r, col) {
+    if (col === 'estado_inv') {
+      var ex = parseFloat(r.existencia), mn = parseFloat(r.minimo);
+      if (r.existencia === null || r.existencia === undefined || isNaN(ex) || isNaN(mn) || mn === 0) return '—';
+      return ex < mn / 2 ? 'MALO' : 'BUENO';
+    }
+    if (col === 'efect') {
+      var ex2 = parseFloat(r.existencia), mx = parseFloat(r.maximo);
+      if (r.existencia === null || r.existencia === undefined || isNaN(ex2) || isNaN(mx) || mx === 0) return '—';
+      return Math.round((ex2 / mx) * 100) + '%';
+    }
+    return String(r[col] == null ? '' : r[col]);
+  }
 
   // Aplicar filtros
   Object.keys(fprog_filtros).forEach(function(col) {
     var activos = fprog_filtros[col];
     if (!activos || activos.size === 0) return;
     datos = datos.filter(function(r) {
-      return activos.has(String(r[col] == null ? '' : r[col]));
+      return activos.has(fprogValParaFiltro(r, col));
     });
   });
 
@@ -8513,59 +9487,52 @@ function fprogCancelarEdicion(inp, campo, filaHoja, valorOriginal) {
   td.innerHTML = valorOriginal || '—';
 }
 
-// ── Modales FORJA: Máquina ──
+// ── Modales FORJA: Máquina — lee maquinasPermitidas desde datos en memoria (sin llamada al servidor) ──
 function fprogAbrirModalMaquina(filaHoja, orden, maqActual, codigo) {
   fprog_filaEditandoMaq = { fila_hoja: filaHoja, orden: orden, maquina_actual: maqActual, codigo: codigo };
 
-  // Buscar máquinas permitidas en RUTAS para este código + proceso FORJA
-  showLoader('Buscando máquinas...');
-  google.script.run.withSuccessHandler(function(resRaw) {
-    hideLoader();
-    try {
-      var res = JSON.parse(resRaw);
-      var maqsPosibles = res.maquinas || [];
-      var maqActualUp  = String(maqActual).trim().toUpperCase();
+  // Leer maquinasPermitidas del registro en memoria
+  var registro = (fprog_datosOriginales || []).find(function(d){
+    return String(d.fila_hoja) === String(filaHoja);
+  });
+  var permitidasStr = registro ? (registro.maquinasPermitidas || '') : '';
+  var maqsPosibles  = permitidasStr
+    ? permitidasStr.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s !== ''; })
+    : [];
+  var maqActualUp = String(maqActual).trim().toUpperCase();
 
-      document.getElementById('planif-lblCambioMaqInfo').innerHTML =
-        '<b>Orden:</b> ' + orden +
-        ' &nbsp;|&nbsp; <b>Proceso:</b> FORJA' +
-        ' &nbsp;|&nbsp; <b>Máquina actual:</b> ' + (maqActualUp || 'Sin asignar');
+  document.getElementById('planif-lblCambioMaqInfo').innerHTML =
+    '<b>Orden:</b> ' + orden +
+    ' &nbsp;|&nbsp; <b>Proceso:</b> FORJA' +
+    ' &nbsp;|&nbsp; <b>Máquina actual:</b> ' + (maqActualUp || 'Sin asignar');
 
-      // Configurar botón engrane para editar máquinas permitidas en RUTAS
-      var btnEngrane = document.getElementById('planif-btnEngraneRuta');
-      if (btnEngrane) {
-        btnEngrane.style.display = '';
-        btnEngrane.setAttribute('onclick', 'fprogAbrirRutaMaquinaForja()');
-        btnEngrane.dataset.codigo = fprog_filaEditandoMaq ? fprog_filaEditandoMaq.codigo : '';
-        btnEngrane.dataset.proceso = 'FORJA';
-        btnEngrane.dataset.permitidas = maqsPosibles.join(', ');
-      }
+  var btnEngrane = document.getElementById('planif-btnEngraneRuta');
+  if (btnEngrane) {
+    btnEngrane.style.display = '';
+    btnEngrane.setAttribute('onclick', 'fprogAbrirRutaMaquinaForja()');
+    btnEngrane.dataset.codigo    = codigo;
+    btnEngrane.dataset.proceso   = 'FORJA';
+    btnEngrane.dataset.permitidas = permitidasStr;
+  }
 
-      var html = '';
-      if (maqsPosibles.length === 0) {
-        html = '<p style="color:#b91c1c;font-weight:700;padding:10px;">Sin máquinas asignadas en RUTAS para este código.</p>';
-      } else {
-        maqsPosibles.forEach(function(m) {
-          var mUp = String(m).trim().toUpperCase();
-          var esActual = mUp === maqActualUp;
-          html += '<button onclick="fprogConfirmarCambioMaquina(\'' + m.replace(/'/g,"\\'") + '\')" ' +
-            'style="padding:10px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;border:2px solid ' +
-            (esActual ? '#1a237e' : '#d1d5db') + ';background:' +
-            (esActual ? '#1a237e' : '#f9fafb') + ';color:' +
-            (esActual ? 'white' : '#1f2937') + ';">' +
-            (esActual ? '✔ ' : '') + m +
-          '</button>';
-        });
-      }
-      document.getElementById('planif-listaCambioMaq').innerHTML = html;
-      document.getElementById('planif-modalCambioMaq').style.display = 'flex';
-    } catch(e) {
-      sAlert('Error al cargar máquinas: ' + e.message, 'error');
-    }
-  }).withFailureHandler(function(e) {
-    hideLoader();
-    sAlert('Error: ' + e.message, 'error');
-  }).fprogObtenerMaquinasForja(codigo);
+  var html = '';
+  if (maqsPosibles.length === 0) {
+    html = '<p style="color:#b91c1c;font-weight:700;padding:10px;">Sin máquinas asignadas en RUTAS para este código. Usa ⚙️ para configurar.</p>';
+  } else {
+    maqsPosibles.forEach(function(m) {
+      var mUp = String(m).trim().toUpperCase();
+      var esActual = mUp === maqActualUp;
+      html += '<button onclick="fprogConfirmarCambioMaquina(\'' + m.replace(/'/g,"\\'") + '\')" ' +
+        'style="padding:10px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;border:2px solid ' +
+        (esActual ? '#1a237e' : '#d1d5db') + ';background:' +
+        (esActual ? '#1a237e' : '#f9fafb') + ';color:' +
+        (esActual ? 'white' : '#1f2937') + ';">' +
+        (esActual ? '✔ ' : '') + m +
+      '</button>';
+    });
+  }
+  document.getElementById('planif-listaCambioMaq').innerHTML = html;
+  document.getElementById('planif-modalCambioMaq').style.display = 'flex';
 }
 
 function fprogConfirmarCambioMaquina(nuevaMaq) {
@@ -9281,8 +10248,8 @@ function fprogActualizarStatusBar() {
   var prom = cnt > 0 ? suma / cnt : 0;
 
   if (selecV) selecV.textContent = cnt;
-  if (sumaV)  sumaV.textContent  = 'Σ ' + fprogFmtNum(suma);
-  if (promV)  promV.textContent  = '⌀ ' + fprogFmtNum(Math.round(prom));
+  if (sumaV)  sumaV.textContent  = fprogFmtNum(suma);
+  if (promV)  promV.textContent  = fprogFmtNum(Math.round(prom));
 }
 
 function fprogActualizarStatusTotal() {
@@ -9462,11 +10429,35 @@ function fprogCerrarDrop() {
 }
 
 function fprogAbrirDrop(thEl, colKey) {
-  var datos = fprog_datosOriginales;
-  // Valores únicos de la columna (sin filtro de esa columna para mostrar todos posibles)
+  // Filtrar con todos los filtros activos EXCEPTO el de esta columna
+  // → las opciones reflejan los registros visibles con los otros filtros aplicados
+  var datos = fprog_datosOriginales.slice();
+  Object.keys(fprog_filtros).forEach(function(col) {
+    if (col === colKey) return; // excluir el filtro propio de esta columna
+    var activos = fprog_filtros[col];
+    if (!activos || activos.size === 0) return;
+    datos = datos.filter(function(r) {
+      return activos.has(String(r[col] == null ? '' : r[col]));
+    });
+  });
+  // Valores únicos de la columna sobre los datos ya pre-filtrados
+  // Para columnas calculadas (estado_inv, efect) derivar el valor igual que el render
+  function fprogValFiltro(r, col) {
+    if (col === 'estado_inv') {
+      var ex = parseFloat(r.existencia), mn = parseFloat(r.minimo);
+      if (r.existencia === null || r.existencia === undefined || isNaN(ex) || isNaN(mn) || mn === 0) return '—';
+      return ex < mn / 2 ? 'MALO' : 'BUENO';
+    }
+    if (col === 'efect') {
+      var ex2 = parseFloat(r.existencia), mx = parseFloat(r.maximo);
+      if (r.existencia === null || r.existencia === undefined || isNaN(ex2) || isNaN(mx) || mx === 0) return '—';
+      return Math.round((ex2 / mx) * 100) + '%';
+    }
+    return String(r[col] == null ? '' : r[col]);
+  }
   var valoresSet = {};
   datos.forEach(function(r) {
-    var v = String(r[colKey] == null ? '' : r[colKey]);
+    var v = fprogValFiltro(r, colKey);
     valoresSet[v] = true;
   });
   var valoresOrdenados = Object.keys(valoresSet).sort(function(a,b){

@@ -2225,7 +2225,7 @@ function crearPedidoInternoCompleto(payload) {
     var listaLotesGenerados = [];
 
     for (var l = 1; l <= nLotes; l++) {
-      var nombreLote = payload.serie + "." + ("0000" + nOrden).slice(-4) + "." + ("00" + l).slice(-2);
+      var nombreLote = payload.serie + "." + ("0000" + nOrden).slice(-4) + "." + (l < 100 ? ("00" + l).slice(-2) : String(l));
       sheetLot.appendRow([
         Utilities.getUuid().substring(0, 8),
         payload.serie,
@@ -3354,22 +3354,25 @@ function obtenerDatosGenerador() {
   var dataOrd = sheetOrd.getDataRange().getValues();
   
   // 1. Mapeo para sumar cantidades de ORDENES (evitando duplicar procesos)
+  // La clave incluye FOLIO+PARTIDA para no mezclar partidas del mismo pedido
   var planeadoMap = {};
   for(var i=1; i<dataOrd.length; i++){
-    var folioPed = String(dataOrd[i][1]); // Col B: PEDIDO
-    var serie = dataOrd[i][4];            // Col E: SERIE
-    var nOrd = dataOrd[i][5];             // Col F: ORDEN
-    var keyUnicaOrden = folioPed + "_" + serie + "." + nOrd; 
+    var folioPed  = String(dataOrd[i][1]); // Col B: PEDIDO
+    var partidaOrd = String(dataOrd[i][2] || '1'); // Col C: PARTIDA
+    var serie = dataOrd[i][4];             // Col E: SERIE
+    var nOrd = dataOrd[i][5];              // Col F: ORDEN
+    var mapKey = folioPed + "||" + partidaOrd; // clave única por partida
+    var keyUnicaOrden = mapKey + "_" + serie + "." + nOrd;
     var estadoOrd = String(dataOrd[i][15]); // Col P: ESTADO
 
     // Solo sumar si NO está CANCELADO ni TERMINADO
     if(estadoOrd !== "CANCELADO" && estadoOrd !== "TERMINADO"){
-      if(!planeadoMap[folioPed]) planeadoMap[folioPed] = { keys: {}, total: 0 };
-      
-      // Si esta combinación de Serie.Orden no ha sido sumada para este pedido
-      if(!planeadoMap[folioPed].keys[keyUnicaOrden]){
-        planeadoMap[folioPed].total += (Number(dataOrd[i][8]) || 0); // Col I: CANTIDAD
-        planeadoMap[folioPed].keys[keyUnicaOrden] = true;
+      if(!planeadoMap[mapKey]) planeadoMap[mapKey] = { keys: {}, total: 0 };
+
+      // Si esta combinación de Serie.Orden no ha sido sumada para esta partida
+      if(!planeadoMap[mapKey].keys[keyUnicaOrden]){
+        planeadoMap[mapKey].total += (Number(dataOrd[i][8]) || 0); // Col I: CANTIDAD
+        planeadoMap[mapKey].keys[keyUnicaOrden] = true;
       }
     }
   }
@@ -3380,11 +3383,13 @@ function obtenerDatosGenerador() {
   
   for(var j=1; j<dataPed.length; j++){
     var folio = String(dataPed[j][1]);
-    var sumaPlaneado = planeadoMap[folio] ? planeadoMap[folio].total : 0;
-    
+    var partidaPed = String(dataPed[j][5] || '1'); // Col F: PARTIDA
+    var mapKeyPed = folio + "||" + partidaPed;
+    var sumaPlaneado = planeadoMap[mapKeyPed] ? planeadoMap[mapKeyPed].total : 0;
+
     // Actualizamos físicamente la Columna P (índice 15) en la hoja si es diferente
     if(dataPed[j][15] !== sumaPlaneado) {
-      sheetPed.getRange(j + 1, 16).setValue(sumaPlaneado); 
+      sheetPed.getRange(j + 1, 16).setValue(sumaPlaneado);
     }
 
     lista.push({
@@ -3522,7 +3527,7 @@ function ejecutarCambiosGenerador(cambios) {
           var cantLoteBase = parseFloat(ruta[0][22]) || solicitadoBase;
           var numLotes = Math.ceil(solicitadoBase / cantLoteBase);
           for(var l=1; l<=numLotes; l++){
-            var nombreLote = serie + "." + ("0000"+nOrdenIndividual).slice(-4) + "." + ("00"+l).slice(-2);
+            var nombreLote = serie + "." + ("0000"+nOrdenIndividual).slice(-4) + "." + (l < 100 ? ("00"+l).slice(-2) : String(l));
             sheetLot.appendRow([
               Utilities.getUuid().substring(0,8), serie, firstProcessId, l,
               nombreLote, cantLoteBase, 0, "ABIERTO", new Date()
@@ -3546,18 +3551,21 @@ function ejecutarCambiosGenerador(cambios) {
 /**
  * OBTIENE EL DETALLE DE LAS ÓRDENES RELACIONADAS A UN PEDIDO
  */
-function obtenerDetalleOrdenes(folioPedido) {
+function obtenerDetalleOrdenes(folioPedido, partidaParam) {
   var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
   var sheetOrd = ss.getSheetByName("ORDENES");
   var data = sheetOrd.getDataRange().getValues();
-  
+  var filtrarPartida = (partidaParam !== undefined && partidaParam !== null && partidaParam !== '');
+
   var tempMap = {}; // Para agrupar procesos por Serie.Orden
-  
+
   for(var i=1; i<data.length; i++) {
     var folioEnHoja = String(data[i][1]); // Col B
+    var partidaEnHoja = String(data[i][2] || '1'); // Col C: PARTIDA
     var estado = String(data[i][15]);     // Col P
-    
-    if(folioEnHoja === String(folioPedido) && estado !== "CANCELADO") {
+
+    var matchPartida = !filtrarPartida || (partidaEnHoja === String(partidaParam));
+    if(folioEnHoja === String(folioPedido) && matchPartida && estado !== "CANCELADO") {
       var serie = data[i][4];  // Col E
       var num = data[i][5];    // Col F
       var key = serie + "." + num;
@@ -9523,6 +9531,123 @@ function buscarProduccionCompleta(filtros) {
   return { registros: resultados, dicLotes: {} };
 }
 
+// ── Historial FORJA: producción enriquecida con datos de ORDENES ──
+function buscarHistorialForja(fechaIni, fechaFin) {
+  try {
+    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shProd    = ss.getSheetByName('PRODUCCION');
+    var shOrd     = ss.getSheetByName('ORDENES');
+    if (!shProd) return { registros: [] };
+
+    var pi = fechaIni.split('-'); var pf = fechaFin.split('-');
+    var dIni = new Date(+pi[0],+pi[1]-1,+pi[2], 0, 0, 0);
+    var dFin = new Date(+pf[0],+pf[1]-1,+pf[2],23,59,59);
+
+    // ── Leer ORDENES una sola vez → mapa ORDEN → datos producto ──
+    var mapaOrden = {};
+    if (shOrd) {
+      var dataOrd  = shOrd.getDataRange().getValues();
+      var hOrd     = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var oORD  = hOrd.indexOf('ORDEN');
+      var oTIPO = hOrd.indexOf('TIPO');
+      var oDIA  = hOrd.indexOf('DIAMETRO');
+      var oLONG = hOrd.indexOf('LONGITUD');
+      var oCPO  = hOrd.indexOf('CUERPO');
+      var oCDA  = hOrd.indexOf('CUERDA');
+      var oACE  = hOrd.indexOf('ACERO');
+      var oCOD  = hOrd.indexOf('CODIGO');
+      for (var oi = 1; oi < dataOrd.length; oi++) {
+        var ordKey = String(dataOrd[oi][oORD] || '').trim();
+        if (!ordKey || mapaOrden[ordKey]) continue;
+        mapaOrden[ordKey] = {
+          tipo:    oTIPO>-1 ? String(dataOrd[oi][oTIPO]||'').trim() : '',
+          dia:     oDIA >-1 ? String(dataOrd[oi][oDIA] ||'').trim() : '',
+          long:    oLONG>-1 ? String(dataOrd[oi][oLONG]||'').trim() : '',
+          cuerpo:  oCPO >-1 ? String(dataOrd[oi][oCPO] ||'').trim() : '',
+          cuerda:  oCDA >-1 ? String(dataOrd[oi][oCDA] ||'').trim() : '',
+          acero:   oACE >-1 ? String(dataOrd[oi][oACE] ||'').trim() : '',
+          codigo:  oCOD >-1 ? String(dataOrd[oi][oCOD] ||'').trim() : ''
+        };
+      }
+    }
+
+    // ── Leer PRODUCCION ──
+    var headerRow = shProd.getRange(1,1,1,shProd.getLastColumn()).getValues()[0];
+    var hProd = headerRow.map(function(h){ return String(h).toUpperCase().trim(); });
+    var IDX = {
+      ID:      hProd.indexOf('ID'),
+      LOTE:    hProd.indexOf('LOTE'),
+      MAQ:     hProd.indexOf('MAQUINA'),
+      FECHA:   hProd.indexOf('FECHA'),
+      TURNO:   hProd.indexOf('TURNO'),
+      OPER_TXT:hProd.indexOf('NOMBRE_OPERADOR_TXT'),
+      PESO_I:  hProd.indexOf('PESO_I'),
+      PESO_F:  hProd.indexOf('PESO_F'),
+      PESO_T:  hProd.indexOf('PESO_TINA'),
+      PROD:    hProd.indexOf('PRODUCIDO'),
+      HORAS:   hProd.indexOf('HORAS'),
+      SELLO:   hProd.indexOf('SELLO'),
+      COM:     hProd.indexOf('COMENTARIO'),
+      ORDEN:   hProd.indexOf('ORDEN')
+    };
+    var colFECHA = (IDX.FECHA >= 0 ? IDX.FECHA : 5);
+    var totalFilas = shProd.getLastRow();
+    if (totalFilas < 2) return { registros: [] };
+
+    // Ubicar rango por fecha
+    var soloFechas = shProd.getRange(2, colFECHA+1, totalFilas-1, 1).getValues();
+    var fIni = -1, fFin = -1;
+    for (var f = 0; f < soloFechas.length; f++) {
+      var fv = soloFechas[f][0];
+      if (!(fv instanceof Date)) continue;
+      if (fv >= dIni && fv <= dFin) { if (fIni===-1) fIni=f; fFin=f; }
+    }
+    if (fIni === -1) return { registros: [] };
+
+    var dataProd = shProd.getRange(fIni+2, 1, fFin-fIni+1, shProd.getLastColumn()).getValues();
+    var tz = Session.getScriptTimeZone();
+    var resultados = [];
+
+    for (var i = 0; i < dataProd.length; i++) {
+      var fVal = dataProd[i][IDX.FECHA];
+      if (!(fVal instanceof Date) || fVal < dIni || fVal > dFin) continue;
+      var fStr = Utilities.formatDate(fVal, tz, 'yyyy-MM-dd');
+      var ordenRef = String(dataProd[i][IDX.ORDEN] || '').trim();
+      var inf = mapaOrden[ordenRef] || { tipo:'', dia:'', long:'', cuerpo:'', cuerda:'', acero:'', codigo:'' };
+
+      resultados.push({
+        id:          String(dataProd[i][IDX.ID]),
+        fecha:       fStr,
+        turno:       dataProd[i][IDX.TURNO],
+        maquina:     String(dataProd[i][IDX.MAQ] || '').trim(),
+        lote:        String(dataProd[i][IDX.LOTE] || ''),
+        tipo:        inf.tipo,
+        diametro:    inf.dia,
+        longitud:    inf.long,
+        cuerpo:      inf.cuerpo,
+        cuerda:      inf.cuerda,
+        acero:       inf.acero,
+        operadorTxt: String(dataProd[i][IDX.OPER_TXT] || ''),
+        pesoI:       Number(dataProd[i][IDX.PESO_I])  || 0,
+        pesoF:       Number(dataProd[i][IDX.PESO_F])  || 0,
+        pesoTina:    Number(dataProd[i][IDX.PESO_T])  || 0,
+        producido:   Number(dataProd[i][IDX.PROD])    || 0,
+        horas:       Number(dataProd[i][IDX.HORAS])   || 0,
+        sello:       String(dataProd[i][IDX.SELLO]    || ''),
+        comentario:  String(dataProd[i][IDX.COM]      || ''),
+        ordenRef:    ordenRef
+      });
+    }
+
+    resultados.sort(function(a,b){
+      return (b.fecha + String(b.turno)).localeCompare(a.fecha + String(a.turno));
+    });
+    return { registros: resultados };
+  } catch(e) {
+    return { registros: [], error: e.message };
+  }
+}
+
 //3. Lee solo col ID para ubicar la fila, luego lee solo esa fila completa
 function obtenerInfoOrden(idOrden) {
   var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
@@ -11791,8 +11916,8 @@ function obtenerDatosProgramadorForja() {
       }
     }
 
-    // ── 2. Mapa RUTAS: código → datos de fila FORJA ──
-    var mapaRutas   = {};
+    // ── 2. Mapa RUTAS: código → datos de fila FORJA + máquinas permitidas por proceso ──
+    var mapaRutas    = {};  // código → { maquina, desc, tipo, ... , maquinasPorProceso:{PROC:'m1, m2'} }
     var codigosForja = {};
     if (dataRut.length > 1) {
       var hRut  = dataRut[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -11812,20 +11937,35 @@ function obtenerDatosProgramadorForja() {
         var rProcV = String(dataRut[r][rPROC]||'').trim().toUpperCase();
         if(!rCodV||rCodV.charAt(0)==='7') continue;
         if(rProcV==='FORJA') codigosForja[rCodV]=true;
-        if(!mapaRutas[rCodV]||(!mapaRutas[rCodV]._forjaSet&&rProcV==='FORJA')) {
-          var maqRaw=rMAQ>-1?String(dataRut[r][rMAQ]||'').trim():'';
-          mapaRutas[rCodV]={
-            maquina:  maqRaw.split(',')[0].trim(),
-            desc:     rDESC>-1?String(dataRut[r][rDESC] ||'').trim():'',
-            tipo:     rTIPO>-1?String(dataRut[r][rTIPO]||'').trim():'',
-            diametro: rDIA >-1?String(dataRut[r][rDIA] ||'').trim():'',
-            longitud: rLONG>-1?String(dataRut[r][rLONG]||'').trim():'',
-            cuerda:   rCDA >-1?String(dataRut[r][rCDA] ||'').trim():'',
-            cuerpo:   rCPO >-1?String(dataRut[r][rCPO] ||'').trim():'',
-            acero:    rACE >-1?String(dataRut[r][rACE] ||'').trim():'',
-            peso:     rPESO>-1?Number(dataRut[r][rPESO])||0:0,
-            _forjaSet:rProcV==='FORJA'
+        // Acumular máquinas permitidas por proceso
+        var maqRaw = rMAQ>-1 ? String(dataRut[r][rMAQ]||'').trim() : '';
+        if(!mapaRutas[rCodV]) {
+          mapaRutas[rCodV] = {
+            maquina:           maqRaw.split(',')[0].trim(),
+            desc:              rDESC>-1?String(dataRut[r][rDESC]||'').trim():'',
+            tipo:              rTIPO>-1?String(dataRut[r][rTIPO]||'').trim():'',
+            diametro:          rDIA >-1?String(dataRut[r][rDIA] ||'').trim():'',
+            longitud:          rLONG>-1?String(dataRut[r][rLONG]||'').trim():'',
+            cuerda:            rCDA >-1?String(dataRut[r][rCDA] ||'').trim():'',
+            cuerpo:            rCPO >-1?String(dataRut[r][rCPO] ||'').trim():'',
+            acero:             rACE >-1?String(dataRut[r][rACE] ||'').trim():'',
+            peso:              rPESO>-1?Number(dataRut[r][rPESO])||0:0,
+            _forjaSet:         rProcV==='FORJA',
+            maquinasPorProceso:{}
           };
+        } else if (!mapaRutas[rCodV]._forjaSet && rProcV==='FORJA') {
+          // Promover a fila FORJA si aún no se había hecho
+          mapaRutas[rCodV].maquina   = maqRaw.split(',')[0].trim();
+          mapaRutas[rCodV]._forjaSet = true;
+        }
+        // Acumular máquinas del proceso en maquinasPorProceso
+        if(maqRaw) {
+          var mpp = mapaRutas[rCodV].maquinasPorProceso;
+          if(!mpp[rProcV]) mpp[rProcV] = [];
+          maqRaw.split(',').forEach(function(m){
+            var mt=m.trim();
+            if(mt && mpp[rProcV].indexOf(mt)<0) mpp[rProcV].push(mt);
+          });
         }
       }
     }
@@ -11935,7 +12075,10 @@ function obtenerDatosProgramadorForja() {
         maximo:        invData ? invData.maximo     : null,
         existencia:    invData ? invData.existencia : null,
         descripcion:   pedInfo.descripcion,
-        maquina:       String(ro[12]||'').trim() || rut.maquina  || '',
+        maquina:            String(ro[12]||'').trim() || rut.maquina || '',
+        maquinasPermitidas: (rut.maquinasPorProceso && rut.maquinasPorProceso[proceso])
+                              ? rut.maquinasPorProceso[proceso].join(', ')
+                              : (String(ro[12]||'').trim() || rut.maquina || ''),
         desc_tipo:     String(ro[19]||'').trim() || rut.tipo     || '',
         diametro:      String(ro[20]||'').trim() || rut.diametro || '',
         longitud:      String(ro[21]||'').trim() || rut.longitud || '',
@@ -12105,6 +12248,37 @@ function fprogGuardarCampo(payload) {
     return JSON.stringify({ ok:false, msg:'Campo no soportado: ' + campo });
   } catch(e) {
     return JSON.stringify({ ok:false, msg:e.message });
+  }
+}
+
+// ── Genérica: máquinas permitidas en RUTAS para cualquier código + proceso ──
+function obtenerMaquinasPorCodigoYProceso(codigo, proceso) {
+  try {
+    var ss   = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
+    var shRut = ss.getSheetByName('RUTAS');
+    if (!shRut) return JSON.stringify({ maquinas: [] });
+    var data = shRut.getDataRange().getValues();
+    if (data.length < 2) return JSON.stringify({ maquinas: [] });
+    var hdr   = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var iCod  = hdr.indexOf('CODIGO');
+    var iProc = hdr.indexOf('PROCESO');
+    var iMaq  = hdr.indexOf('MAQUINA');
+    if (iCod < 0 || iProc < 0 || iMaq < 0) return JSON.stringify({ maquinas: [] });
+    var procUp = String(proceso).trim().toUpperCase();
+    var maquinas = [];
+    for (var i = 1; i < data.length; i++) {
+      var cod  = String(data[i][iCod]  || '').trim();
+      var proc = String(data[i][iProc] || '').trim().toUpperCase();
+      var maq  = String(data[i][iMaq]  || '').trim();
+      if (cod !== codigo || proc !== procUp || !maq) continue;
+      maq.split(',').forEach(function(m) {
+        var mt = m.trim();
+        if (mt && maquinas.indexOf(mt) < 0) maquinas.push(mt);
+      });
+    }
+    return JSON.stringify({ maquinas: maquinas });
+  } catch(e) {
+    return JSON.stringify({ maquinas: [], error: e.message });
   }
 }
 
