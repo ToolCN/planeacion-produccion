@@ -2,6 +2,7 @@ fix_backticks.js
 wrap_modules.js
 unwrap_modules.js
 rebuild_main.js
+fix_script_tags.js
 split_html.py
 *.md
 .gitignore
