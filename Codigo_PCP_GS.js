@@ -21,14 +21,10 @@ var CHAT_ID_AVISOS = "625827165";
 // doGet — Sirve el MainApp_PlaneacionHTML como Web App
 // =================================================================================
 function doGet(e) {
-  var tmpl = HtmlService.createTemplateFromFile("MainApp_PlaneacionHTML");
-  return tmpl.evaluate()
+  return HtmlService
+    .createHtmlOutputFromFile("MainApp_PlaneacionHTML")
     .setTitle("PCP — ToolCN")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 // Devuelve la URL de la propia Web App (la usa el HTML internamente)
