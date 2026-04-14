@@ -1,0 +1,256 @@
+function loadPedidosPendientes() {
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+
+  if (!document.getElementById('pp-style')) {
+    var st = document.createElement('style');
+    st.id = 'pp-style';
+    st.textContent = `
+      #pp-panel { font-family:'Roboto',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); }
+      #pp-panel .pp-header { background:white; padding:14px 18px; border-radius:8px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); border-top:5px solid #e65100; }
+      #pp-panel .pp-title { font-size:20px; font-weight:900; color:#e65100; margin-bottom:10px; }
+      #pp-panel .pp-filtros { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+      #pp-panel .pp-serie-btn { padding:6px 14px; border-radius:20px; border:2px solid #ccc; background:white; font-weight:900; font-size:11px; cursor:pointer; transition:all 0.15s; }
+      #pp-panel .pp-serie-btn.active { background:#e65100; border-color:#e65100; color:white; }
+      #pp-panel .pp-serie-btn.qsq-btn { border-color:#7b1fa2; color:#7b1fa2; }
+      #pp-panel .pp-serie-btn.qsq-btn.active { background:#7b1fa2; color:white; }
+      #pp-panel .pp-table-wrap { background:white; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08); overflow-x:auto; }
+      #pp-panel table { width:100%; border-collapse:collapse; font-size:11px; min-width:800px; }
+      #pp-panel thead th { background:#e65100; color:white; padding:8px 8px; font-weight:900; text-align:left; font-size:10px; border:1px solid #bf360c; white-space:nowrap; cursor:pointer; user-select:none; position:sticky; top:0; z-index:2; }
+      #pp-panel thead th:hover { background:#bf360c; }
+      #pp-panel thead th .pp-sort-icon { margin-left:4px; font-size:9px; }
+      #pp-panel .pp-filter-row th { background:#fff3e0; padding:4px 4px; }
+      #pp-panel .pp-filter-row input { width:100%; border:1px solid #ffcc80; border-radius:4px; padding:3px 5px; font-size:10px; box-sizing:border-box; }
+      #pp-panel tbody td { border:1px solid #e0e0e0; padding:6px 8px; vertical-align:top; }
+      #pp-panel tbody tr:nth-child(even) td { background:#fff8f5; }
+      #pp-panel tbody tr:hover td { background:#ffe0b2; }
+      #pp-panel .pp-folio { font-weight:900; color:#e65100; }
+      #pp-panel .pp-qsq { color:#7b1fa2; }
+      #pp-panel .pp-expand-btn { background:none; border:1px solid #ccc; border-radius:4px; cursor:pointer; font-size:10px; padding:2px 7px; font-weight:900; color:#555; }
+      #pp-panel .pp-expand-btn:hover { background:#f5f5f5; }
+      #pp-panel .pp-ruta-row td { background:#f9fbe7 !important; padding:4px 8px 4px 30px; }
+      #pp-panel .pp-ruta-tabla { width:100%; border-collapse:collapse; font-size:10px; }
+      #pp-panel .pp-ruta-tabla th { background:#558b2f; color:white; padding:3px 6px; text-align:left; }
+      #pp-panel .pp-ruta-tabla td { border:1px solid #dce775; padding:3px 6px; }
+      #pp-panel .pp-estado { font-size:9px; font-weight:900; padding:1px 6px; border-radius:10px; display:inline-block; }
+      #pp-panel .pp-est-active { background:#e3f2fd; color:#1565c0; }
+      #pp-panel .pp-est-proceso { background:#e8f5e9; color:#2e7d32; }
+      #pp-panel .pp-est-otro { background:#f5f5f5; color:#666; }
+      #pp-panel .pp-cnt { font-size:10px; font-weight:900; padding:2px 8px; border-radius:12px; background:#ffccbc; color:#bf360c; display:inline-block; }
+      #pp-panel .pp-empty { padding:40px; text-align:center; color:#999; font-size:14px; }
+      #pp-panel .pp-loading { padding:40px; text-align:center; color:#888; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  ca.innerHTML = `
+    <div id="pp-panel">
+      <div class="pp-header">
+        <div class="pp-title">⚠️ Pedidos Pendientes</div>
+        <div class="pp-filtros">
+          <span style="font-size:11px;font-weight:900;color:#555;">SERIE:</span>
+          <button class="pp-serie-btn active" data-serie="ZEQ-" onclick="ppToggleSerie('ZEQ-',this)">ZEQ</button>
+          <button class="pp-serie-btn active" data-serie="ZRR-" onclick="ppToggleSerie('ZRR-',this)">ZRR</button>
+          <button class="pp-serie-btn active" data-serie="MPR-" onclick="ppToggleSerie('MPR-',this)">MPR</button>
+          <button class="pp-serie-btn active" data-serie="MAQ-" onclick="ppToggleSerie('MAQ-',this)">MAQ</button>
+          <button class="pp-serie-btn qsq-btn" id="pp-btnQSQ" data-serie="QSQ-" onclick="ppCargarQSQ(this)">QSQ (+60d)</button>
+          <span style="margin-left:8px;font-size:11px;color:#888;" id="pp-total-lbl"></span>
+        </div>
+      </div>
+      <div class="pp-table-wrap">
+        <div id="pp-contenido"><div class="pp-loading">⏳ Cargando pedidos...</div></div>
+      </div>
+    </div>
+  `;
+
+  pp_datos         = [];
+  pp_filtros       = { fecha:'', folio:'', descripcion:'', estado:'' };
+  pp_seriesActivas = new Set(['ZEQ-','ZRR-','MPR-','MAQ-']);
+  pp_qsqCargado    = false;
+  pp_sortCol       = 'fechaMs';
+  pp_sortAsc       = false;
+  pp_expandidos    = new Set();
+
+  ppCargarDatos(false);
+}
+
+var pp_datos         = [];
+var pp_filtros       = { fecha:'', folio:'', descripcion:'', estado:'' };
+var pp_seriesActivas = new Set();
+var pp_qsqCargado    = false;
+var pp_sortCol       = 'fechaMs';
+var pp_sortAsc       = false;
+var pp_expandidos    = new Set();
+
+window.ppCargarDatos = function(incluirQSQ) {
+  showLoader('Cargando pedidos pendientes...');
+  google.script.run
+    .withSuccessHandler(function(raw) {
+      hideLoader();
+      var nuevos = JSON.parse(raw);
+      if (incluirQSQ) {
+        var existentes = new Set(pp_datos.map(function(d){ return d.folio; }));
+        nuevos.forEach(function(d){ if (!existentes.has(d.folio)) pp_datos.push(d); });
+      } else {
+        pp_datos = nuevos;
+      }
+      ppRenderTabla();
+    })
+    .withFailureHandler(function(e){ hideLoader(); sAlert('Error: ' + e, 'error'); })
+    .obtenerPedidosPendientes(incluirQSQ);
+};
+
+window.ppCargarQSQ = function(btn) {
+  if (pp_qsqCargado) {
+    if (pp_seriesActivas.has('QSQ-')) {
+      pp_seriesActivas.delete('QSQ-');
+      btn.classList.remove('active');
+    } else {
+      pp_seriesActivas.add('QSQ-');
+      btn.classList.add('active');
+    }
+    ppRenderTabla();
+    return;
+  }
+  pp_qsqCargado = true;
+  pp_seriesActivas.add('QSQ-');
+  btn.classList.add('active');
+  ppCargarDatos(true);
+};
+
+window.ppToggleSerie = function(serie, btn) {
+  if (pp_seriesActivas.has(serie)) {
+    pp_seriesActivas.delete(serie);
+    btn.classList.remove('active');
+  } else {
+    pp_seriesActivas.add(serie);
+    btn.classList.add('active');
+  }
+  ppRenderTabla();
+};
+
+window.ppFiltrar = function(campo, valor) {
+  pp_filtros[campo] = valor.toLowerCase();
+  ppRenderTabla();
+};
+
+window.ppOrdenar = function(col) {
+  if (pp_sortCol === col) pp_sortAsc = !pp_sortAsc;
+  else { pp_sortCol = col; pp_sortAsc = true; }
+  ppRenderTabla();
+};
+
+window.ppToggleRuta = function(folio) {
+  if (pp_expandidos.has(folio)) pp_expandidos.delete(folio);
+  else pp_expandidos.add(folio);
+  ppRenderTabla();
+};
+
+function ppRenderTabla() {
+  var cont = document.getElementById('pp-contenido');
+  if (!cont) return;
+
+  var datos = pp_datos.filter(function(d){ return pp_seriesActivas.has(d.serie); });
+
+  if (pp_filtros.fecha)       datos = datos.filter(function(d){ return d.fecha.toLowerCase().indexOf(pp_filtros.fecha) >= 0; });
+  if (pp_filtros.folio)       datos = datos.filter(function(d){ return d.folio.toLowerCase().indexOf(pp_filtros.folio) >= 0; });
+  if (pp_filtros.descripcion) datos = datos.filter(function(d){ return d.descripcion.toLowerCase().indexOf(pp_filtros.descripcion) >= 0; });
+  if (pp_filtros.estado)      datos = datos.filter(function(d){ return d.estado.toLowerCase().indexOf(pp_filtros.estado) >= 0; });
+
+  datos.sort(function(a, b) {
+    var va = a[pp_sortCol], vb = b[pp_sortCol];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return pp_sortAsc ? -1 : 1;
+    if (va > vb) return pp_sortAsc ?  1 : -1;
+    return 0;
+  });
+
+  var lbl = document.getElementById('pp-total-lbl');
+  if (lbl) lbl.textContent = datos.length + ' pedido(s)';
+
+  if (datos.length === 0) {
+    cont.innerHTML = '<div class="pp-empty">No hay pedidos pendientes con los filtros actuales.</div>';
+    return;
+  }
+
+  function sortIcon(col) {
+    if (pp_sortCol !== col) return '<span class="pp-sort-icon">⇅</span>';
+    return '<span class="pp-sort-icon">' + (pp_sortAsc ? '▲' : '▼') + '</span>';
+  }
+
+  var html = '<table><thead>'
+    + '<tr>'
+    + '<th onclick="ppOrdenar(\'fecha\')">Fecha' + sortIcon('fecha') + '</th>'
+    + '<th onclick="ppOrdenar(\'folio\')">Pedido' + sortIcon('folio') + '</th>'
+    + '<th onclick="ppOrdenar(\'cantidad\')">Cantidad' + sortIcon('cantidad') + '</th>'
+    + '<th onclick="ppOrdenar(\'descripcion\')">Descripción' + sortIcon('descripcion') + '</th>'
+    + '<th onclick="ppOrdenar(\'numOrdAbiertas\')">Órdenes' + sortIcon('numOrdAbiertas') + '</th>'
+    + '<th onclick="ppOrdenar(\'estado\')">Estado' + sortIcon('estado') + '</th>'
+    + '<th>Ruta</th>'
+    + '</tr>'
+    + '<tr class="pp-filter-row">'
+    + '<th><input placeholder="filtrar..." oninput="ppFiltrar(\'fecha\',this.value)"></th>'
+    + '<th><input placeholder="filtrar..." oninput="ppFiltrar(\'folio\',this.value)"></th>'
+    + '<th></th>'
+    + '<th><input placeholder="filtrar..." oninput="ppFiltrar(\'descripcion\',this.value)"></th>'
+    + '<th></th>'
+    + '<th><input placeholder="filtrar..." oninput="ppFiltrar(\'estado\',this.value)"></th>'
+    + '<th></th>'
+    + '</tr>'
+    + '</thead><tbody>';
+
+  datos.forEach(function(d) {
+    var esQSQ      = d.folio.indexOf('QSQ-') === 0;
+    var folioClass = esQSQ ? 'pp-folio pp-qsq' : 'pp-folio';
+    var estClass   = d.estado === 'ACTIVE' ? 'pp-estado pp-est-active'
+                   : d.estado === 'EN PROCESO' ? 'pp-estado pp-est-proceso'
+                   : 'pp-estado pp-est-otro';
+    var expandido  = pp_expandidos.has(d.folio);
+
+    html += '<tr>'
+          + '<td style="white-space:nowrap">' + d.fecha + '</td>'
+          + '<td class="' + folioClass + '">' + d.folio + '</td>'
+          + '<td style="text-align:right;font-weight:900;">' + Number(d.cantidad).toLocaleString() + '</td>'
+          + '<td>' + d.descripcion + '</td>'
+          + '<td style="text-align:center;">'
+            + '<span class="pp-cnt">' + d.numOrdAbiertas + '</span>'
+            + (d.ordenesAbiertas ? '<br><span style="font-size:9px;color:#666;">' + d.ordenesAbiertas + '</span>' : '')
+          + '</td>'
+          + '<td><span class="' + estClass + '">' + d.estado + '</span></td>'
+          + '<td style="text-align:center;">'
+            + (d.ruta.length > 0
+              ? '<button class="pp-expand-btn" onclick="ppToggleRuta(\'' + d.folio.replace(/'/g,"\\'") + '\')">'
+                + (expandido ? '▲ Ocultar' : '▶ Ver ruta') + '</button>'
+              : '-')
+          + '</td>'
+          + '</tr>';
+
+    if (expandido && d.ruta.length > 0) {
+      html += '<tr class="pp-ruta-row"><td colspan="7">'
+            + '<table class="pp-ruta-tabla"><thead><tr>'
+            + '<th>SEC</th><th>Proceso</th><th>Máquina</th><th>Solicitado</th><th>Producido</th><th>Estado</th>'
+            + '</tr></thead><tbody>';
+      d.ruta.forEach(function(r, sec) {
+        var rEstClass = r.estado === 'ACTIVE' ? 'pp-estado pp-est-active'
+                      : r.estado === 'EN PROCESO' ? 'pp-estado pp-est-proceso'
+                      : 'pp-estado pp-est-otro';
+        html += '<tr>'
+              + '<td style="text-align:center;">' + (sec + 1) + '</td>'
+              + '<td style="font-weight:900;">' + r.proceso + '</td>'
+              + '<td>' + r.maquina + '</td>'
+              + '<td style="text-align:right;">' + Number(r.solicitado).toLocaleString() + '</td>'
+              + '<td style="text-align:right;font-weight:900;color:#1565c0;">' + Number(r.producido).toLocaleString() + '</td>'
+              + '<td><span class="' + rEstClass + '">' + r.estado + '</span></td>'
+              + '</tr>';
+      });
+      html += '</tbody></table></td></tr>';
+    }
+  });
+
+  html += '</tbody></table>';
+  cont.innerHTML = html;
+}
+
+</script>
+</body>

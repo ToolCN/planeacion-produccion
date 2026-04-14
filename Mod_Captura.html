@@ -1,0 +1,1535 @@
+function loadCaptura() {
+  showLoader('CARGANDO NUEVA CAPTURA...');
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+  ca.innerHTML = `
+<div id="cap-panel" style="font-family:'Roboto',sans-serif;background:#eceff1;min-height:100%;padding-bottom:150px;overflow-x:hidden;">
+
+  <!-- VISTA 1: SELECTOR DE PROCESO -->
+  <div id="cap-view1" style="padding:20px;text-align:center;position:relative;">
+    <button id="cap-btn-test-telegram" onclick="capTestTelegramReporte()"
+      style="position:absolute;top:0;right:0;background:#e53935;color:white;border:none;
+      padding:10px 18px;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;
+      box-shadow:0 4px 10px rgba(0,0,0,0.3);z-index:10;">
+      🧪 TEST REPORTE
+    </button>
+    <h1 style="font-weight:900;color:#1565c0;font-size:32px;">SELECCIONA PROCESO</h1>
+    <div id="cap-gridProcesos" style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;padding:20px;align-content:start;"></div>
+  </div>
+
+  <!-- VISTA 2: CAPTURA -->
+  <div id="cap-view2" style="display:none;">
+    <div class="cap-header-fixed" id="cap-header">
+      <div class="cap-controls-row">
+        <div class="cap-input-grp"><label>FECHA</label><input type="date" id="cap-txtFecha"></div>
+        <div class="cap-input-grp"><label>TURNO</label>
+          <div class="cap-turn-group">
+            <button class="cap-btn-turn" id="cap-bt1" onclick="capSetTurn(1)">1</button>
+            <button class="cap-btn-turn" id="cap-bt2" onclick="capSetTurn(2)">2</button>
+            <button class="cap-btn-turn" id="cap-bt3" onclick="capSetTurn(3)">3</button>
+          </div>
+        </div>
+        <div class="cap-input-grp" style="flex:2;"><label>OP 1 DEFAULT</label><input type="text" id="cap-defOp1" list="cap-listOps" onkeydown="capHandleSmartInput(this,event)" onblur="capSyncOpCheckboxes()"></div>
+        <div class="cap-input-grp" style="flex:2;"><label>OP 2 DEFAULT</label><input type="text" id="cap-defOp2" list="cap-listOps" onkeydown="capHandleSmartInput(this,event)"></div>
+        <button onclick="capGoHome()" style="background:#d32f2f;color:white;border:none;padding:12px 25px;border-radius:8px;font-weight:900;cursor:pointer;">ÁREA ⬅</button>
+      </div>
+      <div id="cap-filterBar" class="cap-filter-bar"></div>
+      <input type="text" id="cap-searchHuge" class="cap-search-huge" placeholder="🔍 TECLEAR LOTE O DIAMETRO..." oninput="capEjecutarFiltroLocal(this.value)">
+    </div>
+    <div id="cap-mainContent"></div>
+  </div>
+
+  <!-- FAB GUARDAR -->
+  <div id="cap-btnSaveFinal" class="cap-fab-save" onclick="capAbrirPreview()">💾 GUARDAR (<span id="cap-lblCount">0</span>)</div>
+
+  <!-- MODAL PREVIEW -->
+  <div id="cap-modalPreview" class="cap-modal-overlay">
+    <div class="cap-modal-card">
+      <span class="cap-border-anim cap-b-top-1"></span><span class="cap-border-anim cap-b-right"></span>
+      <span class="cap-border-anim cap-b-bottom"></span><span class="cap-border-anim cap-b-left"></span>
+      <span class="cap-border-anim cap-b-top-2"></span>
+      <h2 style="text-align:center;color:#263238;font-weight:900;font-size:30px;">VALIDAR REGISTROS</h2>
+      <div style="max-height:400px;overflow-y:auto;border:1px solid #ddd;margin:15px 0;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;text-align:center;">
+          <thead style="background:#263238;color:white;"><tr><th style="padding:15px">LOTE</th><th>P.INI</th><th>P.TINA</th><th>P.FIN</th><th>NETO</th><th>OP</th><th>MÁQUINA</th><th>✖</th></tr></thead>
+          <tbody id="cap-previewBody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="font-size:24px;color:#1565c0;">TOTAL: <span id="cap-prevTotal">0</span> KG</b>
+        <div>
+          <button style="padding:15px 25px;border-radius:8px;border:none;background:#546e7a;color:white;font-weight:900;cursor:pointer;" onclick="capCerrarPreview()">CERRAR</button>
+          <button id="cap-btnRealSave" disabled style="padding:15px 40px;border-radius:8px;border:none;background:#ccc;color:white;font-weight:900;margin-left:10px;">ESPERE 10s...</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="cap-listOps"></datalist>
+</div>
+
+<style>
+  /* ══ NUEVA CAPTURA PANEL CSS ══ */
+  #cap-panel { --primary:#1565c0; --danger:#d32f2f; --focus:#fffde7; --bg:#eceff1; --ok:#c8e6c9; --editing:#ffe0b2; --locked:#cfd8dc; }
+  .cap-header-fixed { position:sticky; top:0; background:#263238; color:white; padding:10px; z-index:1000; box-shadow:0 4px 15px rgba(0,0,0,0.4); }
+  .cap-controls-row { display:flex; gap:10px; align-items:flex-end; margin-bottom:8px; }
+  .cap-input-grp { display:flex; flex-direction:column; flex:1; }
+  .cap-input-grp label { font-size:12px; font-weight:900; color:#b0bec5; margin-bottom:2px; }
+  .cap-input-grp input { background:#37474f; border:1px solid #546e7a; color:white; padding:10px; border-radius:6px; font-weight:bold; font-size:16px; }
+  .cap-turn-group { display:flex; gap:5px; }
+  .cap-btn-turn { background:#455a64; border:none; color:white; width:40px; height:40px; border-radius:5px; cursor:pointer; font-weight:900; font-size:18px; }
+  .cap-btn-turn.active { background:#ffca28; color:black; border:2px solid white; }
+  .cap-filter-bar { display:flex; gap:8px; margin:8px 0; overflow-x:auto; padding:5px 0; }
+  .cap-btn-grp { background:#546e7a; border:none; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:900; font-size:14px; white-space:nowrap; transition:0.2s; }
+  .cap-btn-grp:hover { background:#37474f; }
+  .cap-btn-grp.active { background:#1565c0; border:2px solid #ffca28; transform:scale(1.05); }
+  .cap-search-huge { width:100%; height:75px; padding:0 25px; font-size:32px; font-weight:900; border-radius:40px; border:5px solid #1565c0; box-sizing:border-box; text-transform:uppercase; margin:5px 0; }
+  .cap-machine-header { background:#37474f; color:#ffca28; padding:12px 20px; font-size:22px; font-weight:900; margin-top:8px; cursor:pointer; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid #546e7a; }
+  .cap-ords-container { display:none; padding:5px; background:#90a4ae; border-radius:0 0 8px 8px; }
+  .cap-order-row { background:white; display:flex; min-height:120px; border-bottom:2px solid #ddd; border-left:15px solid transparent; transition:0.2s; position:relative; }
+  .cap-order-row.focused { background:#fffde7; border-left-color:#fbc02d; }
+  .cap-order-row.last-produced { border-left:40px solid #d32f2f; animation:cap-glow-red 2s infinite; position:relative; }
+  .cap-order-row.last-produced::after { content:"ÚLTIMO REGISTRO"; position:absolute; left:-20px; top:50%; transform:translate(-50%,-50%) rotate(-90deg); width:120px; color:white; font-size:11px; font-weight:900; text-align:center; text-transform:uppercase; white-space:nowrap; pointer-events:none; }
+  @keyframes cap-glow-red { 0%,100%{border-left-color:#b71c1c} 50%{border-left-color:#f44336} }
+  .cap-order-info { width:450px; padding:15px; border-right:2px solid #eee; flex-shrink:0; display:flex; flex-direction:column; justify-content:center; }
+  .cap-info-name { font-size:100px; font-weight:900; color:#1565c0; line-height:0.7; margin-top:-10px; }
+  .cap-info-type { font-size:48px; font-weight:900; color:#4a148c; line-height:0.9; margin:5px 0; }
+  .cap-info-det { font-size:36px; font-weight:700; color:#7b1fa2; line-height:0.9; }
+  .cap-last-record-detail { background:#fff3e0; border:2px solid #ffb74d; border-radius:10px; padding:12px; margin-top:15px; }
+  .cap-last-summary-grid b { color:#e65100; font-size:16px; text-transform:uppercase; }
+  .cap-last-summary-grid span { color:#1b5e20; font-weight:900; font-size:18px; }
+  .cap-prog-cont { height:40px; background:#e0e0e0; border:2px solid #333; border-radius:20px; margin-top:8px; position:relative; overflow:hidden; }
+  .cap-prog-bar { height:100%; }
+  .cap-prog-text { position:absolute; width:100%; text-align:center; line-height:40px; font-weight:900; font-size:15px; color:#000; z-index:5; text-shadow:0 0 3px white; }
+  .cap-capture-scroll { flex:1; display:flex; overflow-x:auto; padding:10px; gap:15px; align-items:center; }
+  .cap-lot-box { min-width:460px; padding:15px; border-radius:12px; border:4px solid #ccc; display:grid; grid-template-columns:1fr 1fr 1fr 1.2fr; gap:8px; transition:0.3s; }
+  .cap-lot-box.editing { background:#ffe0b2; border-color:#fb8c00; }
+  .cap-lot-box.complete { background:#c8e6c9; border-color:#2e7d32; }
+  .cap-lot-box.locked { background:#cfd8dc !important; opacity:0.7; pointer-events:none; }
+  .cap-lot-box.locked .cap-maqinfo-activo { pointer-events:all; opacity:1; }
+  .cap-lot-header { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; background:#263238; color:white; padding:8px 12px; border-radius:8px; }
+  .cap-btn-t { background:#ffca28; border:none; color:black; font-weight:900; width:40px; height:40px; border-radius:6px; cursor:pointer; font-size:22px; }
+  .cap-inp-cap { width:100%; padding:10px; border:2px solid #555; border-radius:6px; font-size:24px; font-weight:900; text-align:center; color:black; }
+  .cap-inp-locked { background:#e0e0e0 !important; color:#555 !important; }
+  .cap-lbl-cap { font-size:12px; font-weight:900; color:black; text-transform:uppercase; margin-bottom:2px; display:block; }
+  .cap-val-neto { font-size:40px; font-weight:900; color:#1565c0; display:flex; align-items:center; justify-content:center; border:4px solid #1565c0; border-radius:10px; background:white; }
+  .cap-btn-lot-action { grid-column:1/-1; padding:15px; border:none; border-radius:8px; font-weight:900; cursor:pointer; font-size:18px; text-transform:uppercase; }
+  .cap-btn-add-lot { background:#1565c0; color:white; width:70px; height:70px; border-radius:50%; border:none; font-size:45px; cursor:pointer; flex-shrink:0; box-shadow:0 4px 10px rgba(0,0,0,0.3); display:none; align-items:center; justify-content:center; }
+  .cap-fab-save { position:fixed; bottom:30px; right:30px; background:#2e7d32; color:white; padding:25px 50px; border-radius:60px; font-weight:900; font-size:26px; box-shadow:0 10px 25px rgba(0,0,0,0.5); border:3px solid white; display:none; cursor:pointer; z-index:2000; }
+  /* ── MODAL SELECCIÓN DE MÁQUINA ── */
+  .cap-maq-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:5000; display:flex; justify-content:center; align-items:center; }
+  .cap-maq-card { background:white; border-radius:16px; padding:24px; width:480px; max-width:95%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .cap-maq-title { font-size:20px; font-weight:900; color:#1565c0; margin-bottom:6px; text-align:center; text-transform:uppercase; }
+  .cap-maq-subtitle { font-size:13px; color:#546e7a; text-align:center; margin-bottom:14px; }
+  .cap-maq-grupo-label { font-size:12px; font-weight:900; color:#78909c; text-transform:uppercase; letter-spacing:1px; margin:10px 0 4px 0; padding-left:4px; }
+  .cap-maq-btn { display:block; width:100%; padding:12px 16px; margin-bottom:6px; border-radius:10px; border:2px solid #cfd8dc; background:white; font-size:16px; font-weight:700; cursor:pointer; text-align:left; transition:0.15s; }
+  .cap-maq-btn:hover { background:#e3f2fd; border-color:#1565c0; }
+  .cap-maq-btn.cap-maq-asignada { background:#fffde7; border:3px solid red; color:#1a237e; }
+  @keyframes cap-blink-red { 0%,100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); border-color:red; } 50%{ box-shadow:0 0 0 6px rgba(211,47,47,0.35); border-color:#ff8f00; } }
+  .cap-maq-btn.cap-maq-asignada { animation:cap-blink-red 1.2s infinite; }
+  .cap-maq-aceptar { width:100%; margin-top:14px; padding:14px; background:#1565c0; color:white; border:none; border-radius:10px; font-size:18px; font-weight:900; cursor:pointer; }
+  .cap-maq-aceptar:hover { background:#0d47a1; }
+  .cap-maq-cancelar { width:100%; margin-top:8px; padding:10px; background:#eceff1; color:#546e7a; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
+  .cap-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:3000; display:none; justify-content:center; align-items:center; }
+  .cap-maqsel-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); z-index:5000; display:flex; justify-content:center; align-items:center; }
+  .cap-maqsel-card { background:white; border-radius:16px; padding:24px; width:780px; max-width:97%; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .cap-maqsel-grupos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .cap-maqsel-grupo-col { background:#f5f5f5; border-radius:10px; padding:10px; }
+  .cap-maqsel-title { font-size:20px; font-weight:900; color:#1565c0; text-align:center; text-transform:uppercase; margin-bottom:4px; }
+  .cap-maqsel-sub { font-size:13px; color:#546e7a; text-align:center; margin-bottom:14px; }
+  .cap-maqsel-grp { font-size:11px; font-weight:900; color:#78909c; text-transform:uppercase; letter-spacing:1px; margin:10px 0 4px 4px; }
+  .cap-maqsel-btn { display:block; width:100%; padding:12px 16px; margin-bottom:6px; border-radius:10px; border:2px solid #cfd8dc; background:white; font-size:15px; font-weight:700; cursor:pointer; text-align:left; transition:0.15s; }
+  .cap-maqsel-btn:hover { background:#e3f2fd; border-color:#1565c0; }
+  .cap-maqsel-btn.selected { background:#e3f2fd; border:3px solid #1565c0; font-weight:900; }
+  .cap-maqsel-btn.asignada { background:#fffde7; border:3px solid red; color:#1a237e; }
+  @keyframes cap-blink-border { 0%,100%{ box-shadow:0 0 0 0 rgba(211,47,47,0); border-color:red; } 50%{ box-shadow:0 0 0 6px rgba(211,47,47,0.3); border-color:#ff6f00; } }
+  .cap-maqsel-btn.asignada { animation:cap-blink-border 1.2s infinite; }
+  .cap-maqsel-btn.cap-nueva-sel { background:#fffde7 !important; border:3px solid red !important; color:#1a237e !important; animation:cap-blink-border 1.2s infinite !important; }
+  .cap-maqsel-btn.asignada.sin-parpadeo { animation:none !important; border:2px solid #aaa !important; background:white !important; }
+  .cap-maqsel-ok { width:100%; margin-top:14px; padding:14px; background:#1565c0; color:white; border:none; border-radius:10px; font-size:17px; font-weight:900; cursor:pointer; }
+  .cap-maqsel-ok:hover { background:#0d47a1; }
+  .cap-maqsel-cancel { width:100%; margin-top:8px; padding:10px; background:#eceff1; color:#546e7a; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; }
+  .cap-modal-card { background:white; padding:25px; border-radius:15px; width:1000px; max-width:95%; position:relative; overflow:hidden; }
+  .cap-border-anim { position:absolute; background:#2e7d32; display:none; z-index:50; }
+  .cap-b-top-1 { top:0; left:50%; height:8px; width:0; animation:cap-anim-t1 1s linear forwards; }
+  .cap-b-right { top:0; right:0; width:8px; height:0; animation:cap-anim-r 2s linear forwards 1s; }
+  .cap-b-bottom { bottom:0; right:0; height:8px; width:0; animation:cap-anim-b 2s linear forwards 3s; }
+  .cap-b-left { bottom:0; left:0; width:8px; height:0; animation:cap-anim-l 2s linear forwards 5s; }
+  .cap-b-top-2 { top:0; left:0; height:8px; width:0; animation:cap-anim-t2 3s linear forwards 7s; }
+  @keyframes cap-anim-t1{0%{width:0}100%{width:50%}} @keyframes cap-anim-r{0%{height:0}100%{height:100%}} @keyframes cap-anim-b{0%{width:0}100%{width:100%}} @keyframes cap-anim-l{0%{height:0}100%{height:100%}} @keyframes cap-anim-t2{0%{width:0}100%{width:50%}}
+  .cap-tina-ctrl { display:flex; align-items:center; gap:8px; }
+</style>`;
+
+  hideLoader();
+
+  // ── Scrollbar lateral custom para Nueva Captura ──
+  (function() {
+    var sbId = 'cap-scrollbar';
+    var old  = document.getElementById(sbId);
+    if(old) old.remove();
+    var sb    = document.createElement('div');
+    sb.id     = sbId;
+    sb.style.cssText = 'position:fixed;right:0;top:48px;width:14px;height:calc(100vh - 48px);background:#e0e0e0;z-index:4000;cursor:pointer;border-left:1px solid #bdbdbd;';
+    var thumb = document.createElement('div');
+    thumb.id  = 'cap-scrollbar-thumb';
+    thumb.style.cssText = 'position:absolute;width:100%;background:#2e7d32;border-radius:7px;cursor:grab;display:none;';
+    sb.appendChild(thumb);
+    document.body.appendChild(sb);
+
+    var main = document.getElementById('main');
+    if(!main) return;
+
+    // Crear flechas
+    var btnUp = document.createElement('div');
+    btnUp.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:20px;background:#2e7d32;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;cursor:pointer;user-select:none;z-index:2;border-radius:0 0 4px 4px;';
+    btnUp.textContent = '▲';
+    var btnDn = document.createElement('div');
+    btnDn.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:20px;background:#2e7d32;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;cursor:pointer;user-select:none;z-index:2;border-radius:4px 4px 0 0;';
+    btnDn.textContent = '▼';
+    thumb.style.top = '20px';
+    sb.appendChild(btnUp);
+    sb.appendChild(btnDn);
+
+    var ARROW_H = 20, STEP = 80;
+
+    function actualizarThumb() {
+      var scrollH=main.scrollHeight, clientH=main.clientHeight, trackH=clientH-ARROW_H*2;
+      if(scrollH<=clientH){ thumb.style.display='none'; return; }
+      thumb.style.display='block';
+      var ratio=trackH/scrollH;
+      var thumbH=Math.max(ratio*clientH,30);
+      var thumbTop=ARROW_H+(main.scrollTop/(scrollH-clientH))*(trackH-thumbH);
+      thumb.style.height=thumbH+'px';
+      thumb.style.top=thumbTop+'px';
+    }
+    main.addEventListener('scroll', actualizarThumb);
+    actualizarThumb();
+
+    var dragging=false, startY=0, startST=0;
+    thumb.addEventListener('mousedown',function(e){
+      dragging=true; startY=e.clientY; startST=main.scrollTop; e.preventDefault();
+    });
+    document.addEventListener('mousemove',function(e){
+      if(!dragging) return;
+      var scrollH=main.scrollHeight, clientH=main.clientHeight, trackH=clientH-ARROW_H*2;
+      var ratio=(scrollH-clientH)/(trackH-thumb.offsetHeight);
+      main.scrollTop=startST+(e.clientY-startY)*ratio;
+    });
+    document.addEventListener('mouseup',function(){ dragging=false; });
+    sb.addEventListener('click',function(e){
+      if(e.target===thumb||e.target===btnUp||e.target===btnDn) return;
+      var clientH=main.clientHeight, trackH=clientH-ARROW_H*2;
+      var thumbH=thumb.offsetHeight, scrollH=main.scrollHeight;
+      var clickY=e.clientY-sb.getBoundingClientRect().top-ARROW_H;
+      var ratio=(scrollH-clientH)/(trackH-thumbH);
+      main.scrollTop=(clickY-thumbH/2)*ratio;
+    });
+
+    function iniciarHold(dir) {
+      main.scrollTop += dir * STEP;
+      var intervalo=null;
+      var timeout=setTimeout(function(){
+        intervalo=setInterval(function(){ main.scrollTop+=dir*STEP; },60);
+      },350);
+      function detener(){ clearTimeout(timeout); clearInterval(intervalo); document.removeEventListener('mouseup',detener); }
+      document.addEventListener('mouseup', detener);
+    }
+    btnUp.addEventListener('mousedown',function(e){ e.preventDefault(); iniciarHold(-1); });
+    btnDn.addEventListener('mousedown',function(e){ e.preventDefault(); iniciarHold(1);  });
+
+    // Limpiar scrollbar al salir del módulo
+    var origLoadModule = window.loadModule;
+    if(origLoadModule && !origLoadModule._capSbPatched){
+      window.loadModule = function(mod){
+        var s=document.getElementById('cap-scrollbar'); if(s) s.remove();
+        origLoadModule(mod);
+      };
+      window.loadModule._capSbPatched = true;
+    }
+  })();
+
+  // ══ ESTADO DEL MÓDULO ══
+  var capDb = { maquinas:[], currentOps:[], lotesExistentes:[], historial:{} };
+  var capMaqModal = { oid: null, pendingNombre: null, maqSeleccionada: null };
+  var capLocalEntries = [];
+  var capAllRows = [];
+  var capFocusIdx = 0;
+  var capCurrentProceso = "";
+  var capCurrentTurno = 1;
+  var capCurrentGrupo = "TODOS";
+  var capTermMap = { "COLATADO":"TARIMA","ROSCADO":"ATADO","ESTIRADO":"ATADO","ENDEREZADO":"ATADO","CORTE":"ATADO","PULIDO":"ATADO","BARRA":"ATADO" };
+  var CAP_BARRA_PROCESOS = ['ESTIRADO','ENDEREZADO','CORTE','PULIDO BARRA'];
+
+  // ══ INICIALIZACIÓN ══
+  showLoader('CARGANDO PROCESOS...');
+  google.script.run.withSuccessHandler(function(res) {
+    capDb.procesos = res.procesos;
+    capDb.operadoresAll = res.operadores;
+    capDb.maquinasRaw = res.maquinas;
+    capRenderProcesos();
+    capCalculateShift();
+    hideLoader();
+  }).obtenerDatosInicialesNvo();
+  document.addEventListener('keydown', capHandleGlobalNav);
+
+  // ══ FUNCIONES DEL MÓDULO ══
+  window.capRenderProcesos = function() {
+    var nombres = capDb.procesos.map(function(p){ return p.nombre; });
+    document.getElementById('cap-gridProcesos').innerHTML = renderProcGrid(nombres, function(nombre) {
+      return '<div onclick="capSelectProceso(\''+nombre.replace(/'/g,"\\'")+'\') " style="background:white;padding:18px 10px 14px 10px;border-radius:14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.1);display:flex;flex-direction:column;align-items:center;gap:8px;border:3px solid #ddd;transition:all 0.15s;font-weight:900;font-size:13px;" onmouseover="this.style.borderColor=\'#7986cb\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'#ddd\';this.style.transform=\'\'">'
+        + getProcSVG(nombre)
+        +'<span>'+nombre+'</span></div>';
+    });
+  };
+
+  window.capSelectProceso = function(proc) {
+    capCurrentProceso = proc;
+    document.getElementById('cap-view1').style.display = 'none';
+    document.getElementById('cap-view2').style.display = 'block';
+    showLoader('CARGANDO PROCESO: '+proc+'...');
+    // Operadores: para BARRA incluir operadores de todos los 4 procesos
+    var procsParaOps = (proc === 'BARRA') ? CAP_BARRA_PROCESOS : [proc];
+    capDb.currentOps = capDb.operadoresAll.filter(function(o){
+      return procsParaOps.some(function(p){ return o.procs.includes(p.toUpperCase()); }) || o.procs.includes("TODOS");
+    });
+    document.getElementById('cap-listOps').innerHTML = capDb.currentOps.map(function(o){ return '<option value="'+o.nombre+'">'; }).join('');
+
+    if(proc !== 'BARRA'){
+      // Flujo normal: un solo proceso
+      google.script.run.withSuccessHandler(function(jsonRes) {
+        try {
+          var res = JSON.parse(jsonRes);
+          if (res.success) {
+            document.getElementById('cap-mainContent').innerHTML = "";
+            capDb.historial = res.historial;
+            capDb.lotesExistentes = res.lotesExistentes;
+            capDb.ultimasPorMaquina = res.ultimasPorMaquina;
+          capDb.ordenesRaw = res.ordenes; // Guardamos todas las ordenes para busquedas locales
+            capDb.maquinas = [];
+            res.maquinas.forEach(function(m) {
+              var mappedOrders = res.ordenes.filter(function(o){ return o.maq.toUpperCase().includes(m.maq.toUpperCase()); }).map(function(o){
+                return { id:o.id, serie:o.serie, nombre:o.serie+"."+o.num, tipo:o.tipo, medidas:o.medidas, acero:o.acero, sol:o.sol, prod:o.prod, prioridad:o.prioridad, esUltima:(o.id==capDb.ultimasPorMaquina[m.maq.toUpperCase()]), avance:(o.sol>0)?(o.prod/o.sol)*100:0, estado:String(o.estado||'').toUpperCase().trim(), codigo:String(o.codigo||'').toUpperCase().trim() };
+              });
+              var maqData = { maquina:m.maq, ordenes:mappedOrders, grupo:m.grupo };
+              capDb.maquinas.push(maqData);
+              capRenderAccordion(maqData, m.grupo);
+            });
+            capRenderFilterBar(proc);
+          } else { sAlert("Error: "+res.error); }
+        } catch(e) { console.error(e); sAlert("Error al procesar datos del servidor."); }
+        finally { hideLoader(); }
+      }).obtenerTodoElProcesoNvo(proc);
+    } else {
+      // Flujo BARRA: 4 procesos en paralelo, fusionar resultados
+      document.getElementById('cap-mainContent').innerHTML = "";
+      capDb.historial = {};
+      capDb.lotesExistentes = [];
+      capDb.ultimasPorMaquina = {};
+      capDb.maquinas = [];
+      var total = CAP_BARRA_PROCESOS.length;
+      var completados = 0;
+      var errores = [];
+      CAP_BARRA_PROCESOS.forEach(function(subProc) {
+        google.script.run
+          .withSuccessHandler(function(jsonRes) {
+            try {
+              var res = JSON.parse(jsonRes);
+              if(res.success){
+                // Fusionar historial
+                Object.keys(res.historial||{}).forEach(function(k){ capDb.historial[k] = res.historial[k]; });
+                // Fusionar lotesExistentes
+                (res.lotesExistentes||[]).forEach(function(l){ if(capDb.lotesExistentes.indexOf(l)<0) capDb.lotesExistentes.push(l); });
+                // Fusionar ultimasPorMaquina
+                Object.keys(res.ultimasPorMaquina||{}).forEach(function(k){ capDb.ultimasPorMaquina[k] = res.ultimasPorMaquina[k]; });
+                // Renderizar máquinas de este subproceso
+                res.maquinas.forEach(function(m) {
+                  var mappedOrders = res.ordenes.filter(function(o){ return o.maq.toUpperCase().includes(m.maq.toUpperCase()); }).map(function(o){
+                    var rowObj = { id:o.id, serie:o.serie, nombre:o.serie+"."+o.num, tipo:o.tipo, medidas:o.medidas, acero:o.acero, sol:o.sol, prod:o.prod, prioridad:o.prioridad, esUltima:(o.id==capDb.ultimasPorMaquina[m.maq.toUpperCase()]), avance:(o.sol>0)?(o.prod/o.sol)*100:0, procesoReal:res.proceso||subProc, estado:String(o.estado||'').toUpperCase().trim(), codigo:String(o.codigo||'').toUpperCase().trim() };
+                    return rowObj;
+                  });
+                  var maqData = { maquina:m.maq, ordenes:mappedOrders, grupo:m.grupo, procesoReal:res.proceso||subProc };
+                  capDb.maquinas.push(maqData);
+                  capRenderAccordion(maqData, m.grupo);
+                });
+              } else { errores.push(res.error); }
+            } catch(e){ errores.push(e.toString()); }
+            completados++;
+            if(completados === total){
+              hideLoader();
+              if(errores.length) sAlert('Algunos procesos no cargaron: '+errores.join(', '),'warning');
+              capRenderFilterBarBarra();
+            }
+          })
+          .withFailureHandler(function(e){
+            errores.push(String(e));
+            completados++;
+            if(completados === total){ hideLoader(); sAlert('Error cargando BARRA: '+errores.join(', '),'error'); }
+          })
+          .obtenerTodoElProcesoNvo(subProc);
+      });
+    }
+  };
+
+  window.capRenderFilterBarBarra = function() {
+    // Para BARRA: mostrar los 4 subprocesos como filtros
+    var html = '<button class="cap-btn-grp active" onclick="capFilterByGrp(\'TODOS\',this)">TODOS</button>';
+    CAP_BARRA_PROCESOS.forEach(function(p){
+      html += '<button class="cap-btn-grp" onclick="capFilterByGrpBarra(\''+p+'\',this)">'+p+'</button>';
+    });
+    document.getElementById('cap-filterBar').innerHTML = html;
+  };
+
+  window.capFilterByGrpBarra = function(proc, btn) {
+    document.querySelectorAll('.cap-btn-grp').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('#cap-panel .cap-machine-section').forEach(function(sec){
+      sec.style.display = (proc==='TODOS' || sec.dataset.procesoReal===proc) ? 'block' : 'none';
+    });
+  };
+
+  window.capRenderFilterBar = function(proc) {
+    var maqs = capDb.maquinasRaw.filter(function(m){ return m.proc==proc; });
+    var grupos = [...new Set(maqs.map(function(m){ return m.grupo; }).filter(function(g){ return g; }))];
+    var html = '<button class="cap-btn-grp active" onclick="capFilterByGrp(\'TODOS\',this)">TODOS</button>';
+    grupos.forEach(function(g){ html += '<button class="cap-btn-grp" onclick="capFilterByGrp(\''+g+'\',this)">'+g+'</button>'; });
+    document.getElementById('cap-filterBar').innerHTML = html;
+  };
+
+  window.capFilterByGrp = function(grp, btn) {
+    capCurrentGrupo = grp;
+    document.querySelectorAll('.cap-btn-grp').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('#cap-panel .cap-machine-section').forEach(function(sec) {
+      var ordsContainer = sec.querySelector('.cap-ords-container');
+      var arrow = sec.querySelector('.cap-machine-header span:last-child');
+      if (grp==='TODOS' || sec.dataset.group===grp) { sec.style.display='block'; ordsContainer.style.display='none'; arrow.innerText='▼'; }
+      else { sec.style.display='none'; }
+    });
+    document.getElementById('cap-searchHuge').value = "";
+    var msgNo = document.getElementById('cap-msgNo');
+    if(msgNo) msgNo.remove();
+  };
+
+  window.capRenderAccordion = function(res, group) {
+    var container = document.getElementById('cap-mainContent');
+    var sec = document.createElement('div');
+    sec.className = "cap-machine-section";
+    sec.id = "cap-sec-"+res.maquina.replace(/\s+/g,'');
+    sec.dataset.group = group;
+    sec.dataset.procesoReal = res.procesoReal || capCurrentProceso;
+    sec.innerHTML = '<div class="cap-machine-header" onclick="capToggleAccordion(\''+sec.id+'\')"><span>'+res.maquina+'</span><span>▼</span></div>'
+      +'<div class="cap-ords-container" id="cap-cont-'+sec.id+'" style="display:none"></div>';
+    container.appendChild(sec);
+    var sorted = res.ordenes.sort(function(a,b){ if(a.esUltima)return -1; if(b.esUltima)return 1; return a.prioridad-b.prioridad; });
+    capDrawOrderRows(res.maquina, sorted);
+  };
+
+  window.capToggleAccordion = function(id) {
+    var el = document.getElementById("cap-cont-"+id);
+    var arrow = document.getElementById(id).querySelector('.cap-machine-header span:last-child');
+    if(el.style.display==="block"){ el.style.display="none"; arrow.innerText="▼"; }
+    else { el.style.display="block"; arrow.innerText="▲"; }
+  };
+
+  window.capDrawOrderRows = function(maq, orders) {
+    var cont = document.getElementById("cap-cont-cap-sec-"+maq.replace(/\s+/g,''));
+    orders.forEach(function(o) {
+      if(document.getElementById('cap-row-'+o.id)) return;
+      var row = document.createElement('div');
+      row.className = "cap-order-row "+(o.esUltima?'last-produced':'');
+      row.id = "cap-row-"+o.id;
+      row.dataset.maq = maq;
+      row.dataset.procesoReal = o.procesoReal || capCurrentProceso;
+      row.dataset.serie = o.serie;
+      row.dataset.nombre = o.nombre;
+      row.dataset.estado = String(o.estado || '').toUpperCase().trim();
+      row.dataset.codigo = String(o.codigo || '').toUpperCase().trim();
+      row.dataset.tipo = String(o.tipo || '').toUpperCase().trim();
+      row.dataset.medidas = String(o.medidas || '').toUpperCase().trim();
+      row.innerHTML = '<div class="cap-order-info">'
+        +'<div class="cap-info-name">'+o.nombre+'</div>'
+        +'<div class="cap-info-type">'+o.tipo+'</div>'
+        +'<div class="cap-info-det">'+o.medidas+' | '+o.acero+'</div>'
+        +'<div id="cap-last-summary-'+o.id+'" class="cap-last-record-detail"><div style="text-align:center;color:#888;">Cargando historial...</div></div>'
+        +'<div class="cap-prog-cont"><div class="cap-prog-text">SOL: '+o.sol.toLocaleString()+' | PROD: '+o.prod.toLocaleString()+' | '+Math.round(o.avance)+'%</div>'
+        +'<div class="cap-prog-bar" style="width:'+Math.min(o.avance,100)+'%;background:'+capGetColorPct(o.avance)+'"></div></div></div>'
+        +'<div class="cap-capture-scroll" id="cap-scroll-'+o.id+'"></div>'
+        +'<div style="padding:15px;"><button class="cap-btn-add-lot" id="cap-btnAdd-'+o.id+'" onclick="capInitAddLot(\''+o.id+'\',\''+o.nombre+'\')">+</button></div>';
+      cont.appendChild(row);
+      capAllRows.push(row);
+      capInitAddLotReal(o.id, o.nombre);
+      capActualizarResumenVisual(o.id);
+    });
+  };
+
+  window.capInitAddLot = function(oid, oNombre) {
+    var scroll = document.getElementById('cap-scroll-'+oid);
+    var btnAdd = document.getElementById('cap-btnAdd-'+oid);
+    var prevBoxes = scroll.querySelectorAll('.cap-lot-box');
+    if(prevBoxes.length>0) {
+      var lastBox = prevBoxes[prevBoxes.length-1];
+      if(!lastBox.classList.contains('complete')&&!lastBox.classList.contains('locked')){ sAlert("Finalice el lote actual antes de abrir uno nuevo."); return; }
+    }
+    if(btnAdd) btnAdd.style.display="none";
+    // Mostrar modal de selección de máquina antes de crear el lote
+    capMaqModal.oid = oid;
+    capMaqModal.pendingNombre = oNombre;
+    var row = document.getElementById('cap-row-'+oid);
+    var maqAsignada = row ? row.dataset.maq.toUpperCase().trim() : '';
+    capMaqModal.maqSeleccionada = maqAsignada;
+    capMaqModal.maqAsignada = maqAsignada;
+    // Obtener máquinas del proceso desde caché maquinasRaw
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === capCurrentProceso.toUpperCase().trim();
+    });
+    // Agrupar por grupo
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    // Si la máquina asignada no está en ESTANDARES, agregarla
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqAsignada && todasMaqs.indexOf(maqAsignada) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqAsignada);
+    }
+    var html = '<div class="cap-maqsel-title">🏭 SELECCIONA MÁQUINA</div>'
+      + '<div class="cap-maqsel-sub">Proceso: <b>' + capCurrentProceso + '</b></div>'
+      + capMaqSelBuildHTML(grupos, maqAsignada);
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">' + html
+      + '<button class="cap-maqsel-ok" onclick="capMaqSelAceptar()">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capMaqSelBuildHTML = function(grupos, maqAsignada) {
+    var gruposOrdenados = Object.keys(grupos).sort();
+    var html = '<div class="cap-maqsel-grupos-grid">';
+    gruposOrdenados.forEach(function(g){
+      html += '<div class="cap-maqsel-grupo-col">';
+      html += '<div class="cap-maqsel-grp">📦 ' + g + '</div>';
+      grupos[g].forEach(function(m){
+        var esAsignada = (m.toUpperCase().trim() === maqAsignada.toUpperCase().trim());
+        html += '<button class="cap-maqsel-btn' + (esAsignada ? ' asignada selected' : '') + '" '
+          + 'data-maq="' + m + '" onclick="capMaqSelClick(this)">'
+          + (esAsignada ? '⭐ ' : '') + m + '</button>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  };
+
+  window.capMaqSelClick = function(btn) {
+    var maqAsignada = (capMaqModal.maqAsignada || '').toUpperCase().trim();
+    document.querySelectorAll('.cap-maqsel-btn').forEach(function(b){
+      b.classList.remove('selected','cap-nueva-sel','sin-parpadeo');
+      // Restaurar estilo base de la máquina asignada (corona, sin parpadeo)
+      if(b.dataset.maq.toUpperCase().trim() === maqAsignada){
+        b.classList.add('asignada');
+      }
+    });
+    var esMismaAsignada = (btn.dataset.maq.toUpperCase().trim() === maqAsignada);
+    if(esMismaAsignada){
+      // Eligió la misma que venía: quitar cap-nueva-sel y restaurar parpadeo asignada
+      btn.classList.remove('sin-parpadeo');
+    } else {
+      // Eligió diferente: apagar parpadeo de la asignada y prender en la nueva
+      document.querySelectorAll('.cap-maqsel-btn.asignada').forEach(function(b){
+        b.classList.add('sin-parpadeo');
+      });
+      btn.classList.add('cap-nueva-sel');
+    }
+    capMaqModal.maqSeleccionada = btn.dataset.maq;
+  };
+
+  window.capMaqSelAceptar = function() {
+    if(!capMaqModal.maqSeleccionada){ sAlert('Selecciona una máquina primero.','warning'); return; }
+    var oid = capMaqModal.oid;
+    var oNombre = capMaqModal.pendingNombre;
+    var row = document.getElementById('cap-row-'+oid);
+    if(row) row.dataset.maq = capMaqModal.maqSeleccionada;
+    capMaqSelCancelar();
+    capInitAddLotReal(oid, oNombre);
+  };
+
+  window.capMaqSelCancelar = function() {
+    var overlay = document.getElementById('cap-maqsel-overlay');
+    if(overlay) overlay.parentNode.removeChild(overlay);
+    // Restaurar botón + si no hay lote en progreso
+    var oid = capMaqModal.oid;
+    if(oid){
+      var scroll = document.getElementById('cap-scroll-'+oid);
+      var prevBoxes = scroll ? scroll.querySelectorAll('.cap-lot-box') : [];
+      var hayAbierto = Array.from(prevBoxes).some(function(b){ return !b.classList.contains('locked'); });
+      if(!hayAbierto){
+        var btnAdd = document.getElementById('cap-btnAdd-'+oid);
+        if(btnAdd) btnAdd.style.display='flex';
+      }
+    }
+  };
+
+  window.capInitAddLotReal = function(oid, oNombre) {
+    var scroll = document.getElementById('cap-scroll-'+oid);
+    var prevBoxes = scroll.querySelectorAll('.cap-lot-box');
+    var lIdx=1;
+    var localPrev = capLocalEntries.filter(function(e){ return e.ordenID==oid; });
+    if(localPrev.length>0) lIdx=parseInt(localPrev[localPrev.length-1].numLote);
+    else if(capDb.historial[oid]) lIdx=(capDb.historial[oid].maxLote||1);
+    var term = capTermMap[capCurrentProceso.toUpperCase()]||"TINA";
+    var op1 = document.getElementById('cap-defOp1').value;
+    var boxIdx = prevBoxes.length+1;
+    var box = document.createElement('div');
+    box.className="cap-lot-box editing";
+    box.id="cap-box-"+oid+"-"+boxIdx;
+    box.innerHTML = '<div class="cap-lot-header">'
+      +'<div class="cap-tina-ctrl">'
+      +'<button class="cap-btn-t" onclick="capAdjT(\''+oid+'\','+boxIdx+',-1)">-</button>'
+      +'<b style="font-size:20px;">'+term+' <span id="cap-num-'+oid+'-'+boxIdx+'">'+lIdx+'</span></b>'
+      +'<button class="cap-btn-t" onclick="capAdjT(\''+oid+'\','+boxIdx+',1)">+</button>'
+      +'</div>'
+      +'<b style="cursor:pointer;color:#ff8a80;font-size:18px;" onclick="capRemoveLot(\''+oid+'\','+boxIdx+')">✖</b>'
+      +'</div>'
+      +'<div><label class="cap-lbl-cap">P. INICIAL</label><input type="number" class="cap-inp-cap cap-inp-locked" id="cap-pi-'+oid+'-'+boxIdx+'" readonly></div>'
+      +'<div><label class="cap-lbl-cap">P. '+term+'</label><input type="number" class="cap-inp-cap" id="cap-pt-'+oid+'-'+boxIdx+'" onfocus="this.dataset.old=this.value" onblur="capVerificarSobreproduccion(\''+oid+'\','+boxIdx+');capValidarCambioPeso(this,\''+oid+'\','+boxIdx+')" oninput="capValLote(\''+oid+'\','+boxIdx+')"></div>'
+      +'<div><label class="cap-lbl-cap">P. FINAL</label><input type="number" class="cap-inp-cap" id="cap-pf-'+oid+'-'+boxIdx+'" onfocus="this.dataset.old=this.value" onblur="capVerificarSobreproduccion(\''+oid+'\','+boxIdx+');capValidarCambioPeso(this,\''+oid+'\','+boxIdx+')" oninput="capValLote(\''+oid+'\','+boxIdx+')"></div>'
+      +'<div class="cap-val-neto" id="cap-neto-'+oid+'-'+boxIdx+'">0</div>'
+      +'<div style="grid-column:span 4;border-top:1px solid #ccc;padding-top:10px;">'
+      +'<label style="font-weight:900;font-size:14px;"><input type="checkbox" id="cap-chk-'+oid+'-'+boxIdx+'" '+(op1?'checked':'disabled')+' onchange="capToggleOpManual(\''+oid+'\','+boxIdx+')"> Usar default: <span class="cap-op-label">'+(op1||'N/A')+'</span></label>'
+      +'<div class="cap-manual-ops" style="display:'+(op1?'none':'block')+';margin-top:8px;">'
+      +'<input type="text" class="cap-inp-cap cap-op-manual-inp" style="font-size:16px;text-align:left;" list="cap-listOps" placeholder="Op 1..." onkeydown="capHandleSmartInput(this,event)" oninput="capValLote(\''+oid+'\','+boxIdx+')" onblur="capValLote(\''+oid+'\','+boxIdx+')">'
+      +'<input type="text" class="cap-inp-cap" style="display:none;font-size:16px;text-align:left;margin-top:5px;" list="cap-listOps" id="cap-op2-'+oid+'-'+boxIdx+'" placeholder="Op 2...">'
+      +'<button class="cap-btn-lot-action" style="background:#546e7a;color:white;padding:8px;margin-top:5px;font-size:14px;" onclick="this.previousElementSibling.style.display=\'block\';this.remove()">+ Op 2</button>'
+      +'</div></div>'
+      +'<div style="grid-column:span 4;display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      +'<div><label class="cap-lbl-cap">SELLO</label><input type="text" class="cap-inp-cap" style="font-size:16px;" id="cap-sello-'+oid+'-'+boxIdx+'" oninput="capValLote(\''+oid+'\','+boxIdx+')"></div>'
+      +'<div><label class="cap-lbl-cap">COMENTARIOS</label><input type="text" class="cap-inp-cap" style="font-size:16px;" id="cap-com-'+oid+'-'+boxIdx+'"></div>'
+      +'</div>'
+      +'<button class="cap-btn-lot-action" id="cap-btnS-'+oid+'-'+boxIdx+'" disabled onclick="capSaveLocal(\''+oid+'\','+boxIdx+')">AGREGAR LOTE</button>';
+    scroll.appendChild(box);
+    capAdjT(oid, boxIdx, 0);
+  };
+
+  window.capVerificarSobreproduccion = function(oid, boxIdx) {
+    var box = document.getElementById('cap-box-' + oid + '-' + boxIdx);
+    if (!box || box.dataset.sobrepChecked) return;
+    box.dataset.sobrepChecked = '1';
+    var row = document.getElementById('cap-row-' + oid);
+    if (!row) return;
+    var estadoOrd = (row.dataset.estado || '').toUpperCase().trim();
+    if (estadoOrd !== 'SOBREPRODUCCION' && estadoOrd !== 'TERMINADO') return;
+    var codigoOrd = (row.dataset.codigo || '').toUpperCase().trim();
+    var maqOrd    = (row.dataset.maq    || '').toUpperCase().trim();
+    var ordenesRaw = capDb.ordenesRaw || [];
+    var estadosVivos = ['ABIERTO', 'ACTIVE', 'EN PROCESO'];
+    var siguienteOrden = null;
+    for (var i = 0; i < ordenesRaw.length; i++) {
+      var o = ordenesRaw[i];
+      if (String(o.id) === String(oid)) continue;
+      var oCodigo = String(o.codigo || '').toUpperCase().trim();
+      var oMaq    = String(o.maq    || '').toUpperCase().trim();
+      var oEstado = String(o.estado || '').toUpperCase().trim();
+      if (oCodigo === codigoOrd && oMaq === maqOrd && estadosVivos.indexOf(oEstado) > -1) {
+        siguienteOrden = { nombre: String(o.serie||'') + '.' + String(o.num||'') };
+        break;
+      }
+    }
+    if (!siguienteOrden) return;
+    Swal.fire({
+      icon: 'warning',
+      title: '⚠️ Orden ' + estadoOrd,
+      html: 'Esta orden ya tiene estado <b>' + estadoOrd + '</b> y se cerrará.<br>'
+          + '⚠️ Recuerda <b>cambiar las identificaciones del producto</b>.<br><br>'
+          + '📋 Usa la siguiente orden: <b style="font-size:18px;">(' + siguienteOrden.nombre + ')</b>',
+      confirmButtonText: 'ENTENDIDO',
+      confirmButtonColor: '#1565c0',
+      allowOutsideClick: false
+    });
+    row.style.opacity = '0.45';
+    row.style.pointerEvents = 'none';
+    row.style.background = '#cfd8dc';
+    if (box) {
+      box.classList.remove('editing', 'complete');
+      box.classList.add('locked');
+    }
+    if (estadoOrd === 'SOBREPRODUCCION') {
+      google.script.run
+        .withSuccessHandler(function() { console.log('[CAP] → TERMINADO OK'); })
+        .withFailureHandler(function(e) { console.warn('[CAP] Error TERMINADO:', e); })
+        .cambiarEstadoOrdenProg(oid, 'TERMINADO');
+    }
+  };
+
+  window.capAbrirCambioMaq = function(oid, boxIdx) {
+    var row = document.getElementById('cap-row-'+oid);
+    var maqActual = row ? row.dataset.maq.toUpperCase().trim() : '';
+    capMaqModal.oid = oid;
+    capMaqModal.pendingNombre = null;
+    capMaqModal.maqSeleccionada = maqActual;
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === capCurrentProceso.toUpperCase().trim();
+    });
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqActual && todasMaqs.indexOf(maqActual) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqActual);
+    }
+    var html = '<div class="cap-maqsel-title">✏️ CAMBIAR MÁQUINA</div>'
+      + capMaqSelBuildHTML(grupos, maqActual);
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">' + html
+      + '<button class="cap-maqsel-ok" onclick="capMaqCambioAceptar(\''+oid+'\','+boxIdx+')">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capMaqCambioAceptar = function(oid, boxIdx) {
+    if(!capMaqModal.maqSeleccionada){ sAlert('Selecciona una máquina primero.','warning'); return; }
+    var row = document.getElementById('cap-row-'+oid);
+    if(row) row.dataset.maq = capMaqModal.maqSeleccionada;
+    // Actualizar el texto visible en el lote
+    var txtEl = document.getElementById('cap-maqtxt-'+oid+'-'+boxIdx);
+    if(txtEl) txtEl.innerText = capMaqModal.maqSeleccionada;
+    // Actualizar el entry guardado en capLocalEntries
+    var entry = capLocalEntries.find(function(e){ return e.ordenID==oid && String(e.numLote)==String(document.getElementById('cap-num-'+oid+'-'+boxIdx) ? document.getElementById('cap-num-'+oid+'-'+boxIdx).innerText : ''); });
+    if(entry) entry.maquina = capMaqModal.maqSeleccionada;
+    capMaqSelCancelar();
+  };
+
+  window.capValLote = function(oid, boxIdx) {
+    var pi = parseFloat(document.getElementById('cap-pi-'+oid+'-'+boxIdx).value)||0;
+    var pt = parseFloat(document.getElementById('cap-pt-'+oid+'-'+boxIdx).value)||0;
+    var pf = parseFloat(document.getElementById('cap-pf-'+oid+'-'+boxIdx).value)||0;
+    var neto = Math.round(pf-pi-pt);
+    var netoDisplay = document.getElementById('cap-neto-'+oid+'-'+boxIdx);
+    netoDisplay.innerText = neto>0?neto:0;
+    var box = document.getElementById('cap-box-'+oid+'-'+boxIdx);
+    var chk = document.getElementById('cap-chk-'+oid+'-'+boxIdx).checked;
+    var manualInp = box.querySelector('.cap-manual-ops input');
+    var op1Val = manualInp?manualInp.value:"";
+    var selloInp = document.getElementById('cap-sello-'+oid+'-'+boxIdx);
+    var selloVal = selloInp.value.trim();
+    var procsConSello = ["FORJA","PUNTEADO","ROLADO TORN","TREFILADO"];
+    var necesitaSello = procsConSello.includes(capCurrentProceso.toUpperCase());
+    var selloOk = true;
+    if(necesitaSello){ if(selloVal.length<2){ selloOk=false; selloInp.style.borderColor="red"; selloInp.style.backgroundColor="#ffebee"; }else{ selloInp.style.borderColor="#2e7d32"; selloInp.style.backgroundColor="#e8f5e9"; } }
+    else { selloInp.style.borderColor="#555"; selloInp.style.backgroundColor="white"; }
+    var esPesoValido = pf>(pi+pt);
+    var opEnLista = capDb.currentOps.some(function(o){ return o.nombre.trim().toLowerCase() === op1Val.trim().toLowerCase(); });
+    var manualOpInp = box.querySelector('.cap-op-manual-inp');
+    if(!chk && manualOpInp){
+      if(op1Val.length > 0 && !opEnLista){ manualOpInp.style.borderColor='red'; manualOpInp.style.backgroundColor='#ffebee'; }
+      else if(opEnLista){ manualOpInp.style.borderColor='#2e7d32'; manualOpInp.style.backgroundColor='#e8f5e9'; }
+      else { manualOpInp.style.borderColor='#555'; manualOpInp.style.backgroundColor='white'; }
+    }
+    var operadorOk = (chk || opEnLista);
+    var btn = document.getElementById('cap-btnS-'+oid+'-'+boxIdx);
+    if(neto>0&&esPesoValido&&operadorOk&&selloOk){ box.classList.remove('editing'); box.classList.add('complete'); btn.disabled=false; btn.style.background="#2e7d32"; btn.style.color="white"; }
+    else{ box.classList.remove('complete'); box.classList.add('editing'); btn.disabled=true; btn.style.background="#eee"; btn.style.color="#888"; }
+  };
+
+  window.capSaveLocal = function(oid, boxIdx) {
+    // 1. Validar fecha
+    var fechaIngresada = document.getElementById('cap-txtFecha').value;
+    if(fechaIngresada){
+      var hoy = new Date(); hoy.setHours(23,59,59,999);
+      var fInp = new Date(fechaIngresada + 'T00:00:00');
+      if(fInp > hoy){
+        sAlert('⛔ No puedes capturar con fecha futura. La fecha máxima permitida es hoy: '
+          + hoy.toLocaleDateString('es-MX'), 'error', 'Fecha no válida');
+        return;
+      }
+    }
+    // 2. Validar operador
+    var box = document.getElementById('cap-box-'+oid+'-'+boxIdx);
+    var chk = document.getElementById('cap-chk-'+oid+'-'+boxIdx).checked;
+    if(!chk){
+      var manInp = box.querySelectorAll('.cap-manual-ops input')[0];
+      var nomOp1Manual = manInp ? manInp.value.trim() : '';
+      var opValida = capDb.operadoresAll.some(function(o){ return o.nombre.trim().toLowerCase() === nomOp1Manual.toLowerCase(); });
+      if(!opValida){
+        if(manInp){ manInp.style.borderColor='red'; manInp.style.backgroundColor='#ffebee'; }
+        sAlert('⛔ "'+nomOp1Manual+'" no es un operador válido. Selecciona uno de la lista.', 'error', 'Operador inválido');
+        return;
+      }
+    }
+    // 3. Mostrar modal de confirmación de máquina
+    var row = document.getElementById('cap-row-'+oid);
+    var maqAsignada = row ? row.dataset.maq.toUpperCase().trim() : '';
+    capMaqModal.oid = oid;
+    capMaqModal.boxIdx = boxIdx;
+    capMaqModal.maqSeleccionada = maqAsignada;
+    capMaqModal.maqAsignada = maqAsignada;
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === capCurrentProceso.toUpperCase().trim();
+    });
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqAsignada && todasMaqs.indexOf(maqAsignada) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqAsignada);
+    }
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">'
+      + '<div class="cap-maqsel-title">🏭 CONFIRMA MÁQUINA</div>'
+      + '<div class="cap-maqsel-sub">Proceso: <b>' + capCurrentProceso + '</b></div>'
+      + capMaqSelBuildHTML(grupos, maqAsignada)
+      + '<button class="cap-maqsel-ok" onclick="capMaqGuardarAceptar()">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capMaqGuardarAceptar = function() {
+    if(!capMaqModal.maqSeleccionada){ sAlert('Selecciona una máquina primero.','warning'); return; }
+    capMaqSelCancelar();
+    var oid = capMaqModal.oid;
+    var boxIdx = capMaqModal.boxIdx;
+    var row = document.getElementById('cap-row-'+oid);
+    if(row) row.dataset.maq = capMaqModal.maqSeleccionada;
+    var box = document.getElementById('cap-box-'+oid+'-'+boxIdx);
+    var lIdx = document.getElementById('cap-num-'+oid+'-'+boxIdx).innerText;
+    var nLote = parseInt(lIdx);
+    var loteFull = row.dataset.nombre+'.'+( nLote < 100 ? ('00'+nLote).slice(-2) : String(nLote));
+    var existeEnSistema = capDb.lotesExistentes.includes(loteFull);
+    var doGuardar = function(){
+      var chk2 = document.getElementById('cap-chk-'+oid+'-'+boxIdx).checked;
+      var nomOp1 = chk2 ? document.getElementById('cap-defOp1').value : (box.querySelectorAll('.cap-manual-ops input')[0] ? box.querySelectorAll('.cap-manual-ops input')[0].value : '');
+      var objOp1 = capDb.operadoresAll.find(function(o){ return o.nombre===nomOp1; });
+      var nomOp2 = chk2 ? document.getElementById('cap-defOp2').value : (box.querySelectorAll('.cap-manual-ops input')[1] ? box.querySelectorAll('.cap-manual-ops input')[1].value : '');
+      capLocalEntries.push({
+        boxId:oid+'-'+boxIdx, maquina:row.dataset.maq, serie:row.dataset.serie, ordenID:oid, loteFull:loteFull, numLote:lIdx,
+        pesoI:parseFloat(document.getElementById('cap-pi-'+oid+'-'+boxIdx).value)||0,
+        pesoTina:parseFloat(document.getElementById('cap-pt-'+oid+'-'+boxIdx).value)||0,
+        pesoF:parseFloat(document.getElementById('cap-pf-'+oid+'-'+boxIdx).value)||0,
+        producido:parseInt(document.getElementById('cap-neto-'+oid+'-'+boxIdx).innerText)||0,
+        op1_id:objOp1?objOp1.id:'MANUAL', op1_txt:nomOp1, op2_txt:nomOp2,
+        sello:document.getElementById('cap-sello-'+oid+'-'+boxIdx).value,
+        comentarios:document.getElementById('cap-com-'+oid+'-'+boxIdx).value,
+        fecha:document.getElementById('cap-txtFecha').value, turno:capCurrentTurno, crearLote:!existeEnSistema,
+        proceso:(row.dataset.procesoReal && row.dataset.procesoReal !== 'BARRA') ? row.dataset.procesoReal : capCurrentProceso,
+        usuario:(currentUser&&currentUser.nombre)?currentUser.nombre:''
+      });
+      box.classList.remove('editing','complete'); box.classList.add('locked');
+      var maqGuardada = row.dataset.maq;
+      var maqInfoEl = document.createElement('div');
+      maqInfoEl.className = 'cap-maqinfo-activo';
+      maqInfoEl.style.cssText = 'grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#e8f5e9;border-radius:8px;margin-top:6px;font-size:13px;';
+      maqInfoEl.id = 'cap-maqinfo-'+oid+'-'+boxIdx;
+      maqInfoEl.innerHTML = '<span>🏭 <b>MÁQUINA:</b> <span id="cap-maqtxt-'+oid+'-'+boxIdx+'">' + maqGuardada + '</span></span>'
+        + '<div style="display:flex;gap:6px;">'
+        + '<button style="background:#1565c0;color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:900;" '
+        + 'onclick="capAbrirCambioMaq(\''+oid+'\','+boxIdx+')">✏️ CAMBIAR</button>'
+        + '<button style="background:#d32f2f;color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:900;" '
+        + 'onclick="capRemoveLot(\''+oid+'\','+boxIdx+')">🗑️ ELIMINAR</button>'
+        + '</div>';
+      box.appendChild(maqInfoEl);
+      var btnAdd = document.getElementById('cap-btnAdd-'+oid);
+      if(btnAdd) btnAdd.style.display='flex';
+      capActualizarFab();
+      capActualizarResumenVisual(oid);
+    };
+    if(!existeEnSistema){
+      Swal.fire({title:'⚠️ Lote nuevo', text:'El lote '+loteFull+' NO existe. Se creará automáticamente. ¿Continuar?', icon:'warning', showCancelButton:true, confirmButtonText:'Sí, continuar', cancelButtonText:'Cancelar'}).then(function(r){ if(r.isConfirmed) doGuardar(); });
+      return;
+    }
+    doGuardar();
+  };
+
+  window.capAdjT = function(oid, boxIdx, delta) {
+    var span = document.getElementById('cap-num-'+oid+'-'+boxIdx);
+    var n = parseInt(span.innerText)+delta;
+    if(n<1) n=1;
+    span.innerText = n;
+    var row = document.getElementById('cap-row-'+oid);
+    var loteFull = row.dataset.nombre+"."+(n < 100 ? ("00"+n).slice(-2) : String(n));
+    var pi = capGetPesoInicialPorLote(oid, loteFull);
+    var piInp = document.getElementById('cap-pi-'+oid+'-'+boxIdx);
+    var ptInp = document.getElementById('cap-pt-'+oid+'-'+boxIdx);
+    var pfInp = document.getElementById('cap-pf-'+oid+'-'+boxIdx);
+    piInp.value = pi;
+    if(pi>0){ ptInp.value=0; ptInp.classList.add('cap-inp-locked'); ptInp.readOnly=true; setTimeout(function(){ pfInp.focus(); },250); }
+    else { ptInp.value=""; ptInp.classList.remove('cap-inp-locked'); ptInp.readOnly=false; setTimeout(function(){ ptInp.focus(); },250); }
+    capValLote(oid, boxIdx);
+  };
+
+  window.capGetPesoInicialPorLote = function(oid, loteFull) {
+    var localPrev = capLocalEntries.filter(function(e){ return e.loteFull===loteFull; });
+    if(localPrev.length>0) return parseFloat(localPrev[localPrev.length-1].pesoF)||0;
+    if(capDb.historial[oid]&&capDb.historial[oid].loteWeights){ var pesoDB=capDb.historial[oid].loteWeights[loteFull]; if(pesoDB!==undefined)return parseFloat(pesoDB); }
+    return 0;
+  };
+
+  window.capValidarCambioPeso = function(el, oid, boxIdx) {
+    var boxCheck = document.getElementById('cap-box-' + oid + '-' + boxIdx);
+    if (boxCheck && boxCheck.classList.contains('locked')) return;
+    var pi=parseFloat(document.getElementById('cap-pi-'+oid+'-'+boxIdx).value)||0;
+    var pt=parseFloat(document.getElementById('cap-pt-'+oid+'-'+boxIdx).value)||0;
+    var pf=parseFloat(document.getElementById('cap-pf-'+oid+'-'+boxIdx).value)||0;
+    if(el.id.includes('cap-pf-')){ if(pf>0&&pf<=(pi+pt)){ sAlert("⚠️ El Peso Final ("+pf+") no puede ser menor o igual a la carga (Ini: "+pi+" + Tina: "+pt+").", "error", "Peso inválido"); el.value=el.dataset.old; capValLote(oid,boxIdx); } }
+  };
+
+  window.capActualizarResumenVisual = function(oid) {
+    var container = document.getElementById('cap-last-summary-'+oid);
+    if(!container) return;
+    var datos = null;
+    var local = capLocalEntries.filter(function(e){ return e.ordenID==oid; });
+    if(local.length>0){ var u=local[local.length-1]; datos={fecha:u.fecha,turno:u.turno,maquina:u.maquina,lote:u.loteFull,pi:u.pesoI,pf:u.pesoF,tina:u.pesoTina,prod:u.producido,sello:u.sello||"N/A"}; }
+    else if(capDb.historial[oid]&&capDb.historial[oid].lastFullRecord){ datos=capDb.historial[oid].lastFullRecord; }
+    if(datos){
+      var fmtN = function(n){ return Number(n||0).toLocaleString('es-MX'); };
+      container.innerHTML='<div style="border-bottom:2px solid #ffb74d;margin-bottom:8px;color:#e65100;font-size:18px;"><b>ÚLTIMO MOVIMIENTO:</b></div><div class="cap-last-summary-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;"><span><b>FEC:</b> '+datos.fecha+'</span><span><b>TUR:</b> '+datos.turno+'</span><span><b>MAQ:</b> '+datos.maquina+'</span><span><b>LOT:</b> '+datos.lote+'</span><span><b>P.I:</b> '+fmtN(datos.pi)+'</span><span><b>P.F:</b> '+fmtN(datos.pf)+'</span><span><b>TIN:</b> '+fmtN(datos.tina)+'</span><span><b>PROD:</b> '+fmtN(datos.prod)+' kg</span></div><div style="margin-top:10px;font-size:18px;"><span><b>SELLO:</b> '+datos.sello+'</span></div>';
+    }
+    else { container.innerHTML="<i>Sin registros previos</i>"; }
+  };
+
+  window.capHandleSmartInput = function(el, e) {
+    if(e.key==="Tab"||e.key==="Enter"){ var val=el.value.toLowerCase(); var match=capDb.currentOps.find(function(o){ return o.nombre.toLowerCase().includes(val); }); if(match){ el.value=match.nombre; e.preventDefault(); } }
+  };
+
+  window.capSyncOpCheckboxes = function() {
+    var op1 = document.getElementById('cap-defOp1').value;
+    document.querySelectorAll('#cap-panel .cap-op-label').forEach(function(lbl){ lbl.innerText=op1||'N/A'; });
+    document.querySelectorAll('#cap-panel input[type="checkbox"]').forEach(function(chk){
+      if(!op1){ chk.checked=false; chk.disabled=true; var manualDiv=chk.closest('div').nextElementSibling; if(manualDiv)manualDiv.style.display='block'; }
+      else { chk.disabled=false; }
+    });
+  };
+
+  window.capToggleOpManual = function(oid, boxIdx) {
+    var box = document.getElementById('cap-box-'+oid+'-'+boxIdx);
+    var chk = document.getElementById('cap-chk-'+oid+'-'+boxIdx);
+    var manualDiv = box.querySelector('.cap-manual-ops');
+    manualDiv.style.display = chk.checked?'none':'block';
+    capValLote(oid, boxIdx);
+  };
+
+  window.capEjecutarFiltroLocal = function(txt) {
+    txt = txt.toUpperCase().trim();
+    var msgNo = document.getElementById('cap-msgNo');
+    if(!txt){
+      if(msgNo) msgNo.remove();
+      document.querySelectorAll('#cap-panel .cap-machine-section').forEach(function(sec){ if(capCurrentGrupo==='TODOS'||sec.dataset.group===capCurrentGrupo||sec.dataset.group==='BUSQUEDA')sec.style.display='block'; else sec.style.display='none'; });
+      capAllRows.forEach(function(row){ var sec=row.closest('.cap-machine-section'); var g=sec?sec.dataset.group:""; if(capCurrentGrupo==='TODOS'||g===capCurrentGrupo||g==='BUSQUEDA')row.style.display='flex'; else row.style.display='none'; });
+      return;
+    }
+    var foundAny = false;
+    capAllRows.forEach(function(row){
+      var nombre  = row.dataset.nombre  || '';
+      var tipo    = row.dataset.tipo    || '';
+      var medidas = row.dataset.medidas || '';
+      var match = nombre.includes(txt) || tipo.includes(txt) || medidas.includes(txt);
+      if(match){ row.style.display='flex'; row.parentElement.style.display='block'; row.closest('.cap-machine-section').style.display='block'; foundAny=true; }else{ row.style.display='none'; }
+    });
+    document.querySelectorAll('#cap-panel .cap-machine-section').forEach(function(sec){ var visibleRows=sec.querySelectorAll('.cap-order-row[style*="flex"]').length; if(visibleRows>0){ sec.style.display='block'; sec.querySelector('.cap-ords-container').style.display='block'; sec.querySelector('.cap-machine-header span:last-child').innerText="▲"; }else{ sec.style.display='none'; } });
+    if(!foundAny&&txt.length>3){
+      var container=document.getElementById('cap-mainContent');
+      if(!document.getElementById('cap-msgNo')){ container.insertAdjacentHTML('afterbegin','<div id="cap-msgNo" style="text-align:center;padding:30px;background:white;border-radius:12px;margin:10px;border:3px dashed #d32f2f;"><h2 style="color:#d32f2f;font-size:28px;font-weight:900;">LA ORDEN NO ESTÁ VIVA EN ESTE PROCESO</h2><p style="font-size:18px;color:#555;">¿Desea buscarla en los registros terminados de los últimos 90 días?</p><button style="background:#1565c0;color:white;width:auto;font-size:20px;cursor:pointer;height:60px;padding:0 40px;border:none;border-radius:8px;font-weight:900;" onclick="capBuscarTerminadasServer()">🔍 BUSCAR EN TERMINADAS (90 DÍAS)</button></div>'); }
+    } else { if(msgNo) msgNo.remove(); }
+  };
+
+  window.capBuscarTerminadasServer = function() {
+    showLoader('BUSCANDO EN HISTORIAL...');
+    var textoBusqueda = document.getElementById('cap-searchHuge').value.toUpperCase().trim();
+    google.script.run.withSuccessHandler(function(res) {
+      hideLoader();
+      if(res&&res.length>0){
+        res.forEach(function(o){
+          if(document.getElementById('cap-row-'+o.id)) return;
+          var maqId = o.maquina.replace(/\s+/g,'');
+          var sec = document.getElementById('cap-sec-'+maqId);
+          if(!sec){ sec=document.createElement('div'); sec.className="cap-machine-section"; sec.id="cap-sec-"+maqId; sec.dataset.group="BUSQUEDA"; sec.innerHTML='<div class="cap-machine-header" onclick="capToggleAccordion(\''+sec.id+'\')"><span>'+o.maquina+' (HISTORIAL)</span><span>▲</span></div><div class="cap-ords-container" id="cap-cont-cap-sec-'+maqId+'" style="display:block"></div>'; document.getElementById('cap-mainContent').appendChild(sec); }
+          else { document.getElementById('cap-cont-'+sec.id).style.display="block"; }
+          capDrawOrderRows(o.maquina, [o]);
+        });
+        var msgNo=document.getElementById('cap-msgNo'); if(msgNo)msgNo.remove();
+        capEjecutarFiltroLocal(textoBusqueda);
+      } else { sAlert("No se encontraron registros de '"+textoBusqueda+"' en los últimos 90 días."); }
+    }).buscarTerminadasNvo(capCurrentProceso, textoBusqueda);
+  };
+
+  window.capCalculateShift = function() {
+    var now=new Date(); var h=now.getHours();
+    var t=(h>=10&&h<18)?1:(h>=18||h<2)?2:3;
+    capSetTurn(t);
+    var d=new Date(); if(h<10)d.setDate(d.getDate()-1);
+    document.getElementById('cap-txtFecha').value=d.toISOString().split('T')[0];
+  };
+
+  window.capSetTurn = function(t) {
+    capCurrentTurno=t;
+    document.querySelectorAll('.cap-btn-turn').forEach(function(b){ b.classList.remove('active'); });
+    document.getElementById('cap-bt'+t).classList.add('active');
+  };
+
+  function capHandleGlobalNav(e) {
+    if(document.activeElement.tagName==='INPUT') return;
+    if(e.key==='ArrowDown'){ capFocusIdx=Math.min(capFocusIdx+1,capAllRows.length-1); capSyncRowFocus(); }
+    if(e.key==='ArrowUp'){ capFocusIdx=Math.max(capFocusIdx-1,0); capSyncRowFocus(); }
+  }
+
+  window.capSyncRowFocus = function() {
+    capAllRows.forEach(function(r){ r.classList.remove('focused'); });
+    if(capAllRows[capFocusIdx]){ var act=capAllRows[capFocusIdx]; act.classList.add('focused'); act.parentElement.style.display="block"; act.scrollIntoView({behavior:'smooth',block:'center'}); }
+  };
+
+  window.capGoHome = function() {
+    // NO limpiar capLocalEntries: se conservan registros de otros procesos capturados
+    capAllRows=[];
+    document.getElementById('cap-mainContent').innerHTML="";
+    capCurrentProceso="";
+    capActualizarFab();
+    document.getElementById('cap-view2').style.display='none';
+    document.getElementById('cap-view1').style.display='block';
+    document.getElementById('cap-searchHuge').value="";
+  };
+
+  window.capActualizarFab = function() {
+    var fab = document.getElementById('cap-btnSaveFinal');
+    if(!fab) return;
+    if(capLocalEntries.length===0){ fab.style.display="none"; return; }
+    fab.style.display="block";
+    // Contar registros del proceso actual
+    var regActual = capCurrentProceso
+      ? capLocalEntries.filter(function(e){ return e.proceso===capCurrentProceso; })
+      : capLocalEntries;
+    var lblPrincipal = document.getElementById('cap-lblCount');
+    if(lblPrincipal) lblPrincipal.innerText = regActual.length;
+    // Contar registros de otros procesos
+    var otrosProcesos = {};
+    capLocalEntries.forEach(function(e){
+      if(e.proceso && e.proceso!==capCurrentProceso){
+        otrosProcesos[e.proceso] = (otrosProcesos[e.proceso]||0)+1;
+      }
+    });
+    var extraId = 'cap-fab-extras';
+    var extraDiv = document.getElementById(extraId);
+    if(!extraDiv){
+      extraDiv = document.createElement('div');
+      extraDiv.id = extraId;
+      extraDiv.style.cssText = 'font-size:11px;font-weight:700;opacity:0.9;margin-top:4px;line-height:1.5;';
+      fab.appendChild(extraDiv);
+    }
+    var otrosKeys = Object.keys(otrosProcesos);
+    if(otrosKeys.length>0){
+      extraDiv.style.display='block';
+      extraDiv.innerHTML = otrosKeys.map(function(p){
+        return '+ '+otrosProcesos[p]+' reg. de '+p;
+      }).join('<br>');
+    } else {
+      extraDiv.style.display='none';
+      extraDiv.innerHTML='';
+    }
+  };
+
+  window.capGetColorPct = function(p) {
+    if(p<=25)return"#90caf9"; if(p<=50)return"#1565c0"; if(p<=70)return"#ffeb3b"; if(p<=85)return"#c6ff00"; if(p<=95)return"#ff9800"; if(p<=100)return"#2e7d32"; return"#d32f2f";
+  };
+
+  window.capAbrirPreview = function() {
+    var tbody=document.getElementById('cap-previewBody'); tbody.innerHTML="";
+    // Agrupar por proceso para mostrar todos juntos en el modal
+    var procesosUnicos = [];
+    capLocalEntries.forEach(function(e){
+      var p = e.proceso||'SIN PROCESO';
+      if(procesosUnicos.indexOf(p)===-1) procesosUnicos.push(p);
+    });
+    procesosUnicos.forEach(function(proc){
+      var regsProc = capLocalEntries.filter(function(e){ return (e.proceso||'SIN PROCESO')===proc; });
+      tbody.innerHTML += '<tr><td colspan="8" style="background:#1565c0;color:white;font-weight:900;padding:8px 12px;text-align:left;font-size:14px;letter-spacing:0.5px;">📋 '+proc+' — '+regsProc.length+' registro(s)</td></tr>';
+      // Agrupar por máquina
+      var maqsEnProc = [];
+      regsProc.forEach(function(e){ if(maqsEnProc.indexOf(e.maquina)<0) maqsEnProc.push(e.maquina); });
+      maqsEnProc.forEach(function(maq){
+        var regsMaq = regsProc.filter(function(e){ return e.maquina===maq; });
+        tbody.innerHTML += '<tr><td colspan="8" style="background:#37474f;color:#ffca28;font-weight:900;padding:6px 16px;font-size:13px;">🏭 '+maq
+          +'<button style="margin-left:12px;background:#1565c0;color:white;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:900;" '
+          +'onclick="capPreviewCambioMaq(\''+maq+'\',\''+proc+'\')">✏️ CAMBIAR MÁQUINA</button></td></tr>';
+        regsMaq.forEach(function(e){
+          var idx = capLocalEntries.indexOf(e);
+          tbody.innerHTML+='<tr>'
+            +'<td style="padding:8px 10px"><b>'+e.loteFull+'</b></td>'
+            +'<td>'+Number(e.pesoI).toLocaleString('es-MX')+'</td>'
+            +'<td><input type="number" class="cap-inp-cap" style="font-size:14px;width:75px;padding:4px;" value="'+e.pesoTina+'" oninput="capEditP('+idx+',\'pesoTina\',this.value)"></td>'
+            +'<td><input type="number" class="cap-inp-cap" style="font-size:14px;width:75px;padding:4px;" value="'+e.pesoF+'" oninput="capEditP('+idx+',\'pesoF\',this.value)"></td>'
+            +'<td id="cap-net-'+idx+'" style="font-weight:900;color:#1565c0;">'+Number(e.producido).toLocaleString('es-MX')+'</td>'
+            +'<td>'+e.op1_txt+(e.op2_txt?' / '+e.op2_txt:'')+'</td>'
+            +'<td>'+e.maquina+'</td>'
+            +'<td><button style="border:none;background:#d32f2f;color:white;padding:6px 10px;border-radius:4px;cursor:pointer;font-weight:900;" onclick="capDelP('+idx+')">✖</button></td></tr>';
+        });
+      });
+    });
+    capCalcPrevTotal();
+    document.getElementById('cap-modalPreview').style.display='flex';
+    var btn=document.getElementById('cap-btnRealSave');
+    btn.disabled=true; btn.innerText="VALIDANDO... ESPERE 10s"; btn.style.background="#ccc"; btn.style.cursor="not-allowed";
+    document.querySelectorAll('.cap-border-anim').forEach(function(a){ a.style.display='block'; a.style.animation='none'; setTimeout(function(){ a.style.animation=''; },10); });
+    setTimeout(function(){
+      btn.disabled=false; btn.innerText="✅ CONFIRMAR Y GUARDAR"; btn.style.background="#2e7d32"; btn.style.cursor="pointer";
+      btn.onclick = function() {
+        btn.disabled=true; btn.innerText="GUARDANDO...";
+        document.getElementById('cap-modalPreview').style.display='none';
+        showLoader('GUARDANDO PRODUCCIÓN...');
+        // CRÍTICO: asignar usuario ANTES de enviar al servidor
+        var nombreUsuario = (currentUser && currentUser.nombre) ? currentUser.nombre : '';
+        capLocalEntries.forEach(function(r){ r.usuario = nombreUsuario; });
+        var registrosParaReporte = capLocalEntries.slice();
+        google.script.run.withSuccessHandler(function(res) {
+          hideLoader();
+          capMostrarExitoConReporte(res, registrosParaReporte);
+        }).withFailureHandler(function(err){
+          hideLoader();
+          Swal.fire({ icon:'error', title:'Error al guardar', text:err.message||String(err) });
+        }).guardarProduccionCompleta({ registros: capLocalEntries });
+      };
+    },10000);
+  };
+
+  window.capPreviewCambioMaq = function(maqActual, proc) {
+    var maqs = (capDb.maquinasRaw || []).filter(function(m){
+      return m.proc === proc.toUpperCase().trim();
+    });
+    var grupos = {};
+    maqs.forEach(function(m){
+      var g = m.grupo || 'SIN GRUPO';
+      if(!grupos[g]) grupos[g] = [];
+      if(grupos[g].indexOf(m.maq) < 0) grupos[g].push(m.maq);
+    });
+    var maqUp = maqActual.toUpperCase().trim();
+    var todasMaqs = maqs.map(function(m){ return m.maq; });
+    if(maqUp && todasMaqs.indexOf(maqUp) < 0){
+      if(!grupos['SIN GRUPO']) grupos['SIN GRUPO'] = [];
+      grupos['SIN GRUPO'].unshift(maqActual);
+    }
+    capMaqModal.maqAsignada = maqActual;
+    capMaqModal.maqSeleccionada = maqActual;
+    var overlay = document.createElement('div');
+    overlay.className = 'cap-maqsel-overlay';
+    overlay.id = 'cap-maqsel-overlay';
+    overlay.innerHTML = '<div class="cap-maqsel-card">'
+      + '<div class="cap-maqsel-title">✏️ CAMBIAR MÁQUINA</div>'
+      + '<div class="cap-maqsel-sub">Proceso: <b>' + proc + '</b></div>'
+      + capMaqSelBuildHTML(grupos, maqActual)
+      + '<button class="cap-maqsel-ok" onclick="capPreviewCambioMaqAceptar(\''+maqActual+'\',\''+proc+'\')">✅ ACEPTAR</button>'
+      + '<button class="cap-maqsel-cancel" onclick="capMaqSelCancelar()">Cancelar</button>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.capPreviewCambioMaqAceptar = function(maqAnterior, proc) {
+    var nuevaMaq = capMaqModal.maqSeleccionada;
+    if(!nuevaMaq){ sAlert('Selecciona una máquina.','warning'); return; }
+    capMaqSelCancelar();
+    capLocalEntries.forEach(function(e){
+      if(e.maquina === maqAnterior && (e.proceso||'SIN PROCESO') === proc) e.maquina = nuevaMaq;
+    });
+    capAbrirPreview();
+  };
+
+  window.capCerrarPreview = function() {
+    document.getElementById('cap-modalPreview').style.display='none';
+    document.querySelectorAll('.cap-border-anim').forEach(function(a){ a.style.display='none'; a.style.animation='none'; setTimeout(function(){ a.style.animation=''; },10); });
+  };
+
+  window.capEditP = function(idx, f, v) {
+    var entry=capLocalEntries[idx]; var valor=parseFloat(v)||0;
+    if(f==='pesoF'&&valor<(entry.pesoI+entry.pesoTina)) sAlert("¡Atención! El Peso Final es menor al Inicial + Tina.");
+    entry[f]=valor;
+    entry.producido=Math.round(entry.pesoF-entry.pesoTina-entry.pesoI);
+    document.getElementById('cap-net-'+idx).innerText=entry.producido;
+    var prefijo=(f==='pesoTina')?'cap-pt-':'cap-pf-';
+    var mainInput=document.getElementById(prefijo+entry.boxId);
+    if(mainInput){ mainInput.value=v; var parts=entry.boxId.split('-'); capValLote(parts[0],parts[1]); }
+    capCalcPrevTotal();
+  };
+
+  window.capDelP = function(idx) {
+    if(window.confirm("¿Eliminar este registro?")) {
+      var entry=capLocalEntries[idx];
+      var box=document.getElementById('cap-box-'+entry.boxId);
+      if(box){ box.classList.remove('locked'); box.classList.add('editing'); var parts=entry.boxId.split('-'); var btnAdd=document.getElementById('cap-btnAdd-'+parts[0]); if(btnAdd)btnAdd.style.display="none"; }
+      capLocalEntries.splice(idx,1);
+      capAbrirPreview();
+      if(capLocalEntries.length==0) capCerrarPreview();
+      capActualizarFab();
+    }
+  };
+
+  window.capCalcPrevTotal = function() {
+    var el=document.getElementById('cap-prevTotal'); if(!el)return;
+    el.innerText=capLocalEntries.reduce(function(s,e){ return s+Number(e.producido); },0).toLocaleString();
+  };
+
+  window.capRemoveLot = function(oid, boxIdx) {
+    Swal.fire({title:'¿Eliminar lote?',text:'Se borrará este registro preguardado.',icon:'warning',showCancelButton:true,confirmButtonText:'Sí, eliminar',cancelButtonText:'Cancelar',confirmButtonColor:'#d32f2f'}).then(function(r){
+      if(!r.isConfirmed) return;
+      var numSpan=document.getElementById('cap-num-'+oid+'-'+boxIdx);
+      if(numSpan) capLocalEntries=capLocalEntries.filter(function(e){ return !(e.ordenID==oid&&e.numLote==numSpan.innerText); });
+      var box=document.getElementById('cap-box-'+oid+'-'+boxIdx); if(box)box.remove();
+      var btnAdd=document.getElementById('cap-btnAdd-'+oid); if(btnAdd)btnAdd.style.display='flex';
+      capActualizarFab();
+    });
+  };
+
+  window.capShowOp2 = function(oid, boxIdx, btn) {
+    document.getElementById('cap-op2-'+oid+'-'+boxIdx).style.display='block'; btn.style.display='none';
+  };
+
+  // ══ ÉXITO CON BOTÓN DE REPORTE DE EFICIENCIA ══
+  window.capMostrarExitoConReporte = function(res, registrosGuardados) {
+    Swal.fire({
+      icon: 'success',
+      title: '¡DATOS GUARDADOS!',
+      html: '<p style="font-size:16px;">' + (res.msg||'Registros guardados correctamente') + '</p>'
+        + '<button id="cap-btn-reporte-efic" style="margin-top:16px;background:#0088cc;color:white;border:none;'
+        + 'padding:13px 28px;border-radius:8px;font-weight:900;font-size:15px;cursor:pointer;'
+        + 'box-shadow:0 4px 12px rgba(0,136,204,0.4);">📊 Mandar Reporte de Eficiencia</button>',
+      confirmButtonText: 'Cerrar sin enviar',
+      confirmButtonColor: '#546e7a',
+      didOpen: function() {
+        document.getElementById('cap-btn-reporte-efic').addEventListener('click', function() {
+          Swal.close();
+          capEnviarReporteEficiencia(registrosGuardados);
+        });
+      }
+    }).then(function() { loadCaptura(); });
+  };
+
+  // capEnviarReporteEficiencia está definida globalmente debajo de loadCaptura
+}
+
+// ── ORQUESTADOR: llama al reporte con destino opcional de Telegram ──
+window.capEnviarReporteEficienciaConDestino = function(registros, chatIdDestino) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:99999;'
+      + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
+    overlay.innerHTML = '<div style="font-size:28px;font-weight:900;color:#0000CC;" id="cap-rep-main">Calculando eficiencia...</div>'
+      + '<div style="font-size:18px;color:#555;" id="cap-rep-sub">Consultando estándares</div>';
+    document.body.appendChild(overlay);
+
+    google.script.run
+      .withSuccessHandler(function(jsonDatos) {
+        var porProceso = JSON.parse(jsonDatos);
+        var procesos = Object.keys(porProceso);
+        var idx = 0;
+        var fecha  = registros[0] ? registros[0].fecha  : '';
+        var turno  = registros[0] ? registros[0].turno  : '';
+        var usuarioLabel = registros[0] ? (registros[0].usuario || '') : '';
+
+        function getEficColor(v) {
+          if(v > 75)  return '#2e7d32';
+          if(v >= 65) return '#66bb6a';
+          if(v >= 60) return '#ffeb3b';
+          if(v >= 50) return '#fb8c00';
+          return '#c62828';
+        }
+        function getEficTextColor(v) {
+          return (v >= 60 && v < 65) ? '#000' : '#fff';
+        }
+
+        // Convierte fecha YYYY-MM-DD a dd/mm/aa
+        function fmtFecha(f) {
+          if(!f) return '';
+          var p = String(f).split('-');
+          if(p.length === 3) return p[2]+'/'+p[1]+'/'+p[0].slice(2);
+          return f;
+        }
+
+        function turnoLabel(t) {
+          return t === '1' ? '1° TURNO' : t === '2' ? '2° TURNO' : t === '3' ? '3° TURNO' : 'TURNO '+t;
+        }
+
+        function procesarSiguiente() {
+          if(idx >= procesos.length) {
+            document.getElementById('cap-rep-main').innerText = '✅ ¡Reporte enviado!';
+            document.getElementById('cap-rep-sub').innerText = procesos.length + ' proceso(s) enviados a Telegram';
+            setTimeout(function(){ document.body.removeChild(overlay); }, 2500);
+            return;
+          }
+          var proc         = procesos[idx];
+          var datos        = porProceso[proc];
+          var totalKg      = datos.totalKilos || 0;
+          var eficTotal    = datos.eficienciaTotal || 0;
+          var eficTotalCap = eficTotal > 100 ? 100 : eficTotal;
+          var bgHeader     = getEficColor(eficTotalCap);
+          var txtHeader    = getEficTextColor(eficTotalCap);
+          var unidadLabel = proc.toUpperCase().includes('COLATADO') ? 'ROLLOS' : 'KILOS';
+          var svgProceso  = getProcSVG(proc);
+          var fechaFmt    = fmtFecha(fecha);
+
+          document.getElementById('cap-rep-main').innerText = 'Enviando ' + (idx+1) + ' de ' + procesos.length;
+          document.getElementById('cap-rep-sub').innerText  = 'Proceso: ' + proc;
+
+          // ── FILAS DE TABLA (nuevo formato de columnas) ──
+          var tbodyRows = '';
+          var bordeInferiorMaq = 'border-bottom:3px solid #455a64;';
+          (datos.grupos || []).forEach(function(grp){
+            var eficGrp = grp.eficiencia || 0;
+            var bgEfic  = getEficColor(eficGrp);
+            var txtEfic = getEficTextColor(eficGrp);
+            var nDet    = grp.detalles ? grp.detalles.length : 1;
+            (grp.detalles || []).forEach(function(det, k){
+              var esUltimaDet = (k === nDet - 1);
+              var bdBot = esUltimaDet ? bordeInferiorMaq : '';
+              tbodyRows += '<tr>';
+              if(k === 0){
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;'+bordeInferiorMaq+'padding:8px;font-weight:900;text-align:center;vertical-align:middle;font-size:13px;">'+grp.maquina+'</td>';
+              }
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:6px;text-align:center;font-weight:900;font-size:13px;color:#0d47a1;">'+det.lote+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.tipo+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.diam+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.longitud+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.cuerpo+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.cuerda+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:5px;text-align:center;font-size:12px;font-weight:700;">'+det.acero+'</td>';
+              tbodyRows += '<td style="border:1px solid #999;'+bdBot+'padding:6px;text-align:center;font-weight:bold;font-size:12px;">'+parseFloat(det.cantidad).toLocaleString('en-US')+'</td>';
+              if(k === 0){
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;'+bordeInferiorMaq+'padding:8px;text-align:center;vertical-align:middle;font-weight:bold;font-size:12px;">'+grp.operador+'</td>';
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:1px solid #999;'+bordeInferiorMaq+'padding:8px;text-align:center;vertical-align:middle;font-size:14px;font-weight:900;color:#6a0032;">'+parseFloat(grp.total).toLocaleString('en-US')+'</td>';
+                var eficGrpCap = eficGrp > 100 ? 100 : eficGrp;
+                tbodyRows += '<td rowspan="'+nDet+'" style="border:2px solid #333;'+bordeInferiorMaq+'padding:8px;text-align:center;vertical-align:middle;font-size:13px;font-weight:900;background:'+bgEfic+';color:'+txtEfic+';">'+eficGrpCap.toFixed(2)+' %</td>';
+              }
+              tbodyRows += '</tr>';
+            });
+          });
+
+          // ── HTML DEL REPORTE NUEVO DISEÑO ──
+          var html = '<div style="width:1350px;background:#fff;padding:14px 18px 10px;font-family:Roboto,sans-serif;">'
+
+            // ── ENCABEZADO COMPACTO ──
+            + '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1565c0;padding-bottom:8px;margin-bottom:12px;">'
+
+            // Logo izquierda — más grande
+            + '<div style="min-width:130px;">'
+            + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:58px;">'
+            + '</div>'
+
+            // Centro: SVG — TÍTULO — SVG (mismo SVG a ambos lados, con separación amplia)
+            + '<div style="flex:1;text-align:center;padding:0 16px;">'
+            + '<div style="display:inline-flex;align-items:center;gap:22px;">'
+            + '<div style="width:48px;height:48px;opacity:0.85;">'+svgProceso+'</div>'
+            + '<div>'
+            + '<div style="font-size:24px;font-weight:900;color:#1565c0;text-transform:uppercase;letter-spacing:1px;line-height:1.1;">EFICIENCIA DE '+proc+'</div>'
+            + '<div style="font-size:17px;font-weight:900;color:#c62828;letter-spacing:0.5px;margin-top:2px;">'+fechaFmt+' &nbsp;—&nbsp; '+turnoLabel(turno)+'</div>'
+            + '</div>'
+            + '<div style="width:48px;height:48px;opacity:0.85;">'+svgProceso+'</div>'
+            + '</div>'
+            + '</div>'
+
+            // Derecha: TOTAL + kilos en una sola línea, más grande; badge eficiencia abajo
+            + '<div style="text-align:right;min-width:170px;">'
+            + '<div style="font-size:22px;font-weight:900;color:#333;line-height:1.1;white-space:nowrap;">TOTAL: '+parseFloat(totalKg).toLocaleString('en-US')+' '+unidadLabel+'</div>'
+            + '<span style="display:inline-block;margin-top:5px;background:'+bgHeader+';color:'+txtHeader+';padding:5px 20px;border-radius:8px;font-weight:900;font-size:22px;">'+eficTotalCap.toFixed(2)+' %</span>'
+            + '</div>'
+
+            + '</div>'
+
+            // ── TABLA ──
+            + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+            + '<thead><tr style="background:#263238;color:white;">'
+            + '<th style="border:1px solid #333;padding:8px;width:10%;font-weight:900;text-align:center;">MÁQUINA</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:9%;font-weight:900;text-align:center;">LOTE</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">TIPO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">DIÁMETRO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">LONGITUD</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">CUERPO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">CUERDA</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:6%;font-weight:900;text-align:center;">ACERO</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">KILOS</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:18%;font-weight:900;text-align:center;">OPERADOR</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">TOTAL</th>'
+            + '<th style="border:1px solid #333;padding:8px;width:7%;font-weight:900;text-align:center;">EFIC</th>'
+            + '</tr></thead>'
+            + '<tbody>'+tbodyRows+'</tbody>'
+            + '</table></div>';
+
+          var wrapper = document.createElement('div');
+          wrapper.style.cssText = 'position:absolute;top:0;left:0;z-index:-9999;background:white;';
+          wrapper.innerHTML = html;
+          document.body.appendChild(wrapper);
+
+          html2canvas(wrapper, {
+            scale: 1.5, width: 1350,
+            height: wrapper.scrollHeight + 20,
+            backgroundColor: '#ffffff',
+            useCORS: true, logging: false
+          }).then(function(canvas){
+            var imgData = canvas.toDataURL('image/png');
+            document.body.removeChild(wrapper);
+            // ── Detectar máquinas con eficiencia > 100% ──
+            var maquinasSobreEfic = [];
+            (datos.grupos || []).forEach(function(grp){
+              if((grp.eficiencia || 0) > 100) {
+                maquinasSobreEfic.push({ maquina: grp.maquina, efic: grp.eficiencia });
+              }
+            });
+
+            // ── Meta mínima según proceso ──
+            var procUp = proc.toUpperCase();
+            var META_EFIC =
+              (procUp.includes('FORJA') || procUp.includes('ROLADO') || procUp.includes('PUNTEADO') || procUp.includes('LAVADO')) ? 60 :
+              (procUp.includes('TREFILADO')) ? 60 :
+              (procUp.includes('ROSCADO') || procUp.includes('EMPAQUE')) ? 70 :
+              (procUp.includes('ESTIRADO') || procUp.includes('ENDEREZADO') || procUp.includes('CORTE') || procUp.includes('PULIDO')) ? 65 :
+              (procUp.includes('COLATADO') || procUp.includes('ESTAMPADO')) ? 65 : 65;
+            var kgMetaTotal = 0;
+            (datos.grupos || []).forEach(function(grp){
+              if((grp.sumaTeoricoKg || 0) > 0) {
+                kgMetaTotal += grp.sumaTeoricoKg * (META_EFIC / 100);
+              }
+            });
+            if(kgMetaTotal <= 0 && eficTotal > 0) {
+              kgMetaTotal = totalKg * (META_EFIC / Math.min(eficTotal, 100));
+            }
+            var kgMetaFmt = Math.round(kgMetaTotal).toLocaleString('en-US');
+
+            // ── Eficiencia real cappada al 100% para el caption ──
+            var eficCapTotal = eficTotalCap;
+
+            // ── Emoji de medalla según nivel alcanzado ──
+            function emojiNivel(e) {
+              if(e >= 75) return '🥇';
+              if(e >= 70) return '🥈';
+              if(e >= 65) return '🥉';
+              return '❌';
+            }
+
+            // ── Construir caption ──
+            var lineaAnalisis = '✅ Sin irregularidades encontradas en tus capturas';
+
+            // Llamada asíncrona al backend de irregularidades; primero enviamos con texto provisional
+            // y actualizamos cuando llegue la respuesta (no es posible en GAS sin 2 llamadas)
+            // → Hacemos 1 sola llamada extra antes de enviar
+
+            // Guardamos para usar en el then
+            var _proc        = proc;
+            var _totalKg     = totalKg;
+            var _eficTotal   = eficTotal;
+            var _eficCapTotal= eficCapTotal;
+            var _kgMetaFmt   = kgMetaFmt;
+            var _maqSobre    = maquinasSobreEfic;
+            var _usuarioLabel= usuarioLabel;
+            var _unidadLabel = unidadLabel;
+            var _chatIdDestino = chatIdDestino;
+            var _imgData     = imgData;
+            var _registros   = registros;
+            var _fecha       = fecha;
+
+            function construirYEnviarCaption(irreg) {
+              var lineas = [];
+
+              // Sobreeficiencia
+              var sobreMsj = '';
+              if(_maqSobre.length > 0) {
+                sobreMsj = '\n⚠️ Efic. >100%: ';
+                sobreMsj += _maqSobre.map(function(m){ return m.maquina+' ('+Math.round(m.efic)+'%)'; }).join(', ');
+                sobreMsj += ' — verifica datos';
+              }
+
+              // Lotes incompletos
+              var lotesMsj = '';
+              if(irreg && irreg.lotesIncompletos && irreg.lotesIncompletos.length > 0) {
+                lotesMsj = '\n⚠️ Lotes sin predecesor: ';
+                lotesMsj += irreg.lotesIncompletos.map(function(l){ return l.lote+' (falta '+l.falta+')'; }).join(', ');
+              }
+
+              // Pesos incorrectos
+              var pesosMsj = '';
+              if(irreg && irreg.pesosIncorrectos && irreg.pesosIncorrectos.length > 0) {
+                pesosMsj = '\n⚠️ Pesos inconsistentes: ';
+                pesosMsj += irreg.pesosIncorrectos.map(function(p){ return p.lote+' — '+p.detalle; }).join(' | ');
+              }
+
+              var hayIrreg = sobreMsj || lotesMsj || pesosMsj;
+              var analisis = hayIrreg
+                ? (sobreMsj + lotesMsj + pesosMsj)
+                : '\n✅ Sin irregularidades encontradas en tus capturas';
+
+              var caption = '👤 *Capturó: '+_usuarioLabel+'*'
+                +'\n------- ➖ 📊 ➖ -------'
+                +'\n🏁 Meta mínima: '+META_EFIC+'% ('+_kgMetaFmt+' '+_unidadLabel+')'
+                +'\n📈 Obtenido: '+Math.round(_eficCapTotal)+'% ('+parseFloat(_totalKg).toLocaleString('en-US')+' '+_unidadLabel+') '+emojiNivel(_eficCapTotal)
+                +'\n------- ➖ ✍🏼 ➖ -------'
+                + analisis;
+
+              google.script.run
+                .withSuccessHandler(function(){ idx++; procesarSiguiente(); })
+                .withFailureHandler(function(err){
+                  document.body.removeChild(overlay);
+                  sAlert('Error Telegram: '+String(err), 'error');
+                })
+                .enviarImagenTelegram(_imgData, caption, _chatIdDestino || null);
+            }
+
+            // Llamar al backend de irregularidades antes de enviar
+            google.script.run
+              .withSuccessHandler(function(jsonIrreg){
+                var irreg = {};
+                try { irreg = JSON.parse(jsonIrreg); } catch(e) {}
+                construirYEnviarCaption(irreg);
+              })
+              .withFailureHandler(function(){
+                // Si falla, enviar sin análisis
+                construirYEnviarCaption(null);
+              })
+              .verificarIrregularidadesReporte(_registros, _fecha);
+          });
+        }
+        procesarSiguiente();
+      })
+      .withFailureHandler(function(err){
+        document.body.removeChild(overlay);
+        sAlert('Error al calcular eficiencia: '+String(err), 'error');
+      })
+      .obtenerDatosEficienciaParaCaptura(registros);
+};
+
+// ── FUNCIÓN DE PRUEBA: envía reporte COLATADO 01/04/2026 Turno 3 al chat personal ──
+window.capTestTelegramReporte = function() {
+  sConfirm('Se enviará un reporte real de COLATADO — 01/04/2026 — Turno 3 al chat de Telegram personal. ¿Continuar?','🧪 Test Reporte','Enviar','Cancelar').then(function(ok){
+    if(!ok) return;
+    showLoader('Consultando registros reales...');
+    google.script.run
+      .withSuccessHandler(function(jsonRegs) {
+        hideLoader();
+        var regs = JSON.parse(jsonRegs);
+        if(!regs || regs.length === 0) {
+          sAlert('No se encontraron registros de COLATADO, Turno 3, fecha 01/04/2026 en PRODUCCION.','warning');
+          return;
+        }
+        capEnviarReporteEficienciaConDestino(regs, '625827165');
+      })
+      .withFailureHandler(function(err){ hideLoader(); sAlert('Error: '+String(err),'error'); })
+      .obtenerRegistrosPorFechaTurnoProceso('2026-04-01', '3', 'COLATADO');
+  });
+};
+
+// ── REPORTE DE EFICIENCIA — función global accesible desde cualquier módulo ──
+window.capEnviarReporteEficiencia = function(registros) {
+  capEnviarReporteEficienciaConDestino(registros, null);
+};
+// ══════════════════════════════════════════════════════
+// MÓDULO: EDITOR DE PRODUCCIÓN
+// ══════════════════════════════════════════════════════

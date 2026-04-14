@@ -1,0 +1,1223 @@
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULOS — PLACEHOLDERS (se integran módulo por módulo)
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULO: TABLERO MÉTRICAS  (prefijo tm_)
+// ══════════════════════════════════════════════════════════════════════════════
+var tm_fechaReferencia = new Date();
+var tm_datosTablero = [];
+var tm_datosProduccion = {};
+var tm_tempCalidadFecha = "";
+var tm_tempCalidadIndicador = "";
+var tm_diasSemanaTxt = ["LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO"];
+var tm_esPrimeraCarga = true;
+
+// ── DÍAS INHÁBILES 2026 ──────────────────────────────────────────────────
+// Formato MM/DD — valor: 0 = inhábil completo, 0.5 = medio día
+var tm_INHABILES = {
+  "01/01": 0,   // Año Nuevo
+  "02/02": 0,   // Constitución (puente)
+  "16/03": 0,   // Natalicio Juárez (puente)
+  "02/04": 0,   // Semana Santa (empresa)
+  "03/04": 0,   // Semana Santa (empresa)
+  "04/04": 0,   // Semana Santa (empresa)
+  "01/05": 0,   // Día del Trabajo
+  "15/09": 0.5, // Grito de Independencia (medio día)
+  "16/09": 0,   // Independencia
+  "02/11": 0,   // Día de Muertos (empresa)
+  "16/11": 0,   // Revolución (puente)
+  "12/12": 0,   // Virgen de Guadalupe (empresa)
+  "24/12": 0.5, // Nochebuena (medio día)
+  "25/12": 0,   // Navidad
+  "31/12": 0.5  // Fin de año (medio día)
+};
+
+// Devuelve el peso laboral de una fecha ISO "YYYY-MM-DD"
+// Sábado normal = 0.5, L-V normal = 1, inhábil completo = 0, medio día = 0.5
+function tm_pesoLaboral(fechaISO) {
+  var d = new Date(fechaISO + 'T12:00:00');
+  var mesNum = d.getMonth() + 1;
+  var diaNum = d.getDate();
+  var mm = mesNum < 10 ? '0' + mesNum : '' + mesNum;
+  var dd = diaNum < 10  ? '0' + diaNum  : '' + diaNum;
+  var clave = mm + '/' + dd;
+  if(tm_INHABILES.hasOwnProperty(clave)) {
+    return tm_INHABILES[clave];
+  }
+  var dow = d.getDay();
+  if(dow === 0) return 0;
+  if(dow === 6) return 0.5;
+  return 1;
+}
+
+// Devuelve true si la fecha es inhábil total (peso = 0)
+function tm_esInhabil(fechaISO) {
+  return tm_pesoLaboral(fechaISO) === 0;
+}
+
+var tm_CONFIG = [
+  { id:1,  nombre:"MATERIAL EMBARCADO",        meta:70000, tipo:1 },
+  { id:2,  nombre:"MATERIAL ENVIADO OK",        meta:100,   tipo:2 },
+  { id:3,  nombre:"PRODUCCIÓN CLAVO",           meta:33500, tipo:3 },
+  { id:4,  nombre:"PRODUCCIÓN VARILLA",         meta:12000, tipo:3 },
+  { id:5,  nombre:"PRODUCCIÓN BARRA",           meta:8000,  tipo:3 },
+  { id:6,  nombre:"PRODUCCIÓN TORNILLO",        meta:18000, tipo:3 },
+  { id:7,  nombre:"PRODUCCIÓN COLATADO",        meta:13500, tipo:3 },
+  { id:8,  nombre:"PRODUCCIÓN TEMPLE",          meta:21000, tipo:3 },
+  { id:9,  nombre:"PRODUCCIÓN TREFILADO",       meta:58000, tipo:3 },
+  { id:10, nombre:"RATIO BOLETINES VS AVISOS",  meta:0,     tipo:6 },
+  { id:11, nombre:"% MALA CALIDAD", meta:0,     tipo:7 }
+];
+// Metas activas del mes (se cargan desde backend al abrir el módulo)
+var tm_metasMes = {};
+var tm_expandedCats = {}; // Rastrea qué categorías están expandidas
+var tm_mesRangoCargado = null; // {ini, fin, mes, año} del mes actualmente en memoria
+var tm_PROD_CATS = [
+  "CLAVO CONCRETO","CLAVO MADERA","EMPAQUE CLAVO","VARILLA","BARRA","TREFILADO",
+  "COLATADO","TRATAMIENTOS TÉRMICOS","TORNILLO - GRANDES","TORNILLO - FIDE",
+  "TORNILLO - NBM GRUPO I","TORNILLO - NBM GRUPO II","TORNILLO - PIJAS N1",
+  "TORNILLO - PIJAS TOOL","TORNILLO - ROSCADO N1","TORNILLO - ROSCADO TOOL","TORNILLO"
+];
+var tm_PROD_CATS_BASE = [
+  "CLAVO CONCRETO","CLAVO MADERA","EMPAQUE CLAVO","VARILLA","BARRA","TREFILADO",
+  "COLATADO","TRATAMIENTOS TÉRMICOS","TORNILLO - GRANDES","TORNILLO - FIDE",
+  "TORNILLO - NBM GRUPO I","TORNILLO - NBM GRUPO II","TORNILLO - PIJAS N1",
+  "TORNILLO - PIJAS TOOL","TORNILLO - ROSCADO N1","TORNILLO - ROSCADO TOOL","TORNILLO"
+];
+
+function loadTableroMetricas() {
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+
+  // ── CSS guard ─────────────────────────────────────────────────────────────
+  if (!document.getElementById('tm-style')) {
+    var st = document.createElement('style');
+    st.id = 'tm-style';
+    st.textContent = `
+      /* ── TABLERO MÉTRICAS (tm_) ──────────────────────────────────────── */
+      #tm-panel { font-family:'Roboto',sans-serif; background:#f4f6f8; padding:15px; display:flex; flex-direction:column; align-items:center; min-height:calc(100vh - 48px); }
+      #tm-savingToast { position:fixed; top:20px; right:20px; background:#2e7d32; color:white; padding:12px 25px; border-radius:50px; font-weight:bold; font-size:14px; display:none; box-shadow:0 4px 10px rgba(0,0,0,.2); z-index:2000; align-items:center; gap:10px; }
+      #tm-panel .tm-dashboard-container { background:white; width:100%; max-width:1300px; box-shadow:0 4px 15px rgba(0,0,0,.15); padding:20px; border-radius:10px; overflow:hidden; margin-bottom:30px; }
+      #tm-panel .tm-header { display:flex; justify-content:space-between; align-items:center; border-bottom:4px solid #1565c0; padding-bottom:15px; margin-bottom:20px; flex-wrap:wrap; gap:15px; }
+      #tm-panel .tm-logo-area { display:flex; align-items:center; gap:15px; }
+      #tm-panel .tm-logo-img { height:50px; }
+      #tm-panel .tm-title { font-size:28px; font-weight:900; color:#1565c0; text-transform:uppercase; letter-spacing:1px; }
+      #tm-panel .tm-nav-week { display:flex; align-items:center; gap:10px; background:#eceff1; padding:8px 15px; border-radius:50px; border:1px solid #cfd8dc; }
+      #tm-panel .tm-nav-btn { background:#1565c0; color:white; border:none; width:32px; height:32px; border-radius:50%; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; }
+      #tm-panel .tm-week-label { font-weight:900; font-size:14px; color:#37474f; white-space:nowrap; }
+      #tm-panel .tm-table-wrapper { overflow-x:auto; width:100%; margin-bottom:10px; }
+      #tm-panel table { width:100%; border-collapse:separate; border-spacing:0; min-width:1000px; }
+      #tm-panel th { background:#263238; color:white; padding:10px 5px; border:1px solid #37474f; font-weight:900; font-size:14px; text-transform:uppercase; height:60px; position:sticky; top:0; z-index:5; line-height:1.2; }
+      #tm-panel .tm-th-date { display:block; font-size:11px; color:#90a4ae; font-weight:normal; margin-top:3px; }
+      #tm-panel .tm-th-prom { background:#1565c0 !important; border-color:#0d47a1 !important; }
+      #tm-panel td { border:1px solid #ccc; padding:0; text-align:center; vertical-align:middle; height:68px; background:white; }
+      #tm-panel .tm-col-id { width:36px; background:#37474f; color:white; font-weight:bold; font-size:12px; }
+      #tm-panel .tm-col-ind { text-align:left; padding:3px 10px; font-weight:900; width:180px; font-size:11px; background:#f5f5f5; }
+      #tm-panel .tm-col-meta { font-weight:900; color:#0d47a1; background:#e3f2fd; width:80px; font-size:12px; cursor:pointer; }
+      #tm-panel .tm-col-meta:hover { background:#bbdefb; }
+      #tm-panel .tm-col-prom { background:#e3f2fd; width:110px; border-left:4px solid #1565c0; }
+      #tm-panel .tm-week-details { font-size:9px; color:#666; margin-top:3px; padding:3px; background:#fafafa; border-radius:3px; }
+      #tm-panel .tm-week-details-row { display:flex; justify-content:space-around; align-items:center; margin-bottom:1px; }
+      #tm-panel .tm-week-num { font-weight:bold; font-size:8px; }
+      #tm-panel .tm-week-val { font-weight:900; font-size:9px; }
+      #tm-panel .tm-cell-content { height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:2px; gap:2px; }
+      #tm-panel .tm-input-cell { width:100%; border:none; text-align:center; font-size:14px; font-weight:900; background:transparent; outline:none; color:#212121; border-bottom:1px dashed #bbb; margin-bottom:1px; }
+      #tm-panel .tm-pct-box { display:flex; align-items:center; justify-content:center; gap:5px; width:95%; padding:2px 4px; border-radius:5px; font-weight:900; font-size:13px; box-shadow:0 1px 2px rgba(0,0,0,.1); color:black; }
+      #tm-panel .tm-prod-expand-tr td { padding:0 !important; border-top:none !important; }
+      #tm-panel .tm-expand-inner { padding:0; overflow-x:auto; border-top:3px solid #1565c0; }
+      /* ── Tabla máquinas ── */
+      #tm-panel .tm-maq-table { width:100%; border-collapse:collapse; font-size:11px; }
+      #tm-panel .tm-maq-table thead th {
+        background:#1e2a3a; color:#e0e0e0; padding:5px 4px;
+        text-align:center; font-size:9px; font-weight:800;
+        letter-spacing:.03em; white-space:nowrap; }
+      #tm-panel .tm-maq-table thead th.tm-th-maq {
+        background:#0d1b2a; text-align:left; padding-left:10px;
+        width:120px; min-width:120px; max-width:120px; }
+      /* Nombre de máquina */
+      #tm-panel .tm-maq-name-cell {
+        text-align:left !important; font-weight:900; font-size:10px;
+        color:#0d47a1; padding:6px 8px !important;
+        border-right:3px solid #9fa8da !important;
+        width:120px; min-width:120px; max-width:120px;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        vertical-align:middle; }
+      /* Celdas de datos: centradas, altura cómoda */
+      #tm-panel .tm-maq-table td {
+        padding:5px 3px; text-align:center; vertical-align:middle;
+        border-bottom:1px solid #e8ecf0; }
+      /* Cebra: filas alternas — más visible, cubre también PROM SEM */
+      #tm-panel .tm-maq-table tbody tr:nth-child(odd)  td { background:#e8eef7; }
+      #tm-panel .tm-maq-table tbody tr:nth-child(even) td { background:#ffffff; }
+      /* PROM SEM turnos: cebra superpuesta con tinte azul */
+      #tm-panel .tm-maq-table tbody tr:nth-child(odd)  td.bg-prom-t { background:#b8d4f5 !important; }
+      #tm-panel .tm-maq-table tbody tr:nth-child(even) td.bg-prom-t { background:#d6e9ff !important; }
+      /* Inhábil */
+      #tm-panel .tm-maq-table td.bg-inhab { background:#d5d5d5 !important; color:#999; }
+      /* DÍA total (oscuro) — siempre igual independiente de cebra */
+      #tm-panel .tm-maq-table td.bg-dia {
+        background:#263238 !important; color:white !important; }
+      /* PROM SEM total — siempre azul fuerte */
+      #tm-panel .tm-maq-table td.bg-prom-tot { background:#1565c0 !important; color:white !important; }
+      /* Bordes: grueso entre días, fino entre turnos */
+      #tm-panel .tm-maq-table td.bord-day  { border-left:3px solid #455a64 !important; }
+      #tm-panel .tm-maq-table td.bord-turn { border-left:1px solid #cfd8dc !important; }
+      #tm-panel .tm-maq-table td.bord-prom { border-left:4px solid #1565c0 !important; }
+      /* Cantidad arriba, % abajo — siempre en bloque */
+      #tm-panel .tm-maq-kil {
+        display:block; font-size:11px; font-weight:900;
+        line-height:1.2; color:inherit; }
+      #tm-panel .tm-maq-shift-chip {
+        display:block; font-size:9px; font-weight:900;
+        padding:1px 4px; border-radius:3px; margin:2px auto 0;
+        width:fit-content; }
+      #tm-panel .tm-maq-empty { color:#ccc; font-size:10px; line-height:2; }
+      #tm-panel .tm-prod-cat-clickable { cursor:pointer; }
+      #tm-panel .tm-prod-cat-clickable:hover { background:#dde8ff !important; }
+      #tm-panel .tm-cat-arrow { display:inline-block; margin-right:4px; font-size:9px; transition:transform .2s; }
+      #tm-panel .tm-cat-arrow.open { transform:rotate(90deg); }
+      #tm-prodTable td { height:auto; padding:2px; font-size:11px; vertical-align:top; }
+      @keyframes tm-pulso-rojo { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.7);} 50%{box-shadow:0 0 0 6px rgba(220,38,38,0);} }
+      #tm-panel .tm-pct-skull { background:#1a1a1a !important; color:white !important; border:2px solid #dc2626 !important; animation:tm-pulso-rojo 1.2s ease-in-out infinite; }
+      #tm-panel td.tm-cel-inhabil { background:#e0e0e0 !important; }
+      #tm-panel th.tm-th-inhabil { background:#455a64 !important; color:#b0bec5 !important; }
+      #tm-panel .tm-prod-cat { text-align:left; padding:10px; font-weight:900; background:#eceff1; font-size:12px; color:#37474f; }
+      #tm-panel .tm-shift-row { display:flex; justify-content:space-between; padding:3px 5px; border-bottom:1px solid #eee; align-items:center; }
+      #tm-panel .tm-shift-data { font-weight:900; font-size:11px; text-align:right; flex:1; }
+      #tm-panel .tm-shift-eff { font-size:10px; font-weight:bold; padding:1px 4px; border-radius:3px; margin-left:5px; min-width:35px; text-align:center; }
+      #tm-panel .tm-day-total { background:#263238; color:white; padding:5px; font-weight:bold; display:flex; justify-content:space-between; align-items:center; font-size:11px; cursor:pointer; }
+      #tm-panel .tm-bg-gray { background:#f5f5f5; color:#ccc; }
+      #tm-panel .tm-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:5000; display:none; justify-content:center; align-items:center; }
+      #tm-panel .tm-modal-card { background:white; padding:15px; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,.5); display:flex; flex-direction:column; }
+      #tm-panel .tm-modal-detail { width:1000px; max-width:98vw; max-height:92vh; }
+      #tm-panel .tm-detail-table { width:100%; border-collapse:collapse; margin-top:5px; table-layout:fixed; }
+      #tm-panel .tm-detail-table th { background:#37474f; color:white; padding:8px 4px; border:1px solid #555; font-size:13px; }
+      #tm-panel .tm-detail-table td { border:1px solid #ccc; padding:4px; text-align:center; vertical-align:middle; height:45px; }
+      #tm-panel .tm-det-maq { font-weight:900; color:#1565c0; text-align:left; padding-left:10px !important; font-size:14px; text-transform:uppercase; }
+      #tm-panel .tm-det-val { font-weight:900; font-size:16px; display:block; line-height:1; margin-bottom:2px; }
+      #tm-panel .tm-det-eff { font-size:12px; font-weight:900; padding:2px 6px; border-radius:3px; display:inline-block; }
+      #tm-panel .tm-modal-calidad { width:450px; max-width:95%; max-height:85vh; }
+      #tm-panel .tm-calidad-row { display:flex; align-items:center; margin-bottom:6px; justify-content:space-between; border-bottom:1px solid #eee; padding:8px 5px; background:#fafafa; border-radius:4px; }
+      #tm-panel .tm-calidad-label { font-size:13px; font-weight:900; color:#212121; flex:1; text-transform:uppercase; }
+      #tm-panel .tm-calidad-ref { font-size:12px; color:#1565c0; margin-right:15px; font-weight:bold; }
+      #tm-panel .tm-calidad-input { width:85px; padding:6px; border:2px solid #ddd; text-align:right; font-weight:900; border-radius:6px; font-size:14px; color:#d32f2f; outline:none; }
+      #tm-panel .tm-fab { position:fixed; bottom:30px; right:30px; background:#0088cc; color:white; width:60px; height:60px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:30px; box-shadow:0 4px 12px rgba(0,0,0,.4); cursor:pointer; border:none; z-index:999; }
+      #tm-panel .tm-fab-update { position:fixed; bottom:110px; right:30px; background:#ff6f00; color:white; padding:12px 24px; border-radius:25px; font-weight:900; font-size:13px; box-shadow:0 4px 12px rgba(0,0,0,.4); cursor:pointer; border:none; z-index:999; display:none; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  // ── LOADER estilo MainApp (igual que Validador) ──────────────────────────
+  showLoader('Cargando Tablero de Métricas...');
+
+  // ── HTML del módulo ──────────────────────────────────────────────────────
+  ca.innerHTML = `
+<div id="tm-panel">
+  <div id="tm-savingToast">💾 GUARDANDO...</div>
+
+  <!-- TABLERO 1: MÉTRICAS -->
+  <div class="tm-dashboard-container" id="tm-captureArea1">
+    <div class="tm-header">
+      <div class="tm-logo-area">
+        <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" class="tm-logo-img">
+        <div class="tm-title">📊 TABLERO DE SEGUIMIENTO DIARIO</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button onclick="tm_enviarReporte()" title="Enviar reporte a Telegram" style="background:#0088cc;color:white;border:none;padding:8px 16px;border-radius:50px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">✈️ Telegram</button>
+        <div class="tm-nav-week">
+          <button class="tm-nav-btn" onclick="tm_cambiarSemana(-1)">&#8592;</button>
+          <span class="tm-week-label" id="tm-lblSemana">---</span>
+          <button class="tm-nav-btn" onclick="tm_cambiarSemana(1)">&#8594;</button>
+        </div>
+      </div>
+    </div>
+    <div class="tm-table-wrapper">
+      <table id="tm-mainTable">
+        <thead>
+          <tr id="tm-headerRow">
+            <th style="width:40px;">#</th><th>INDICADOR</th><th>META</th>
+            <th>LUN<span class="tm-th-date">--/--</span></th>
+            <th>MAR<span class="tm-th-date">--/--</span></th>
+            <th>MIE<span class="tm-th-date">--/--</span></th>
+            <th>JUE<span class="tm-th-date">--/--</span></th>
+            <th>VIE<span class="tm-th-date">--/--</span></th>
+            <th>SAB<span class="tm-th-date">--/--</span></th>
+            <th class="tm-th-prom">PROM</th>
+          </tr>
+        </thead>
+        <tbody id="tm-tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABLERO 2: PRODUCCIÓN DETALLADA -->
+  <div class="tm-dashboard-container" id="tm-captureArea2" style="margin-top:20px;">
+    <div class="tm-header" style="border-color:#2e7d32;">
+      <div class="tm-logo-area">
+        <div class="tm-title" style="color:#2e7d32;font-size:22px;">🏭 MÉTRICAS DE PRODUCCIÓN DETALLADA</div>
+      </div>
+    </div>
+    <div class="tm-table-wrapper">
+      <table id="tm-prodTable">
+        <thead>
+          <tr id="tm-prodHeaderRow">
+            <th style="width:200px;text-align:left;">LÍNEA / FAMILIA</th>
+            <th>LUN<span class="tm-th-date">--/--</span></th>
+            <th>MAR<span class="tm-th-date">--/--</span></th>
+            <th>MIE<span class="tm-th-date">--/--</span></th>
+            <th>JUE<span class="tm-th-date">--/--</span></th>
+            <th>VIE<span class="tm-th-date">--/--</span></th>
+            <th>SAB<span class="tm-th-date">--/--</span></th>
+            <th class="tm-th-prom">PROM</th>
+          </tr>
+        </thead>
+        <tbody id="tm-prodBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <button class="tm-fab-update" id="tm-btnActualizar" onclick="tm_actualizarVistaActual()">🔄 Actualizar vista (MES)</button>
+
+  <!-- MODAL DETALLE MÁQUINAS -->
+  <div id="tm-modalDetalle" class="tm-modal-overlay" style="display:none;">
+    <div class="tm-modal-card tm-modal-detail">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1565c0;padding-bottom:8px;margin-bottom:10px;">
+        <div><h2 style="margin:0;color:#1565c0;font-size:22px;font-weight:900;" id="tm-mdlTitle">DETALLE</h2><span style="font-size:12px;color:#666;" id="tm-mdlSub"></span></div>
+        <button onclick="document.getElementById('tm-modalDetalle').style.display='none'" style="border:none;background:#eee;border-radius:50%;width:30px;height:30px;font-size:20px;cursor:pointer;">&times;</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;">
+        <table class="tm-detail-table">
+          <thead>
+            <tr>
+              <th style="width:30%;">MÁQUINA</th>
+              <th style="width:22%;">TOTAL</th>
+              <th style="width:16%;">TURNO 1</th>
+              <th style="width:16%;">TURNO 2</th>
+              <th style="width:16%;">TURNO 3</th>
+            </tr>
+          </thead>
+          <tbody id="tm-mdlBody"></tbody>
+        </table>
+      </div>
+      <div style="text-align:right;margin-top:15px;">
+        <button style="background:#1565c0;color:white;border:none;padding:10px 30px;border-radius:6px;font-weight:900;cursor:pointer;" onclick="document.getElementById('tm-modalDetalle').style.display='none'">CERRAR VENTANA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CALIDAD -->
+  <div id="tm-modalCalidad" class="tm-modal-overlay" style="display:none;">
+    <div class="tm-modal-card tm-modal-calidad">
+      <div style="border-bottom:3px solid #e65100;padding-bottom:8px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;">
+        <div><h3 style="margin:0;color:#e65100;font-size:18px;font-weight:900;">CAPTURA MALA CALIDAD (KG)</h3><span style="font-size:11px;color:#666;font-weight:bold;" id="tm-lblCalidadDia"></span></div>
+        <span style="font-size:24px;color:#e65100;">⚠️</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding-right:5px;" id="tm-calidadBody"></div>
+      <div style="text-align:right;margin-top:20px;display:flex;gap:12px;justify-content:flex-end;">
+        <button style="background:#eceff1;color:#37474f;border:none;padding:10px 20px;border-radius:6px;font-weight:900;cursor:pointer;" onclick="document.getElementById('tm-modalCalidad').style.display='none'">CANCELAR</button>
+        <button style="background:#e65100;color:white;border:none;padding:10px 25px;border-radius:6px;font-weight:900;cursor:pointer;" onclick="tm_confirmarCalidad()">GUARDAR DATOS</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+  // Reset state and load
+  tm_fechaReferencia = new Date();
+  tm_datosTablero = [];
+  tm_datosProduccion = {};
+  tm_mesRangoCargado = null;
+  tm_esPrimeraCarga = true;
+  tm_actualizarSemana();
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function tm_getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil(( ((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function tm_cambiarSemana(delta) {
+  var mesAntes = tm_fechaReferencia.getMonth();
+  var anioAntes = tm_fechaReferencia.getFullYear();
+  tm_fechaReferencia.setDate(tm_fechaReferencia.getDate() + (delta * 7));
+  tm_esPrimeraCarga = false;
+  var mesDespues = tm_fechaReferencia.getMonth();
+  var anioDespues = tm_fechaReferencia.getFullYear();
+  var cambioDeMes = (mesAntes !== mesDespues || anioAntes !== anioDespues);
+  if(cambioDeMes) {
+    // Cambió el mes: recargar datos del nuevo mes desde backend
+    var _lnesRef = new Date(tm_fechaReferencia);
+    var _dow = _lnesRef.getDay();
+    _lnesRef.setDate(_lnesRef.getDate() + (_dow === 0 ? -6 : 1 - _dow));
+    var _nomMes = _lnesRef.toLocaleString('es-MX', { month: 'long' }).toUpperCase();
+    document.getElementById('tm-btnActualizar').textContent = '🔄 Actualizar vista (' + _nomMes + ')';
+    document.getElementById('tm-btnActualizar').style.display = 'block';
+  } else {
+    // Misma semana del mismo mes: solo re-renderizar con datos ya cargados
+    document.getElementById('tm-btnActualizar').style.display = 'none';
+    tm_actualizarEncabezados();
+    tm_renderizarTabla1();
+    tm_renderizarTabla2();
+  }
+}
+
+function tm_actualizarVistaActual() {
+  document.getElementById('tm-btnActualizar').style.display = 'none';
+  tm_actualizarSemana();
+}
+
+function tm_actualizarEncabezados() {
+  var currentDay = tm_fechaReferencia.getDay();
+  var distanceToMon = currentDay === 0 ? -6 : 1 - currentDay;
+  var lunes = new Date(tm_fechaReferencia);
+  lunes.setDate(tm_fechaReferencia.getDate() + distanceToMon);
+  var formatISO = function(date) {
+    var d = new Date(date), month = '' + (d.getMonth()+1), day = '' + d.getDate(), year = d.getFullYear();
+    if(month.length < 2) month = '0' + month;
+    if(day.length < 2) day = '0' + day;
+    return [year,month,day].join('-');
+  };
+  document.getElementById('tm-lblSemana').innerText = "SEMANA " + tm_getWeekNumber(lunes) + " (" + lunes.toLocaleString('es-MX',{month:'long'}).toUpperCase() + ")";
+  var h1 = document.getElementById('tm-headerRow');
+  var h2 = document.getElementById('tm-prodHeaderRow');
+  for(var i=3; i<=8; i++) {
+    var d = new Date(lunes);
+    d.setDate(lunes.getDate() + (i-3));
+    var dateStr = formatISO(d);
+    var displayDate = d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
+    var inhab = tm_esInhabil(dateStr);
+    var th1 = h1.children[i];
+    th1.innerHTML = tm_diasSemanaTxt[i-3] + "<span class='tm-th-date'>" + displayDate + "</span>";
+    th1.setAttribute('data-date', dateStr);
+    if(inhab) { th1.classList.add('tm-th-inhabil'); } else { th1.classList.remove('tm-th-inhabil'); }
+    var th2 = h2.children[i-2];
+    th2.innerHTML = tm_diasSemanaTxt[i-3] + "<span class='tm-th-date'>" + displayDate + "</span>";
+    th2.setAttribute('data-date', dateStr);
+    if(inhab) { th2.classList.add('tm-th-inhabil'); } else { th2.classList.remove('tm-th-inhabil'); }
+  }
+}
+
+function tm_actualizarSemana() {
+  showLoader('Cargando Tablero de Métricas...');
+  var currentDay = tm_fechaReferencia.getDay();
+  var distanceToMon = currentDay === 0 ? -6 : 1 - currentDay;
+  var lunes = new Date(tm_fechaReferencia);
+  lunes.setDate(tm_fechaReferencia.getDate() + distanceToMon);
+  var sabado = new Date(lunes);
+  sabado.setDate(lunes.getDate() + 5);
+  var formatISO = function(date) {
+    var d = new Date(date), month = '' + (d.getMonth()+1), day = '' + d.getDate(), year = d.getFullYear();
+    if(month.length < 2) month = '0' + month;
+    if(day.length < 2) day = '0' + day;
+    return [year,month,day].join('-');
+  };
+  // El mes de referencia lo define el LUNES (para el label y para el mes de metas)
+  var mesActual = lunes.getMonth();
+  var añoActual = lunes.getFullYear();
+  // El rango de datos cubre TODO el mes (primer día al último día del mes del lunes)
+  var primerDiaMes = new Date(añoActual, mesActual, 1);
+  var ultimoDiaMes = new Date(añoActual, mesActual + 1, 0);
+  var fIniMes = formatISO(primerDiaMes);
+  var fFinMes = formatISO(ultimoDiaMes);
+  tm_mesRangoCargado = { ini: fIniMes, fin: fFinMes, mes: mesActual, año: añoActual };
+  document.getElementById('tm-lblSemana').innerText = "SEMANA " + tm_getWeekNumber(lunes) + " (" + lunes.toLocaleString('es-MX',{month:'long'}).toUpperCase() + ")";
+  tm_actualizarEncabezados();
+
+  google.script.run
+    .withSuccessHandler(function(resProd) {
+      tm_datosProduccion = resProd || {};
+      tm_renderizarTabla2();
+      google.script.run
+        .withSuccessHandler(function(resTab) {
+          tm_datosTablero = Array.isArray(resTab) ? resTab : [];
+          tm_renderizarTabla1();
+          hideLoader();
+          tm_esPrimeraCarga = false;
+        })
+        .withFailureHandler(function(err) {
+          console.error('Error tablero:', err);
+          tm_datosTablero = [];
+          tm_renderizarTabla1();
+          hideLoader();
+        })
+        .obtenerDatosTablero(fIniMes, fFinMes);
+  // Cargar metas del mes (o mes anterior como fallback)
+  tm_cargarMetasMes();
+    })
+    .withFailureHandler(function(err) {
+      console.error('Error producción:', err);
+      hideLoader();
+    })
+    .obtenerResumenProduccionDetallado(fIniMes, fFinMes);
+}
+
+function tm_obtenerTodasLasSemanasDelMes(fecha) {
+  var partes = fecha.split('-');
+  var año = parseInt(partes[0]); var mes = parseInt(partes[1]) - 1;
+  var semanas = [];
+  var primerDia = new Date(año, mes, 1);
+  var ultimoDia = new Date(año, mes + 1, 0);
+  var lunesActual = new Date(primerDia);
+  var diaActual = lunesActual.getDay();
+  lunesActual.setDate(lunesActual.getDate() + (diaActual === 0 ? -6 : 1 - diaActual));
+  while(lunesActual <= ultimoDia) {
+    if(lunesActual.getMonth() === mes) semanas.push(tm_getWeekNumber(lunesActual));
+    lunesActual.setDate(lunesActual.getDate() + 7);
+  }
+  return semanas;
+}
+
+function tm_formatearSemana(n) { return n < 10 ? '0'+n : ''+n; }
+
+function tm_renderizarTabla1() {
+  var tbody = document.getElementById('tm-tableBody');
+  if(!tbody) return;
+  tbody.innerHTML = "";
+  var headers = document.getElementById('tm-headerRow').children;
+  var fechaPrimeraColumna = headers[3].getAttribute('data-date');
+  var semanasDelMes = tm_obtenerTodasLasSemanasDelMes(fechaPrimeraColumna);
+  // Marcar headers inhábiles
+  for(var hi=3; hi<=8; hi++) {
+    var fhd = headers[hi].getAttribute('data-date');
+    if(fhd && tm_esInhabil(fhd)) {
+      headers[hi].classList.add('tm-th-inhabil');
+    } else {
+      headers[hi].classList.remove('tm-th-inhabil');
+    }
+  }
+
+  tm_CONFIG.forEach(function(conf, idx) {
+    var tr = document.createElement('tr');
+    var metaDisplay = conf.meta.toLocaleString();
+    if(conf.tipo == 2) metaDisplay = "100%";
+    if(conf.tipo == 6) metaDisplay = "<25%";
+    if(conf.tipo == 7) metaDisplay = "<1%";
+    var detalleSemanas = tm_generarDetalleSemanasIndicador(conf, semanasDelMes);
+    var metaOnclick = (conf.tipo !== 6 && conf.tipo !== 7)
+      ? ' onclick="tm_editarMeta('+idx+')" title="Clic para editar meta"'
+      : '';
+    tr.innerHTML = '<td class="tm-col-id">'+conf.id+'</td><td class="tm-col-ind">'+conf.nombre+detalleSemanas+'</td><td class="tm-col-meta"'+metaOnclick+'>'+metaDisplay+'</td>';
+    for(var i=3; i<=8; i++) {
+      var fechaCol = headers[i].getAttribute('data-date');
+      var esInhab = tm_esInhabil(fechaCol);
+      var dato = tm_datosTablero.find(function(d){ return d.indicador == conf.nombre && d.fecha == fechaCol; });
+      var val = dato ? dato.resultado : "";
+      var dato1 = dato ? dato.dato1 : "";
+      tr.innerHTML += '<td'+(esInhab?' class="tm-cel-inhabil"':'')+'>'+tm_generarHTMLCelda(val, conf, fechaCol, dato1)+'</td>';
+    }
+    tr.innerHTML += '<td class="tm-col-prom" id="tm-prom-'+idx+'">'+tm_generarHTMLPromedio(conf)+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function tm_generarDetalleSemanasIndicador(conf, semanas) {
+  var sumaTotalGeneral = 0; var conteoTotalGeneral = 0;
+  var items = [];
+  semanas.forEach(function(sem) {
+    var sumaSemana = 0; var conteoSemana = 0;
+    tm_datosTablero.forEach(function(d) {
+      if(d.indicador === conf.nombre && d.resultado !== "") {
+        var fechaDate = new Date(d.fecha + 'T12:00:00');
+        if(tm_getWeekNumber(fechaDate) === sem) {
+          var val = Number(d.resultado);
+          if(conf.tipo == 1) { if(val > conf.meta) val = conf.meta; sumaSemana += val; conteoSemana++; }
+          else if(conf.tipo == 2) { sumaSemana += (val * 100); conteoSemana++; }
+          else if(conf.tipo == 3) { if(val > conf.meta) val = conf.meta; sumaSemana += val; conteoSemana++; }
+          else if(conf.tipo == 6 || conf.tipo == 7) { sumaSemana += (val * 100); conteoSemana++; }
+        }
+      }
+    });
+    // Acumular al total UNA SOLA VEZ por semana (bug fix: antes sumaba dentro del forEach de días)
+    sumaTotalGeneral += sumaSemana;
+    conteoTotalGeneral += conteoSemana;
+    var display = '-';
+    if(conteoSemana > 0) {
+      var promSem = sumaSemana;
+      if(conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7) promSem = sumaSemana / conteoSemana;
+      var pctSem = conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7 ? promSem : (promSem / conf.meta) * 100;
+      if(pctSem > 100) pctSem = 100;
+      display = conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7 ? pctSem.toFixed(1)+'%' : Math.round(promSem).toLocaleString();
+    }
+    items.push({ label: 'S'+tm_formatearSemana(sem), val: display, noData: conteoSemana === 0 });
+  });
+  var totalDisplay = '-';
+  if(conteoTotalGeneral > 0) {
+    if(conf.tipo == 2 || conf.tipo == 6 || conf.tipo == 7) totalDisplay = (sumaTotalGeneral / conteoTotalGeneral).toFixed(1)+'%';
+    else totalDisplay = Math.round(sumaTotalGeneral).toLocaleString();
+  }
+  items.push({ label: 'TOTAL', val: totalDisplay, isTotal: true, noData: conteoTotalGeneral === 0 });
+  var mid = Math.ceil(items.length / 2);
+  var colA = items.slice(0, mid);
+  var colB = items.slice(mid);
+  var html = '<div class="tm-week-details" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;margin-top:4px;">';
+  var maxLen = Math.max(colA.length, colB.length);
+  for(var i = 0; i < maxLen; i++) {
+    var a = colA[i];
+    var b = colB[i];
+    if(a) {
+      html += '<div class="tm-week-details-row" style="justify-content:space-between;">'
+        + '<span class="tm-week-num">'+a.label+'</span>'
+        + '<span class="tm-week-val"'+(a.isTotal?' style="color:#1565c0;"':a.noData?' style="color:#ccc;"':'')+'>'+a.val+'</span>'
+        + '</div>';
+    }
+    if(b) {
+      html += '<div class="tm-week-details-row" style="justify-content:space-between;">'
+        + '<span class="tm-week-num">'+b.label+'</span>'
+        + '<span class="tm-week-val"'+(b.isTotal?' style="color:#1565c0;"':b.noData?' style="color:#ccc;"':'')+'>'+b.val+'</span>'
+        + '</div>';
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+function tm_generarHTMLCelda(val, conf, fecha, dato1) {
+  var pctVis = 0; var pctTxt = "-";
+  var estilo = {bg:"transparent", text:"transparent", emoji:""};
+  if(val !== "" && val !== null) {
+    var numVal = Number(val);
+    if(conf.tipo == 1) pctVis = (numVal / 70000) * 100;
+    else if(conf.tipo == 2) pctVis = numVal * 100;
+    else if(conf.tipo == 3) pctVis = (numVal / conf.meta) * 100;
+    else if(conf.tipo == 6 || conf.tipo == 7) pctVis = numVal * 100;
+    if(pctVis > 100) pctVis = 100;
+    pctTxt = pctVis.toFixed(1) + "%";
+    estilo = tm_obtenerEstilo(pctVis, conf.tipo);
+  }
+  if(conf.tipo == 6) {
+    var displayVal = dato1 || "-";
+    if(val === "") pctTxt = "";
+    return '<div class="tm-cell-content" onclick="tm_capturarRatio(\''+fecha+'\',\''+conf.nombre+'\')" style="cursor:pointer;"><div style="font-size:14px;font-weight:900;">'+displayVal+'</div>'+(val!==""?'<div class="tm-pct-box" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
+  }
+  if(conf.tipo == 7) {
+    var totalNC = 0;
+    if(dato1) { try { var obj = JSON.parse(dato1); for(var k in obj){ if(obj[k]>0) totalNC += Number(obj[k]); } } catch(e){} }
+    if(val === "") { pctTxt = ""; estilo = {bg:"transparent"}; }
+    return '<div class="tm-cell-content" onclick="tm_abrirModalCalidad(\''+fecha+'\',\''+conf.nombre+'\')" style="cursor:pointer;"><div style="font-size:16px;">'+(totalNC>0?totalNC.toLocaleString():"-")+'</div>'+(val!==""?'<div class="tm-pct-box" style="background:'+estilo.bg+';color:'+estilo.text+';padding:2px;"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
+  }
+  if(conf.tipo == 2) {
+    var displayVal2 = (val!=="") ? (Number(val)*100).toFixed(2)+"%" : "";
+    var skullCls2 = (estilo.emoji === '💀') ? ' tm-pct-skull' : '';
+    return '<div class="tm-cell-content" onclick="tm_capturarEnviado(\''+fecha+'\',\''+conf.nombre+'\')" style="cursor:pointer;"><div style="font-size:14px;font-weight:900;">'+displayVal2+'</div>'+(val!==""?'<div class="tm-pct-box'+skullCls2+'" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
+  }
+  var valFormateado = (val !== "" && !isNaN(val)) ? Number(val).toLocaleString('en-US') : val;
+  var skullClass = (estilo.emoji === '💀') ? ' tm-pct-skull' : '';
+  return '<div class="tm-cell-content"><input type="text" inputmode="numeric" class="tm-input-cell" value="'+valFormateado+'" onchange="tm_guardarValor(this,\''+fecha+'\',\''+conf.nombre+'\','+conf.meta+','+conf.tipo+')" onfocus="this.select()" placeholder="-">'+(val!==""?'<div class="tm-pct-box'+skullClass+'" style="background:'+estilo.bg+';color:'+estilo.text+'"><span>'+pctTxt+'</span><span>'+estilo.emoji+'</span></div>':'')+'</div>';
+}
+
+function tm_generarHTMLPromedio(conf) {
+  var headers = document.getElementById('tm-headerRow').children;
+  if(conf.tipo == 6) {
+    var numT=0; var denT=0;
+    for(var i=3;i<=8;i++){var f=headers[i].getAttribute('data-date');var d=tm_datosTablero.find(function(x){return x.indicador==conf.nombre&&x.fecha==f;});if(d&&d.dato1){var parts=d.dato1.split(":");if(parts.length==2){numT+=Number(parts[0]);denT+=Number(parts[1]);}}}
+    if(denT==0) return "";
+    var pct=(numT/denT)*100; var est=tm_obtenerEstilo(pct,6);
+    return '<div class="tm-cell-content"><div style="font-size:16px;font-weight:900;">'+numT+':'+denT+'</div><div class="tm-pct-box" style="background:'+est.bg+';color:'+est.text+';width:100%;"><span>'+pct.toFixed(1)+'%</span><span>'+est.emoji+'</span></div></div>';
+  }
+  if(conf.tipo == 7) {
+    var sumNC=0; var sumProd=0;
+    for(var i=3;i<=8;i++){var f=headers[i].getAttribute('data-date');var d=tm_datosTablero.find(function(x){return x.indicador==conf.nombre&&x.fecha==f;});if(d&&d.dato1){try{var o=JSON.parse(d.dato1);for(var k in o)sumNC+=Number(o[k]);}catch(e){}}sumProd+=tm_obtenerProduccionTotalDia(f);}
+    if(sumProd==0) return "";
+    var pct=(sumNC/sumProd)*100; var est=tm_obtenerEstilo(pct,7);
+    return '<div class="tm-cell-content"><div style="font-size:16px;font-weight:900;">'+sumNC.toLocaleString()+'</div><div class="tm-pct-box" style="background:'+est.bg+';color:'+est.text+';width:100%;"><span>'+pct.toFixed(1)+'%</span><span>'+est.emoji+'</span></div></div>';
+  }
+  // Tipo 2 (porcentaje exacto): promediar cada valor directamente, sin ponderar por días
+  if(conf.tipo == 2) {
+    var sumaT2=0; var cntT2=0;
+    for(var i=3;i<=8;i++){
+      var f=headers[i].getAttribute('data-date');
+      var d=tm_datosTablero.find(function(x){return x.indicador==conf.nombre&&x.fecha==f;});
+      if(d&&d.resultado!==""){sumaT2+=Number(d.resultado);cntT2++;}
+    }
+    if(cntT2===0) return "";
+    var promT2=sumaT2/cntT2;
+    var pctT2=promT2*100; if(pctT2>100)pctT2=100;
+    var estiloT2=tm_obtenerEstilo(pctT2,2);
+    var skullT2=(estiloT2.emoji==='💀')?' tm-pct-skull':'';
+    return '<div class="tm-cell-content"><div style="font-size:14px;font-weight:900;color:#0d47a1;">'+pctT2.toFixed(2)+'%</div><div class="tm-pct-box'+skullT2+'" style="background:'+estiloT2.bg+';color:'+estiloT2.text+';width:100%;"><span>'+pctT2.toFixed(1)+'%</span><span>'+estiloT2.emoji+'</span></div></div>';
+  }
+  var sumas=0; var diasCount=0;
+  for(var i=3;i<=8;i++){
+    var f=headers[i].getAttribute('data-date');
+    var peso=tm_pesoLaboral(f);
+    var d=tm_datosTablero.find(function(x){return x.indicador==conf.nombre&&x.fecha==f;});
+    if(d&&d.resultado!==""){var v=Number(d.resultado);var vCalc=v;if(conf.tipo==1&&v>70000)vCalc=70000;if(conf.tipo==3&&v>conf.meta)vCalc=conf.meta;sumas+=vCalc;diasCount+=peso;}
+  }
+  if(diasCount===0) return "";
+  var promBruto=sumas/diasCount;
+  var cumplimiento=(promBruto/conf.meta)*100;
+  if(cumplimiento>100) cumplimiento=100;
+  var estilo=tm_obtenerEstilo(cumplimiento,conf.tipo);
+  var skullClassProm = (estilo.emoji === '💀') ? ' tm-pct-skull' : '';
+  var promText=Math.round(promBruto).toLocaleString('en-US');
+  return '<div class="tm-cell-content"><div style="font-size:18px;font-weight:900;color:#0d47a1;margin-bottom:3px;">'+promText+'</div><div class="tm-pct-box'+skullClassProm+'" style="background:'+estilo.bg+';color:'+estilo.text+';width:100%;"><span>'+cumplimiento.toFixed(1)+'%</span><span>'+estilo.emoji+'</span></div></div>';
+}
+
+function tm_obtenerProduccionTotalDia(fecha) {
+  var total = 0;
+  for(var cat in tm_datosProduccion) {
+    if(tm_datosProduccion[cat][fecha]) {
+      var d = tm_datosProduccion[cat][fecha];
+      total += (d[1].k + d[2].k + d[3].k);
+    }
+  }
+  return total;
+}
+
+function tm_renderizarTabla2() {
+  var tbody = document.getElementById('tm-prodBody');
+  if(!tbody) return;
+  tbody.innerHTML = "";
+  var todasLasKeys = Object.keys(tm_datosProduccion).sort();
+  var listaFinal = [];
+  tm_PROD_CATS.forEach(function(c){ if(todasLasKeys.includes(c)) listaFinal.push(c); });
+  todasLasKeys.forEach(function(k){ if(!listaFinal.includes(k) && k.includes("TORNILLO")) listaFinal.push(k); });
+  todasLasKeys.forEach(function(k){ if(!listaFinal.includes(k)) listaFinal.push(k); });
+  var h2 = document.getElementById('tm-prodHeaderRow').children;
+  var fechaPrimeraColumna = h2[1].getAttribute('data-date');
+  var semanasDelMes = tm_obtenerTodasLasSemanasDelMes(fechaPrimeraColumna);
+  // Marcar headers inhábiles en Tabla 2
+  for(var hi2=1; hi2<=6; hi2++) {
+    var fhd2 = h2[hi2].getAttribute('data-date');
+    if(fhd2 && tm_esInhabil(fhd2)) {
+      h2[hi2].classList.add('tm-th-inhabil');
+    } else {
+      h2[hi2].classList.remove('tm-th-inhabil');
+    }
+  }
+  listaFinal.forEach(function(cat) {
+    var catId = 'tm-cat-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
+    var tr = document.createElement('tr');
+    tr.id = catId;
+    var detalleSemanas = tm_generarDetalleSemanasLinea(cat, semanasDelMes);
+    var arrowState = tm_expandedCats[cat] ? ' open' : '';
+    var catDisplay = '<span class="tm-cat-arrow'+arrowState+'" id="arrow-'+catId+'">▶</span>'+cat;
+    tr.innerHTML = '<td class="tm-prod-cat tm-prod-cat-clickable" onclick="tm_toggleExpandCat(\''+cat.replace(/'/g,"\\'")+'\')" >'+catDisplay+detalleSemanas+'</td>';
+    var sumKilosTotal=0; var sumRealTotal=0; var sumTeoTotal=0; var diasOperativos=0;
+    for(var i=1;i<=6;i++) {
+      var f = h2[i].getAttribute('data-date');
+      var esInhabT2 = tm_esInhabil(f);
+      var cellHtml = ""; var dayKilos=0; var dayReal=0; var dayTeo=0;
+      if(tm_datosProduccion[cat] && tm_datosProduccion[cat][f]) {
+        var d = tm_datosProduccion[cat][f];
+        for(var t=1;t<=3;t++){
+          var k=d[t].k; var uR=d[t].uReal; var uT=d[t].uTeo;
+          var eff=(uT>0)?(uR/uT)*100:0; if(eff>100)eff=100;
+          if(k>0||uT>0){var se=tm_getEstiloEficiencia(eff);cellHtml+='<div class="tm-shift-row"><span style="font-size:10px;color:#90a4ae;">T'+t+'</span><span class="tm-shift-data">'+Math.round(k).toLocaleString()+'</span><span class="tm-shift-eff" style="background:'+se.bg+';color:'+se.txt+'">'+eff.toFixed(0)+'%</span></div>';dayKilos+=k;dayReal+=uR;dayTeo+=uT;}
+          else {cellHtml+='<div class="tm-shift-row tm-bg-gray"><span style="font-size:10px;">T'+t+'</span><span class="tm-shift-data" style="color:#ccc;">-</span></div>';}
+        }
+        if(dayKilos>0||dayTeo>0){
+          var effDay=(dayTeo>0)?(dayReal/dayTeo)*100:0; if(effDay>100)effDay=100;
+          var styleDay=tm_getEstiloEficiencia(effDay);
+          var fechaISO=new Date(f+'T12:00:00');
+          var fechaDisplay=fechaISO.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
+          cellHtml+='<div class="tm-day-total" onclick="tm_verDetalleMaquina(\''+cat.replace(/'/g,"\\'")+'\',\''+f+'\',\''+tm_diasSemanaTxt[i-1]+'\')"><span style="font-size:9px;color:#90a4ae;">'+fechaDisplay+'</span><div style="display:flex;align-items:center;gap:5px;"><span style="font-size:12px;">'+Math.round(dayKilos).toLocaleString()+'</span><span style="font-size:10px;color:'+styleDay.colorCode+';background:rgba(255,255,255,.15);padding:1px 4px;border-radius:3px;">'+effDay.toFixed(0)+'% '+styleDay.emoji+'</span></div></div>';
+          sumKilosTotal+=dayKilos; sumRealTotal+=dayReal; sumTeoTotal+=dayTeo;
+          var pesoD=tm_pesoLaboral(f); diasOperativos+=pesoD;
+        }
+      } else { cellHtml='<div class="tm-bg-gray" style="height:100%;"></div>'; }
+      tr.innerHTML += '<td'+(esInhabT2?' class="tm-cel-inhabil"':'')+'>'+cellHtml+'</td>';
+    }
+    // Acumulado del MES COMPLETO (todas las fechas en tm_datosProduccion, no solo la semana)
+    var sumKilosMes=0, sumRealMes=0, sumTeoMes=0, diasOperativosMes=0;
+    if(tm_datosProduccion[cat]) {
+      for(var fMesKey in tm_datosProduccion[cat]) {
+        var dMes=tm_datosProduccion[cat][fMesKey];
+        var kD=(dMes[1]?dMes[1].k:0)+(dMes[2]?dMes[2].k:0)+(dMes[3]?dMes[3].k:0);
+        var rD=(dMes[1]?dMes[1].uReal:0)+(dMes[2]?dMes[2].uReal:0)+(dMes[3]?dMes[3].uReal:0);
+        var tD=(dMes[1]?dMes[1].uTeo:0)+(dMes[2]?dMes[2].uTeo:0)+(dMes[3]?dMes[3].uTeo:0);
+        if(kD>0||tD>0){ sumKilosMes+=kD; sumRealMes+=rD; sumTeoMes+=tD; diasOperativosMes+=tm_pesoLaboral(fMesKey); }
+      }
+    }
+    var promFinal=(diasOperativosMes>0)?sumKilosMes/diasOperativosMes:0;
+    var effGlobal=(sumTeoMes>0)?(sumRealMes/sumTeoMes)*100:0; if(effGlobal>100)effGlobal=100;
+    var styleGlob=tm_getEstiloEficiencia(effGlobal);
+    tr.innerHTML+='<td class="tm-col-prom" style="vertical-align:middle;text-align:center;" title="Acumulado mes completo"><div style="font-weight:900;font-size:14px;color:#0d47a1;">'+Math.round(promFinal).toLocaleString()+'</div><div style="font-size:9px;color:#555;margin-top:3px;">PROM/DÍA MES</div><div style="margin-top:3px;font-weight:bold;font-size:10px;background:'+styleGlob.bg+';color:'+styleGlob.txt+';padding:1px;border-radius:3px;">'+effGlobal.toFixed(0)+'%</div></td>';
+    tbody.appendChild(tr);
+    // Fila de expansión por máquina (se muestra si la categoría está expandida)
+    var trExp = document.createElement('tr');
+    trExp.className = 'tm-prod-expand-tr';
+    trExp.id = 'tm-expand-' + catId;
+    trExp.style.display = tm_expandedCats[cat] ? '' : 'none';
+    var colSpan = 9; // 1 cat + 6 días + 1 prom = 8, pero encabezado tiene 8 cols
+    trExp.innerHTML = '<td colspan="8"><div class="tm-expand-inner" id="tm-expand-inner-'+catId+'">'+
+      (tm_expandedCats[cat] ? tm_generarHTMLExpandMaquinas(cat) : '')+'</div></td>';
+    tbody.appendChild(trExp);
+  });
+}
+
+function tm_generarDetalleSemanasLinea(cat, semanas) {
+  var sumaKilosTotal=0; var sumaRealTotal=0; var sumaTeoTotal=0;
+  var items=[];
+  semanas.forEach(function(sem) {
+    var kilosSem=0; var realSem=0; var teoSem=0;
+    if(tm_datosProduccion[cat]) {
+      for(var fecha in tm_datosProduccion[cat]) {
+        var fechaDate=new Date(fecha+'T12:00:00');
+        if(tm_getWeekNumber(fechaDate)===sem){var d=tm_datosProduccion[cat][fecha];kilosSem+=(d[1].k+d[2].k+d[3].k);realSem+=(d[1].uReal+d[2].uReal+d[3].uReal);teoSem+=(d[1].uTeo+d[2].uTeo+d[3].uTeo);}
+      }
+    }
+    if(kilosSem>0){
+      sumaKilosTotal+=kilosSem;sumaRealTotal+=realSem;sumaTeoTotal+=teoSem;
+      var effSem=teoSem>0?(realSem/teoSem)*100:0;if(effSem>100)effSem=100;
+      var ss=tm_getEstiloEficiencia(effSem);
+      items.push({label:'S'+sem,kil:Math.round(kilosSem).toLocaleString(),effBg:ss.bg,effTxt:ss.txt,eff:effSem.toFixed(0)+'%',noData:false});
+    } else {
+      items.push({label:'S'+sem,kil:'-',effBg:'transparent',effTxt:'#ccc',eff:'-',noData:true});
+    }
+  });
+  var effTotal=sumaTeoTotal>0?(sumaRealTotal/sumaTeoTotal)*100:0;if(effTotal>100)effTotal=100;
+  var styleTotal=tm_getEstiloEficiencia(effTotal);
+  items.push({label:'TOTAL',kil:(sumaKilosTotal>0?Math.round(sumaKilosTotal).toLocaleString():'-'),effBg:(sumaKilosTotal>0?styleTotal.bg:'transparent'),effTxt:(sumaKilosTotal>0?styleTotal.txt:'#ccc'),eff:(sumaKilosTotal>0?effTotal.toFixed(0)+'%':'-'),isTotal:true,noData:sumaKilosTotal===0});
+  var mid=Math.ceil(items.length/2);
+  var colA=items.slice(0,mid);
+  var colB=items.slice(mid);
+  var html='<div class="tm-week-details" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 6px;margin-top:4px;">';
+  var maxLen=Math.max(colA.length,colB.length);
+  for(var i=0;i<maxLen;i++){
+    var a=colA[i];
+    var b=colB[i];
+    if(a){
+      html+='<div class="tm-week-details-row" style="justify-content:space-between;">'
+        +'<span class="tm-week-num">'+a.label+'</span>'
+        +'<span class="tm-week-val"'+(a.isTotal?' style="color:#1565c0;font-weight:900;"':a.noData?' style="color:#ccc;"':'')+'>'+a.kil+'</span>'
+        +'<span class="tm-week-val" style="font-size:9px;padding:1px 3px;border-radius:2px;background:'+a.effBg+';color:'+a.effTxt+';">'+a.eff+'</span>'
+        +'</div>';
+    }
+    if(b){
+      html+='<div class="tm-week-details-row" style="justify-content:space-between;">'
+        +'<span class="tm-week-num">'+b.label+'</span>'
+        +'<span class="tm-week-val"'+(b.isTotal?' style="color:#1565c0;font-weight:900;"':b.noData?' style="color:#ccc;"':'')+'>'+b.kil+'</span>'
+        +'<span class="tm-week-val" style="font-size:9px;padding:1px 3px;border-radius:2px;background:'+b.effBg+';color:'+b.effTxt+';">'+b.eff+'</span>'
+        +'</div>';
+    }
+  }
+  html+='</div>';
+  return html;
+}
+
+function tm_verDetalleMaquina(cat, fecha, nombreDia) {
+  document.getElementById('tm-mdlTitle').innerText = cat;
+  document.getElementById('tm-mdlSub').innerText = "Producción del " + nombreDia + " (" + fecha + ")";
+  var tbody = document.getElementById('tm-mdlBody'); tbody.innerHTML = "";
+  if(!tm_datosProduccion[cat] || !tm_datosProduccion[cat][fecha]) return;
+  var diaData = tm_datosProduccion[cat][fecha];
+  if(!diaData || !diaData.machines) return;
+  var sumS={1:{k:0,ur:0,ut:0},2:{k:0,ur:0,ut:0},3:{k:0,ur:0,ut:0},t:{k:0,ur:0,ut:0}};
+  var maqs = Object.keys(diaData.machines).sort();
+  maqs.forEach(function(m) {
+    var d=diaData.machines[m]; var sumK=0;var sumUR=0;var sumUT=0;var shiftsHtml="";
+    for(var t=1;t<=3;t++){var k=d[t].k;var ur=d[t].uR;var ut=d[t].uT;var eff=(ut>0)?(ur/ut)*100:0;if(eff>100)eff=100;sumK+=k;sumUR+=ur;sumUT+=ut;sumS[t].k+=k;sumS[t].ur+=ur;sumS[t].ut+=ut;if(k>0||ut>0){var st=tm_getEstiloEficiencia(eff);shiftsHtml+='<td><span class="tm-det-val">'+Math.round(k).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+st.bg+';color:'+st.txt+'">'+eff.toFixed(0)+'%</span></td>';}else{shiftsHtml+='<td><span style="color:#ccc;font-size:16px;">-</span></td>';}}
+    sumS.t.k+=sumK;sumS.t.ur+=sumUR;sumS.t.ut+=sumUT;
+    var effTot=(sumUT>0)?(sumUR/sumUT)*100:0;if(effTot>100)effTot=100;var stT=tm_getEstiloEficiencia(effTot);
+    tbody.innerHTML+='<tr><td class="tm-det-maq">'+m+'</td><td style="background:#f1f8ff;border-left:2px solid #1565c0;border-right:2px solid #1565c0;"><span class="tm-det-val" style="color:#1565c0;font-size:18px;">'+Math.round(sumK).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+stT.bg+';color:'+stT.txt+'">'+effTot.toFixed(0)+'%</span></td>'+shiftsHtml+'</tr>';
+  });
+  var eGT=(sumS.t.ut>0)?(sumS.t.ur/sumS.t.ut)*100:0;if(eGT>100)eGT=100;var sGT=tm_getEstiloEficiencia(eGT);
+  var fHtml='<tr style="background:#f5f5f5;border-top:2px solid #263238;"><td class="tm-det-maq" style="color:#263238;">TOTAL GENERAL</td><td style="background:#1565c0;color:white;"><span class="tm-det-val" style="color:white;">'+Math.round(sumS.t.k).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+sGT.bg+';color:'+sGT.txt+'">'+eGT.toFixed(0)+'%</span></td>';
+  for(var t=1;t<=3;t++){var eT=(sumS[t].ut>0)?(sumS[t].ur/sumS[t].ut)*100:0;if(eT>100)eT=100;var sT=tm_getEstiloEficiencia(eT);fHtml+='<td><span class="tm-det-val">'+Math.round(sumS[t].k).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+sT.bg+';color:'+sT.txt+'">'+eT.toFixed(0)+'%</span></td>';}
+  tbody.innerHTML+=fHtml+'</tr>';
+  document.getElementById('tm-modalDetalle').style.display='flex';
+}
+
+function tm_verDetalleSemanal(cat) {
+  document.getElementById('tm-mdlTitle').innerText = cat + " — SEMANA";
+  document.getElementById('tm-mdlSub').innerText = "Resumen semanal de producción";
+  var tbody=document.getElementById('tm-mdlBody'); tbody.innerHTML="";
+  var h2=document.getElementById('tm-prodHeaderRow').children;
+  var consolidado={};
+  var sumS={1:{k:0,ur:0,ut:0},2:{k:0,ur:0,ut:0},3:{k:0,ur:0,ut:0},t:{k:0,ur:0,ut:0}};
+  for(var i=1;i<=6;i++){
+    var f=h2[i].getAttribute('data-date');
+    if(tm_datosProduccion[cat]&&tm_datosProduccion[cat][f]&&tm_datosProduccion[cat][f].machines){
+      var machines=tm_datosProduccion[cat][f].machines;
+      for(var m in machines){if(!consolidado[m]){consolidado[m]={shifts:{1:{k:0,uR:0,uT:0},2:{k:0,uR:0,uT:0},3:{k:0,uR:0,uT:0}}};} var dM=machines[m]; for(var t=1;t<=3;t++){consolidado[m].shifts[t].k+=dM[t].k;consolidado[m].shifts[t].uR+=dM[t].uR;consolidado[m].shifts[t].uT+=dM[t].uT;}}
+    }
+  }
+  Object.keys(consolidado).sort().forEach(function(m){
+    var d=consolidado[m];var sumK=0;var sumUR=0;var sumUT=0;var shiftsHtml="";
+    for(var t=1;t<=3;t++){var sData=d.shifts[t];sumK+=sData.k;sumUR+=sData.uR;sumUT+=sData.uT;sumS[t].k+=sData.k;sumS[t].ur+=sData.uR;sumS[t].ut+=sData.uT;if(sData.uT>0||sData.k>0){var eff=(sData.uT>0)?(sData.uR/sData.uT)*100:0;if(eff>100)eff=100;var st=tm_getEstiloEficiencia(eff);shiftsHtml+='<td><span class="tm-det-val">'+Math.round(sData.k).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+st.bg+';color:'+st.txt+'">'+eff.toFixed(0)+'%</span></td>';}else{shiftsHtml+='<td><span style="color:#ccc;font-size:16px;">-</span></td>';}}
+    sumS.t.k+=sumK;sumS.t.ur+=sumUR;sumS.t.ut+=sumUT;
+    var effTot=(sumUT>0)?(sumUR/sumUT)*100:0;if(effTot>100)effTot=100;var stT=tm_getEstiloEficiencia(effTot);
+    tbody.innerHTML+='<tr><td class="tm-det-maq">'+m+'</td><td style="background:#f1f8ff;border-left:2px solid #1565c0;border-right:2px solid #1565c0;"><span class="tm-det-val" style="color:#1565c0;font-size:18px;">'+Math.round(sumK).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+stT.bg+';color:'+stT.txt+'">'+effTot.toFixed(0)+'%</span></td>'+shiftsHtml+'</tr>';
+  });
+  var eGT=(sumS.t.ut>0)?(sumS.t.ur/sumS.t.ut)*100:0;if(eGT>100)eGT=100;var sGT=tm_getEstiloEficiencia(eGT);
+  var fHtml='<tr style="background:#f5f5f5;border-top:2px solid #263238;"><td class="tm-det-maq" style="color:#263238;">TOTAL SEMANA</td><td style="background:#1565c0;color:white;"><span class="tm-det-val" style="color:white;">'+Math.round(sumS.t.k).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+sGT.bg+';color:'+sGT.txt+'">'+eGT.toFixed(0)+'%</span></td>';
+  for(var t=1;t<=3;t++){var eT=(sumS[t].ut>0)?(sumS[t].ur/sumS[t].ut)*100:0;if(eT>100)eT=100;var sT=tm_getEstiloEficiencia(eT);fHtml+='<td><span class="tm-det-val">'+Math.round(sumS[t].k).toLocaleString()+'</span><span class="tm-det-eff" style="background:'+sT.bg+';color:'+sT.txt+'">'+eT.toFixed(0)+'%</span></td>';}
+  tbody.innerHTML+=fHtml+'</tr>';
+  document.getElementById('tm-modalDetalle').style.display='flex';
+}
+
+function tm_obtenerEstilo(pct, tipo) {
+  var bg="#eee"; var txt="black"; var emo="💀";
+  if(tipo==6){if(pct<25){bg="#1b5e20";txt="white";emo="🤩";}else if(pct<30){bg="#66bb6a";txt="black";emo="😀";}else if(pct<40){bg="#ffee58";txt="black";emo="😐";}else if(pct<50){bg="#ef5350";txt="white";emo="😢";}else{bg="#000";txt="white";emo="💀";}}
+  else if(tipo==7){if(pct<=1){bg="#1b5e20";txt="white";emo="🤩";}else if(pct<=1.5){bg="#66bb6a";txt="black";emo="😀";}else if(pct<=2){bg="#ffee58";txt="black";emo="😐";}else if(pct<=3){bg="#ef5350";txt="white";emo="😢";}else{bg="#000";txt="white";emo="💀";}}
+  else if(tipo==1){if(pct>=95){bg="#2e7d32";txt="white";emo="🤩";}else if(pct>=90){bg="#66bb6a";txt="black";emo="😀";}else if(pct>=85){bg="#ffee58";txt="black";emo="🙂";}else if(pct>=80){bg="#ffa726";txt="black";emo="😐";}else if(pct>=70){bg="#ef5350";txt="white";emo="😢";}else{bg="#424242";txt="white";emo="💀";}}
+  else if(tipo==2){if(pct>=99.999){bg="#2e7d32";txt="white";emo="🤩";}else if(pct>=99.5){bg="#ffa726";txt="black";emo="😐";}else if(pct>=99.0){bg="#ef5350";txt="white";emo="😢";}else{bg="#424242";txt="white";emo="💀";}}
+  else{if(pct>=100){bg="#2e7d32";txt="white";emo="🤩";}else if(pct>=95){bg="#66bb6a";txt="black";emo="😀";}else if(pct>=90){bg="#ffee58";txt="black";emo="🙂";}else if(pct>=85){bg="#ffa726";txt="black";emo="😐";}else if(pct>=80){bg="#ef5350";txt="white";emo="😢";}else{bg="#424242";txt="white";emo="💀";}}
+  return {bg:bg, text:txt, emoji:emo};
+}
+
+function tm_getEstiloEficiencia(pct) {
+  if(pct>=75) return {bg:"#1b5e20",txt:"white",emoji:"🤩",colorCode:"#69f0ae"};
+  if(pct>=70) return {bg:"#66bb6a",txt:"black",emoji:"😀",colorCode:"#b9f6ca"};
+  if(pct>=65) return {bg:"#ffee58",txt:"black",emoji:"🙂",colorCode:"#ffff8d"};
+  if(pct>=60) return {bg:"#ffa726",txt:"black",emoji:"😐",colorCode:"#ffe0b2"};
+  if(pct>=50) return {bg:"#ef5350",txt:"white",emoji:"😢",colorCode:"#ffcdd2"};
+  return {bg:"#b71c1c",txt:"white",emoji:"💀",colorCode:"#ff8a80"};
+}
+
+function tm_guardarValor(input, fecha, indicador, meta, tipo) {
+  var rawVal = input.value.replace(/,/g,'');
+  if(rawVal===""||isNaN(rawVal)) return;
+  document.getElementById('tm-savingToast').style.display="flex";
+  var val = Number(rawVal);
+  google.script.run.withSuccessHandler(function(){
+    document.getElementById('tm-savingToast').style.display="none";
+    var existente=tm_datosTablero.find(function(d){return d.indicador==indicador&&d.fecha==fecha;});
+    if(existente) existente.resultado=val; else tm_datosTablero.push({indicador:indicador,fecha:fecha,resultado:val});
+    tm_renderizarTabla1();
+  }).guardarDatoTablero({fecha:fecha,indicador:indicador,resultado:val,meta:meta});
+}
+
+function tm_capturarRatio(fecha, indicador) {
+  Swal.fire({
+    title:'Capturar Ratio',
+    html:'<div style="font-size:13px;color:#555;margin-bottom:8px;">Formato: boletines:avisos (Ej: 1:4)</div>'
+        +'<input id="tm-swal-ratio" class="swal2-input" placeholder="1:4">',
+    confirmButtonText:'Guardar', showCancelButton:true, cancelButtonText:'Cancelar',
+    confirmButtonColor:'#1565c0',
+    preConfirm: function(){
+      var v=document.getElementById('tm-swal-ratio').value.trim();
+      if(!v||!v.includes(':')){ Swal.showValidationMessage('Formato inválido. Usa ej: 1:4'); return false; }
+      var parts=v.split(':');
+      if(isNaN(parts[0])||isNaN(parts[1])||Number(parts[1])===0){ Swal.showValidationMessage('Valores inválidos'); return false; }
+      return v;
+    }
+  }).then(function(r){
+    if(!r.isConfirmed||!r.value) return;
+    var parts=r.value.split(':');
+    var res=Number(parts[0])/Number(parts[1]);
+    tm_saveAndRefresh(fecha, indicador, res, r.value);
+  });
+}
+
+function tm_capturarEnviado(fecha, indicador) {
+  Swal.fire({
+    title:'Material Enviado OK',
+    html:'<div style="font-size:13px;color:#555;margin-bottom:8px;">'+fecha+'</div>'
+        +'<label style="font-size:12px;color:#333;">Errores:</label>'
+        +'<input id="tm-swal-err" class="swal2-input" type="number" min="0" placeholder="0" style="margin-bottom:6px;">'
+        +'<label style="font-size:12px;color:#333;">Total partidas:</label>'
+        +'<input id="tm-swal-tot" class="swal2-input" type="number" min="1" placeholder="0">',
+    confirmButtonText:'Guardar', showCancelButton:true, cancelButtonText:'Cancelar',
+    confirmButtonColor:'#1565c0',
+    preConfirm: function(){
+      var e=Number(document.getElementById('tm-swal-err').value||0);
+      var t=Number(document.getElementById('tm-swal-tot').value||0);
+      if(t===0){ Swal.showValidationMessage('El total de partidas no puede ser 0'); return false; }
+      return {e:e, t:t};
+    }
+  }).then(function(r){
+    if(!r.isConfirmed||!r.value) return;
+    var res=(r.value.t-r.value.e)/r.value.t;
+    tm_saveAndRefresh(fecha, indicador, res, r.value.e);
+  });
+}
+
+function tm_abrirModalCalidad(fecha, indicador) {
+  tm_tempCalidadFecha=fecha; tm_tempCalidadIndicador=indicador;
+  var d=tm_datosTablero.find(function(x){return x.indicador==indicador&&x.fecha==fecha;});
+  var valsObj={}; if(d&&d.dato1){try{valsObj=JSON.parse(d.dato1);}catch(e){}}
+  var html=""; var cats=Object.keys(tm_datosProduccion).sort();
+  cats.forEach(function(cat){
+    var prodDia=0; if(tm_datosProduccion[cat][fecha]){var pd=tm_datosProduccion[cat][fecha];prodDia=pd[1].k+pd[2].k+pd[3].k;}
+    if(prodDia>0){var valSaved=valsObj[cat]||"";html+='<div class="tm-calidad-row"><div class="tm-calidad-label">'+cat+'</div><span class="tm-calidad-ref">PROD: '+Math.round(prodDia).toLocaleString()+'</span><input type="number" class="tm-calidad-input" id="tm-cal-'+cat+'" value="'+valSaved+'" placeholder="0"></div>';}
+  });
+  document.getElementById('tm-calidadBody').innerHTML=html||'<div style="padding:20px;font-weight:900;text-align:center;">SIN PRODUCCIÓN EN ESTA FECHA.</div>';
+  document.getElementById('tm-lblCalidadDia').innerText=fecha;
+  document.getElementById('tm-modalCalidad').style.display='flex';
+}
+
+function tm_confirmarCalidad() {
+  var inputs=document.querySelectorAll('.tm-calidad-input');
+  var dataObj={}; var totalNC=0;
+  inputs.forEach(function(inp){var val=Number(inp.value);if(val>0){var cat=inp.id.replace("tm-cal-","");dataObj[cat]=val;totalNC+=val;}});
+  var prodTotalDia=tm_obtenerProduccionTotalDia(tm_tempCalidadFecha);
+  var pct=(prodTotalDia>0)?(totalNC/prodTotalDia):0;
+  document.getElementById('tm-modalCalidad').style.display='none';
+  tm_saveAndRefresh(tm_tempCalidadFecha, tm_tempCalidadIndicador, pct, JSON.stringify(dataObj));
+}
+
+function tm_saveAndRefresh(fecha, indicador, res, dato1) {
+  document.getElementById('tm-savingToast').style.display="flex";
+  google.script.run.withSuccessHandler(function(){
+    document.getElementById('tm-savingToast').style.display="none";
+    var ex=tm_datosTablero.find(function(d){return d.indicador==indicador&&d.fecha==fecha;});
+    if(ex){ex.resultado=res;ex.dato1=dato1;}else{tm_datosTablero.push({indicador:indicador,fecha:fecha,resultado:res,dato1:dato1});}
+    tm_renderizarTabla1();
+  }).guardarDatoTablero({fecha:fecha,indicador:indicador,resultado:res,meta:0,dato1:dato1});
+}
+
+async function tm_enviarReporte() {
+  var conf = await sConfirm('¿Enviar reporte a Telegram?','','Enviar','Cancelar');
+  if(!conf) return;
+  showLoader('Generando y enviando imágenes...');
+  try {
+    var html2canvas = window.html2canvas;
+    if(!html2canvas) { hideLoader(); sAlert('html2canvas no disponible.','error'); return; }
+    var canvas1 = await html2canvas(document.getElementById('tm-captureArea1'));
+    await tm_enviarPromise(canvas1.toDataURL("image/png"), "📊 TABLERO DIARIO");
+    var canvas2 = await html2canvas(document.getElementById('tm-captureArea2'));
+    await tm_enviarPromise(canvas2.toDataURL("image/png"), "🏭 MÉTRICAS PRODUCCIÓN");
+    sAlert('Reporte enviado correctamente','success','¡Listo!');
+  } catch(e) { sAlert('Error: ' + e,'error'); }
+  finally { hideLoader(); }
+}
+
+function tm_enviarPromise(img, cap) {
+  return new Promise(function(resolve, reject) {
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).enviarImagenTelegram(img, cap);
+  });
+}
+
+function tm_editarMeta(idx) {
+  var conf = tm_CONFIG[idx];
+  if(!conf || conf.tipo === 6 || conf.tipo === 7) return;
+  var metaActual = conf.meta;
+  Swal.fire({
+    title: '✏️ Editar Meta',
+    html: '<div style="font-size:13px;font-weight:700;color:#1565c0;margin-bottom:12px;">'+conf.nombre+'</div>'
+         +'<label style="font-size:12px;color:#555;">Nueva meta (kg o unidades):</label>'
+         +'<input id="tm-swal-meta" class="swal2-input" type="number" min="1" value="'+metaActual+'">'
+         +'<div style="font-size:11px;color:#999;margin-top:8px;">⚠️ Este cambio aplica al mes en curso. El próximo mes tomará esta meta como base.</div>',
+    confirmButtonText: '💾 Guardar',
+    showCancelButton: true,
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#1565c0',
+    preConfirm: function() {
+      var v = Number(document.getElementById('tm-swal-meta').value);
+      if(!v || v <= 0) { Swal.showValidationMessage('Ingresa un valor mayor a 0'); return false; }
+      return v;
+    }
+  }).then(function(r) {
+    if(!r.isConfirmed || !r.value) return;
+    var nuevaMeta = r.value;
+    // Actualizar en memoria
+    tm_CONFIG[idx].meta = nuevaMeta;
+    // Guardar en backend (fila especial META_CONFIG_<indicador> con fecha = 1ro del mes)
+    var hoy = tm_fechaReferencia;
+    var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    var yyyy = primerDia.getFullYear();
+    var mm = String(primerDia.getMonth()+1).padStart(2,'0');
+    var dd = '01';
+    var fechaMeta = yyyy+'-'+mm+'-'+dd;
+    showLoader('Guardando meta...');
+    google.script.run
+      .withSuccessHandler(function(){
+        hideLoader();
+        tm_renderizarTabla1();
+        sAlert('Meta actualizada: '+nuevaMeta.toLocaleString(),'success','¡Guardado!');
+      })
+      .withFailureHandler(function(e){ hideLoader(); sAlert('Error: '+e,'error'); })
+      .guardarDatoTablero({
+        fecha: fechaMeta,
+        indicador: 'META_CONFIG_'+conf.nombre,
+        resultado: nuevaMeta,
+        meta: nuevaMeta,
+        dato1: ''
+      });
+  });
+}
+
+function tm_cargarMetasMes() {
+  // Carga metas guardadas del mes en curso (o toma las del mes anterior si no existen)
+  var hoy = tm_fechaReferencia;
+  var primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  var ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
+  var fmt = function(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+  // Buscar mes anterior como fallback
+  var primerDiaMesAnt = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+  var ultimoDiaMesAnt = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+  google.script.run
+    .withSuccessHandler(function(datos) {
+      if(!datos || datos.length === 0) return;
+      // Agrupar por indicador: preferir mes actual, si no existe usar mes anterior
+      var porIndicador = {};
+      datos.forEach(function(d){
+        if(!porIndicador[d.indicador] || d.fecha >= fmt(primerDiaMes)) {
+          porIndicador[d.indicador] = d;
+        }
+      });
+      tm_CONFIG.forEach(function(conf){
+        var clave = 'META_CONFIG_'+conf.nombre;
+        if(porIndicador[clave] && porIndicador[clave].resultado) {
+          conf.meta = Number(porIndicador[clave].resultado);
+        }
+      });
+      tm_renderizarTabla1();
+    })
+    .withFailureHandler(function(){}) // silencioso si falla
+    .obtenerDatosTablero(fmt(primerDiaMesAnt), fmt(ultimoDiaMes));
+}
+
+function tm_toggleExpandCat(cat) {
+  tm_expandedCats[cat] = !tm_expandedCats[cat];
+  var catId = 'tm-cat-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
+  var trExp = document.getElementById('tm-expand-' + catId);
+  var arrow = document.getElementById('arrow-' + catId);
+  if(!trExp) return;
+  if(tm_expandedCats[cat]) {
+    // Generar contenido al expandir (usa datos ya en memoria)
+    var inner = document.getElementById('tm-expand-inner-' + catId);
+    if(inner) inner.innerHTML = tm_generarHTMLExpandMaquinas(cat);
+    trExp.style.display = '';
+    if(arrow) arrow.classList.add('open');
+  } else {
+    trExp.style.display = 'none';
+    if(arrow) arrow.classList.remove('open');
+  }
+}
+
+function tm_generarHTMLExpandMaquinas(cat) {
+  var h2 = document.getElementById('tm-prodHeaderRow').children;
+
+  // ── 1. Recopilar fechas y máquinas ──────────────────────────────────────
+  var fechas = []; // [{f, disp, inhab, label}]
+  for(var i=1; i<=6; i++) {
+    var f = h2[i].getAttribute('data-date');
+    var dISO = new Date(f+'T12:00:00');
+    var disp = dISO.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
+    fechas.push({ f:f, disp:disp, inhab:tm_esInhabil(f), label:tm_diasSemanaTxt[i-1] });
+  }
+
+  var todasMaqs = {};
+  fechas.forEach(function(fd){
+    if(tm_datosProduccion[cat] && tm_datosProduccion[cat][fd.f] && tm_datosProduccion[cat][fd.f].machines) {
+      for(var m in tm_datosProduccion[cat][fd.f].machines) todasMaqs[m] = true;
+    }
+  });
+  var maqList = Object.keys(todasMaqs).sort();
+  if(maqList.length === 0) return '<div style="padding:8px;color:#999;font-size:11px;">Sin datos de máquinas disponibles</div>';
+
+  // ── Encabezado: 2 filas ──────────────────────────────────────────────────
+  // Fila 1: MÁQUINA(rowspan2) | LUN(colspan4) | MAR(colspan4) | ... | PROM(colspan4)
+  // Fila 2: T1 T2 T3 DÍA (x6 días) | T1 T2 T3 TOT
+  // ── Encabezado 2 filas ───────────────────────────────────────────────────
+  var W_T = '55px';   // ancho de columna T1/T2/T3
+  var W_D = '62px';   // ancho de columna DÍA
+  var SEP_DIA  = 'border-left:3px solid #546e7a;';
+  var SEP_TURN = 'border-left:1px solid #607d8b;';
+  var SEP_PROM = 'border-left:4px solid #1565c0;';
+
+  var hdr1 = '<tr><th class="tm-th-maq" rowspan="2">MÁQUINA</th>';
+  var hdr2 = '<tr>';
+
+  fechas.forEach(function(fd) {
+    var inhBg = fd.inhab ? 'background:#37474f;opacity:.8;' : '';
+    hdr1 += '<th colspan="4" style="'+SEP_DIA+inhBg+'">'
+          + fd.label + '<br><span style="font-weight:400;font-size:7px;opacity:.8;">'+fd.disp+'</span></th>';
+    var ib = fd.inhab ? 'background:#546e7a;' : '';
+    hdr2 += '<th style="width:'+W_T+';'+ib+SEP_DIA+'">T1</th>';
+    hdr2 += '<th style="width:'+W_T+';'+ib+SEP_TURN+'">T2</th>';
+    hdr2 += '<th style="width:'+W_T+';'+ib+SEP_TURN+'">T3</th>';
+    hdr2 += '<th style="width:'+W_D+';background:#263238;'+SEP_DIA+'">DÍA</th>';
+  });
+  hdr1 += '<th colspan="4" style="background:#1565c0;'+SEP_PROM+'">PROM SEM</th></tr>';
+  hdr2 += '<th style="width:'+W_T+';background:#1565c0;'+SEP_PROM+'">T1</th>';
+  hdr2 += '<th style="width:'+W_T+';background:#1565c0;'+SEP_TURN+'">T2</th>';
+  hdr2 += '<th style="width:'+W_T+';background:#1565c0;'+SEP_TURN+'">T3</th>';
+  hdr2 += '<th style="width:'+W_D+';background:#0d47a1;'+SEP_PROM+'">TOT</th></tr>';
+
+  var html = '<div class="tm-expand-inner"><table class="tm-maq-table"><thead>'+hdr1+hdr2+'</thead><tbody>';
+
+  // ── Helpers: cantidad SIEMPRE arriba, % SIEMPRE abajo ───────────────────
+  function mkCell(k, uR, uT, extraCls) {
+    if(!k && !uT) return '<td class="'+extraCls+'"><span class="tm-maq-empty">–</span></td>';
+    var e = uT>0 ? (uR/uT)*100 : 0; if(e>100)e=100;
+    var s = tm_getEstiloEficiencia(e);
+    return '<td class="'+extraCls+'">'
+      + '<span class="tm-maq-kil">'+Math.round(k).toLocaleString()+'</span>'
+      + '<span class="tm-maq-shift-chip" style="background:'+s.bg+';color:'+s.txt+';">'+e.toFixed(0)+'%</span>'
+      + '</td>';
+  }
+  function mkEmpty(extraCls) {
+    return '<td class="'+extraCls+'"><span class="tm-maq-empty">–</span></td>';
+  }
+
+  // ── Una fila por máquina ─────────────────────────────────────────────────
+  maqList.forEach(function(maq) {
+    var semT = {1:{k:0,uR:0,uT:0}, 2:{k:0,uR:0,uT:0}, 3:{k:0,uR:0,uT:0}, tot:{k:0,uR:0,uT:0}};
+
+    var diasData = fechas.map(function(fd) {
+      var r = {t:{1:null,2:null,3:null}, tot:{k:0,uR:0,uT:0}, inhab:fd.inhab};
+      if(tm_datosProduccion[cat] && tm_datosProduccion[cat][fd.f] &&
+         tm_datosProduccion[cat][fd.f].machines && tm_datosProduccion[cat][fd.f].machines[maq]) {
+        var md = tm_datosProduccion[cat][fd.f].machines[maq];
+        for(var tv,t=1;t<=3;t++){
+          tv=md[t];
+          if(tv&&(tv.k>0||tv.uT>0)){
+            r.t[t]=tv;
+            r.tot.k+=tv.k; r.tot.uR+=tv.uR; r.tot.uT+=tv.uT;
+            semT[t].k+=tv.k; semT[t].uR+=tv.uR; semT[t].uT+=tv.uT;
+            semT.tot.k+=tv.k; semT.tot.uR+=tv.uR; semT.tot.uT+=tv.uT;
+          }
+        }
+      }
+      return r;
+    });
+
+    var row = '<tr><td class="tm-maq-name-cell">'+maq+'</td>';
+
+    diasData.forEach(function(dd) {
+      var ib = dd.inhab ? ' bg-inhab' : '';
+      var t1=dd.t[1], t2=dd.t[2], t3=dd.t[3], dt=dd.tot;
+      row += t1 ? mkCell(t1.k,t1.uR,t1.uT,'bord-day'+ib) : mkEmpty('bord-day'+ib);
+      row += t2 ? mkCell(t2.k,t2.uR,t2.uT,'bord-turn'+ib) : mkEmpty('bord-turn'+ib);
+      row += t3 ? mkCell(t3.k,t3.uR,t3.uT,'bord-turn'+ib) : mkEmpty('bord-turn'+ib);
+      // celda DÍA: fondo oscuro si hay datos
+      if(dt.k>0||dt.uT>0) {
+        row += mkCell(dt.k,dt.uR,dt.uT,'bord-day'+(dd.inhab?' bg-inhab':' bg-dia'));
+      } else {
+        row += mkEmpty('bord-day'+(dd.inhab?' bg-inhab':' bg-dia'));
+      }
+    });
+
+    // PROM SEM: T1 T2 T3
+    var st1=semT[1], st2=semT[2], st3=semT[3];
+    row += st1.k>0 ? mkCell(st1.k,st1.uR,st1.uT,'bord-prom bg-prom-t') : mkEmpty('bord-prom bg-prom-t');
+    row += st2.k>0 ? mkCell(st2.k,st2.uR,st2.uT,'bord-turn bg-prom-t') : mkEmpty('bord-turn bg-prom-t');
+    row += st3.k>0 ? mkCell(st3.k,st3.uR,st3.uT,'bord-turn bg-prom-t') : mkEmpty('bord-turn bg-prom-t');
+    // TOT semana
+    var stot=semT.tot;
+    if(stot.k>0) {
+      var eT=stot.uT>0?(stot.uR/stot.uT)*100:0; if(eT>100)eT=100;
+      var seT=tm_getEstiloEficiencia(eT);
+      row += '<td class="bord-prom bg-prom-tot">'
+           + '<span class="tm-maq-kil" style="color:white;">'+Math.round(stot.k).toLocaleString()+'</span>'
+           + '<span class="tm-maq-shift-chip" style="background:'+seT.bg+';color:'+seT.txt+';">'+eT.toFixed(0)+'%</span>'
+           + '</td>';
+    } else {
+      row += mkEmpty('bord-prom bg-prom-tot');
+    }
+    row += '</tr>';
+    html += row;
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+window.tm_toggleExpandCat = tm_toggleExpandCat;
+window.tm_editarMeta = tm_editarMeta;
+window.tm_cambiarSemana = tm_cambiarSemana;
+window.tm_actualizarVistaActual = tm_actualizarVistaActual;
+window.tm_guardarValor = tm_guardarValor;
+window.tm_capturarRatio = tm_capturarRatio;
+window.tm_capturarEnviado = tm_capturarEnviado;
+window.tm_abrirModalCalidad = tm_abrirModalCalidad;
+window.tm_confirmarCalidad = tm_confirmarCalidad;
+window.tm_verDetalleMaquina = tm_verDetalleMaquina;
+window.tm_verDetalleSemanal = tm_verDetalleSemanal;
+window.tm_enviarReporte = tm_enviarReporte;
+

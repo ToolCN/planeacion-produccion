@@ -1,0 +1,205 @@
+// ══════════════════════════════════════════════════════
+// MÓDULO: PEDIDO INT
+// ══════════════════════════════════════════════════════
+function loadPedidoINT() {
+  var area = document.getElementById('content-area');
+  area.innerHTML = `
+<div id="pint-panel">
+
+  <!-- FORMULARIO PRINCIPAL -->
+  <div class="pint-card" id="pint-mainCard">
+    <div class="pint-title">📦 NUEVO PEDIDO INTERNO (INT)</div>
+
+    <div class="pint-input-group">
+      <label class="pint-label">1. Selecciona el Código de Producto</label>
+      <input type="text" id="pint-searchCode" class="pint-input" placeholder="🔍 Escribe para buscar código o descripción..." oninput="pintFilterCodes()">
+      <select id="pint-selCodigo" class="pint-select" size="6" onchange="pintCargarRuta()"></select>
+    </div>
+
+    <div class="pint-input-group">
+      <label class="pint-label">2. Cantidad Solicitada (KG / PZA)</label>
+      <input type="number" id="pint-numCant" class="pint-input" placeholder="Ingresa la cantidad total..." oninput="pintValidar()">
+    </div>
+
+    <div id="pint-rutaPreview" class="pint-ruta-container" style="display:none;">
+      <label class="pint-label">3. Previsualización de Ruta y Ajuste de Máquinas</label>
+      <div id="pint-pasosLista" style="margin-top:10px;"></div>
+    </div>
+
+    <button id="pint-btnSave" class="pint-btn-save" onclick="pintGuardar()" disabled>GENERAR PEDIDO PLANEADO</button>
+  </div>
+
+  <!-- PANTALLA DE ÉXITO -->
+  <div class="pint-card" id="pint-successScreen" style="display:none;">
+    <div class="pint-success-header">
+      <div class="pint-checkmark-circle">
+        <svg class="pint-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+          <circle class="pint-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+          <path class="pint-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+      </div>
+    </div>
+    <h2 style="color:#2e7d32;margin:0;font-weight:900;">PEDIDO INT GENERADO CON ÉXITO</h2>
+    <h3 id="pint-resFolio" style="color:#1565c0;margin-top:5px;font-weight:900;"></h3>
+    <div class="pint-summary-box">
+      <label class="pint-label" style="color:#1565c0">Órdenes de Producción Generadas:</label>
+      <div id="pint-resOrdenes"></div>
+      <br>
+      <label class="pint-label" style="color:#1565c0">Lotes Creados (División por Cant. Lote):</label>
+      <div id="pint-resLotes" style="max-height:150px;overflow-y:auto;"></div>
+    </div>
+    <div class="pint-btn-footer">
+      <button class="pint-btn-nvo" onclick="pintResetForm()">🔄 GENERAR NUEVO</button>
+      <button class="pint-btn-close" onclick="loadDashboard()">✖ CERRAR</button>
+    </div>
+  </div>
+</div>`;
+
+  // --- Inicializar datos del módulo ---
+  pint_catalogoCompleto = [];
+  pint_rutaCargada = [];
+  showLoader("Sincronizando Catálogos...");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      pint_catalogoCompleto = res;
+      pintRenderCodes(pint_catalogoCompleto);
+      hideLoader();
+    })
+    .withFailureHandler(function(err) {
+      hideLoader();
+      sAlert("Error al cargar catálogos: " + err);
+    })
+    .obtenerCatalogosPedidoINT();
+}
+
+// ── Variables de estado del módulo Pedido INT ──
+var pint_catalogoCompleto = [];
+var pint_rutaCargada = [];
+
+
+function pintRenderCodes(list) {
+  var sel = document.getElementById('pint-selCodigo');
+  if (!sel) return;
+  sel.innerHTML = list.map(function(c) {
+    return '<option value="' + c.codigo + '">' + c.codigo + ' | ' + c.descripcion + '</option>';
+  }).join('');
+}
+
+function pintFilterCodes() {
+  var val = document.getElementById('pint-searchCode').value.toUpperCase();
+  var filtered = pint_catalogoCompleto.filter(function(c) {
+    return c.codigo.toUpperCase().includes(val) || c.descripcion.toUpperCase().includes(val);
+  });
+  pintRenderCodes(filtered);
+}
+
+function pintCargarRuta() {
+  var cod = document.getElementById('pint-selCodigo').value;
+  if (!cod) return;
+  showLoader("Obteniendo ingeniería...");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      pint_rutaCargada = res;
+      pintRenderRuta();
+      hideLoader();
+      document.getElementById('pint-rutaPreview').style.display = 'block';
+      pintValidar();
+    })
+    .withFailureHandler(function(err) {
+      hideLoader();
+      sAlert("Error al cargar ruta: " + err);
+    })
+    .obtenerRutaPedidoINT(cod);
+}
+
+function pintRenderRuta() {
+  var container = document.getElementById('pint-pasosLista');
+  if (!container) return;
+  if (pint_rutaCargada.length === 0) {
+    container.innerHTML = "<p style='color:red'>⚠️ No se encontró ruta registrada para este código.</p>";
+    return;
+  }
+  container.innerHTML = pint_rutaCargada.map(function(p, idx) {
+    var botonesHtml = p.maquinas.map(function(m, mIdx) {
+      return '<button class="pint-btn-maq' + (mIdx === 0 ? ' selected' : '') + '" onclick="pintSelectMaq(' + idx + ', \'' + m + '\', this)">' + m + '</button>';
+    }).join('');
+    return '<div class="pint-step-card">' +
+      '<div class="pint-step-header"><span>PASO ' + p.sec + ': ' + p.proceso + '</span>' +
+      '<span style="color:#1565c0">Lote Sugerido: ' + p.cantLote + '</span></div>' +
+      '<div class="pint-maq-grid">' + botonesHtml + '</div></div>';
+  }).join('');
+  pint_rutaCargada.forEach(function(p) { p.maquinaSeleccionada = p.maquinas[0]; });
+}
+
+function pintSelectMaq(stepIdx, maq, btn) {
+  var grid = btn.parentElement;
+  grid.querySelectorAll('.pint-btn-maq').forEach(function(b) { b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  pint_rutaCargada[stepIdx].maquinaSeleccionada = maq;
+}
+
+function pintValidar() {
+  var cant = parseFloat(document.getElementById('pint-numCant').value);
+  var cod = document.getElementById('pint-selCodigo').value;
+  var btn = document.getElementById('pint-btnSave');
+  if (btn) btn.disabled = !(cant > 0 && cod && pint_rutaCargada.length > 0);
+}
+
+function pintGuardar() {
+  var codSeleccionado = document.getElementById('pint-selCodigo').value;
+  var infoBase = pint_catalogoCompleto.find(function(c) { return c.codigo === codSeleccionado; });
+  if (!infoBase) return;
+
+  var payload = {
+    codigo:      infoBase.codigo,
+    descripcion: infoBase.descripcion,
+    unidad:      infoBase.unidad,
+    serie:       infoBase.serie,
+    cantidad:    parseFloat(document.getElementById('pint-numCant').value),
+    ruta:        pint_rutaCargada,
+    prefijo:     'INT'
+  };
+
+  showLoader("Inyectando en Base de Datos...");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      if (res.success) {
+        document.getElementById('pint-mainCard').style.display = 'none';
+        document.getElementById('pint-successScreen').style.display = 'block';
+        document.getElementById('pint-resFolio').innerText = "Folio Generado: " + res.folio + " (Orden #" + res.ordenNum + ")";
+        document.getElementById('pint-resOrdenes').innerHTML = res.ordenes.map(function(o) {
+          return '<div class="pint-list-item"><span>' + o.proc + '</span><b>' + o.maq + '</b></div>';
+        }).join('');
+        document.getElementById('pint-resLotes').innerHTML = res.lotes.map(function(l) {
+          return '<div class="pint-list-item">' + l + '</div>';
+        }).join('');
+      } else {
+        sAlert("Error: " + res.error);
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoader();
+      sAlert("Error crítico: " + err);
+    })
+    .crearPedidoInternoCompleto(payload);
+}
+
+function pintResetForm() {
+  pint_rutaCargada = [];
+  document.getElementById('pint-numCant').value = '';
+  document.getElementById('pint-searchCode').value = '';
+  document.getElementById('pint-pasosLista').innerHTML = '';
+  document.getElementById('pint-rutaPreview').style.display = 'none';
+  var sel = document.getElementById('pint-selCodigo');
+  if (sel) sel.selectedIndex = -1;
+  document.getElementById('pint-successScreen').style.display = 'none';
+  document.getElementById('pint-mainCard').style.display = 'block';
+  pintRenderCodes(pint_catalogoCompleto);
+  pintValidar();
+  var inp = document.getElementById('pint-searchCode');
+  if (inp) inp.focus();
+}
+// ══════════════════════════════════════════════════════
+// MÓDULO: GENERADOR DE ÓRDENES
+// ══════════════════════════════════════════════════════

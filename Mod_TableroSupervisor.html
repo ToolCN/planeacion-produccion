@@ -1,0 +1,1345 @@
+function loadTableroSup() {
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+
+  // ── Inyectar CSS una sola vez ──
+  if (!document.getElementById('tsup-style')) {
+    var s = document.createElement('style');
+    s.id = 'tsup-style';
+    s.textContent = [
+      '#tsup-panel *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}',
+      '#tsup-panel{font-family:\'Roboto\',sans-serif;background:#0d1117;color:#c9d1d9;min-height:calc(100vh - 48px);position:relative;overflow:hidden;}',
+
+      /* Mini Loader */
+      '#tsup-miniLoader{position:fixed;bottom:20px;right:20px;background:#161b22;border:2px solid #ff6b00;border-radius:10px;padding:12px 18px;z-index:7000;display:none;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#ff6b00;}',
+
+      /* Pantalla Procesos */
+      '#tsup-screenProcesos{display:none;height:calc(100vh - 48px);flex-direction:column;}',
+      '#tsup-panel .proc-header{background:linear-gradient(135deg,#161b22,#0d1117);padding:20px;text-align:center;border-bottom:2px solid #ff6b00;}',
+      '#tsup-panel .proc-header h1{font-size:28px;font-weight:900;color:#ff6b00;letter-spacing:3px;}',
+      '#tsup-panel .proc-header p{font-size:13px;color:#8b949e;margin-top:5px;}',
+      '#tsup-panel .proc-grid{flex:1;overflow-y:auto;padding:20px;display:grid;grid-template-columns:repeat(6,1fr);gap:15px;align-content:start;}',
+      '#tsup-panel .proc-card{background:#161b22;border:2px solid #30363d;border-radius:14px;padding:18px 10px 14px 10px;text-align:center;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:8px;}',
+      '#tsup-panel .proc-card:hover{border-color:#ff6b00;background:#1c2333;transform:translateY(-2px);}',
+      '#tsup-panel .proc-card:active{transform:scale(0.95);}',
+      '#tsup-panel .proc-card svg{width:52px;height:52px;filter:brightness(0) invert(1);opacity:0.85;}',
+      '#tsup-panel .proc-card span{font-weight:900;font-size:13px;color:#e6edf3;letter-spacing:0.5px;}',
+      '#tsup-panel .proc-card .btn-rpt-proc{margin-top:6px;background:#1565c0;border:1px solid #1976d2;color:white;padding:4px 10px;border-radius:6px;font-weight:900;font-size:10px;cursor:pointer;letter-spacing:0.5px;width:100%;}',
+      '#tsup-panel .proc-card .btn-rpt-proc:active{background:#0d47a1;}',
+
+      /* Pantalla Órdenes */
+      '#tsup-screenOrdenes{display:none;height:calc(100vh - 48px);flex-direction:column;}',
+      /* Pantalla Plan */
+      '#tsup-screenPlan{display:none;height:calc(100vh - 48px);flex-direction:column;background:#f4f6f8;}',
+      '#tsup-panel .plan-topbar{background:#1a237e;padding:12px 15px;display:flex;align-items:center;gap:10px;border-bottom:3px solid #ff6b00;flex-shrink:0;}',
+      '#tsup-panel .plan-title{flex:1;font-size:18px;font-weight:900;color:white;letter-spacing:2px;}',
+      '#tsup-panel .plan-body{flex:1;overflow-y:auto;padding:12px;}',
+      '#tsup-panel .plan-maq-block{margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);}',
+      '#tsup-panel .plan-maq-header{background:#bbdefb;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #90caf9;text-transform:uppercase;color:#0d1117;}',
+      '#tsup-panel .plan-table{width:100%;border-collapse:collapse;background:white;font-size:11px;}',
+      '#tsup-panel .plan-table th{border:1px solid #ccc;padding:4px 3px;background:#fff;font-weight:900;text-align:center;font-size:10px;color:#333;}',
+      '#tsup-panel .plan-table td{border:1px solid #ddd;padding:3px 2px;text-align:center;vertical-align:middle;color:#212121;}',
+      '#tsup-panel .plan-table tr:nth-child(even) td{background:#f9fbff;}',
+      '#tsup-panel .plan-ord{font-weight:900;color:#1565c0;}',
+      '#tsup-panel .plan-nums{font-weight:900;color:#0000cc;}',
+      '#tsup-panel .plan-restan{font-weight:900;}',
+      '#tsup-panel .plan-bar-wrap{display:flex;align-items:center;gap:3px;padding:0 3px;}',
+      '#tsup-panel .plan-bar-bg{flex:1;height:8px;background:#e0e0e0;border-radius:2px;overflow:hidden;border:1px solid #bbb;}',
+      '#tsup-panel .plan-bar-fill{height:100%;background:#1565c0;border-radius:2px;}',
+      '#tsup-panel .plan-bar-fill.ok{background:#2e7d32;}',
+      '#tsup-panel .plan-bar-fill.over{background:#c62828;}',
+      '#tsup-panel .plan-bar-val{font-size:9px;font-weight:900;min-width:30px;text-align:right;}',
+      '#tsup-panel .plan-empty{padding:40px;text-align:center;color:#888;font-size:14px;font-weight:700;}',
+      /* Pantalla Reporte Turno */
+      '#tsup-screenTurno{display:none;height:calc(100vh - 48px);flex-direction:column;background:#f4f6f8;}',
+      '#tsup-panel .turno-topbar{background:#e65100;padding:12px 15px;display:flex;align-items:center;gap:10px;border-bottom:3px solid #ffb300;flex-shrink:0;}',
+      '#tsup-panel .turno-title{flex:1;font-size:18px;font-weight:900;color:white;letter-spacing:2px;}',
+      '#tsup-panel .turno-body{flex:1;overflow-y:auto;padding:12px;}',
+      '#tsup-panel .turno-maq-block{margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);}',
+      '#tsup-panel .turno-maq-header{background:#fff9c4;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #f9a825;text-transform:uppercase;color:#0d1117;}',
+      '#tsup-panel .turno-table{width:100%;border-collapse:collapse;background:white;font-size:11px;table-layout:fixed;}',
+      '#tsup-panel .turno-table th{border:1px solid #bbb;padding:3px 2px;background:#fff;font-weight:900;text-align:center;font-size:9px;color:#333;white-space:nowrap;}',
+      '#tsup-panel .turno-table td{border:1px solid #ddd;padding:2px;text-align:center;vertical-align:middle;height:26px;font-size:10px;overflow:hidden;}',
+      '#tsup-panel .turno-table tr:nth-child(even) td{background:#f9fbff;}',
+      '#tsup-panel .turno-empty{padding:40px;text-align:center;color:#888;font-size:14px;font-weight:700;}',
+      '#tsup-panel .btn-imprimir{background:#ff6b00;border:none;color:white;padding:7px 16px;border-radius:6px;font-weight:900;font-size:12px;cursor:pointer;letter-spacing:0.5px;}',
+      '#tsup-panel .btn-imprimir:active{background:#e65100;}',
+      '@media print{@page{size:letter landscape;margin:10mm 5mm;} #tsup-panel .plan-topbar,#tsup-panel .turno-topbar,#tsup-panel .proc-header,#tsup-panel .ord-topbar,#tsup-miniLoader,#sidebar,#header-bar,.no-print{display:none!important;} #tsup-panel .plan-body,#tsup-panel .turno-body{overflow:visible!important;height:auto!important;padding:0!important;} body,#tsup-panel{background:white!important;} -webkit-print-color-adjust:exact; print-color-adjust:exact;}',
+      '#tsup-panel .ord-topbar{background:#161b22;padding:12px 15px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #ff6b00;flex-shrink:0;}',
+      '#tsup-panel .btn-back{background:#00c853;border:2px solid #00c853;color:#fff;padding:8px 14px;border-radius:8px;font-weight:900;font-size:16px;cursor:pointer;animation:btnBackPulse 1.4s ease-in-out infinite;box-shadow:0 0 0 0 rgba(0,200,83,0.7);}',
+      '@keyframes btnBackPulse{0%{box-shadow:0 0 0 0 rgba(0,200,83,0.7);}60%{box-shadow:0 0 0 10px rgba(0,200,83,0);}100%{box-shadow:0 0 0 0 rgba(0,200,83,0);}}',
+      '#tsup-panel .ord-title{flex:1;font-size:20px;font-weight:900;color:#ff6b00;letter-spacing:2px;}',
+      '#tsup-panel .btn-hist{background:#30363d;border:1px solid #484f58;color:#c9d1d9;padding:8px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;}',
+      '#tsup-panel .btn-hist.active{background:#ff6b00;color:#0d1117;border-color:#ff6b00;}',
+      '#tsup-panel .btn-form-prod{background:#1565c0;border:1px solid #1976d2;color:white;padding:8px 14px;border-radius:8px;font-weight:900;font-size:12px;cursor:pointer;letter-spacing:0.5px;}',
+      '#tsup-panel .btn-form-prod:active{background:#0d47a1;}',
+      '#tsup-panel .ord-search{padding:8px 15px;background:#0d1117;flex-shrink:0;}',
+      '#tsup-panel .ord-search input{width:100%;padding:12px 15px;border:2px solid #30363d;border-radius:8px;background:#161b22;color:#e6edf3;font-size:16px;font-weight:700;outline:none;}',
+      '#tsup-panel .ord-search input:focus{border-color:#ff6b00;}',
+
+      /* Chips Familia */
+      '#tsup-maqFilterBar{padding:6px 15px 8px;background:#0d1117;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;border-bottom:1px solid #21262d;}',
+      '#tsup-panel .maq-chip{background:#161b22;border:1.5px solid #30363d;color:#8b949e;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:900;cursor:pointer;transition:all 0.15s;letter-spacing:0.5px;white-space:nowrap;user-select:none;}',
+      '#tsup-panel .maq-chip.active{background:#ff6b00;border-color:#ff6b00;color:#0d1117;}',
+      '#tsup-panel .chip-all{background:#21262d;border-color:#484f58;color:#c9d1d9;}',
+      '#tsup-panel .chip-all.nada{background:#3d2712;border-color:#ff6b00;color:#ffb300;}',
+      '#tsup-panel .maq-chip:active{transform:scale(0.95);}',
+
+      /* Lista Órdenes */
+      '#tsup-panel .ord-list{flex:1;overflow-y:auto;padding:4px 8px 8px 8px;}',
+      '#tsup-panel .maq-group{margin-bottom:12px;margin-top:0;}',
+      '#tsup-panel .maq-group:first-of-type{margin-top:0;}',
+      '#tsup-panel .ord-list{flex:1;overflow-y:auto;padding:4px 8px 8px 8px;}',
+      '#tsup-panel .maq-group-header{background:linear-gradient(90deg,#1c2333,#161b22);border:1px solid #30363d;border-left:4px solid #ff6b00;border-radius:8px 8px 0 0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;}',
+      '#tsup-panel .maq-group-name{font-size:15px;font-weight:900;color:#ff6b00;letter-spacing:1px;}',
+      '#tsup-panel .maq-group-cnt{font-size:11px;color:#8b949e;background:#0d1117;padding:2px 8px;border-radius:10px;}',
+      '#tsup-panel .ord-row{background:#161b22;border:1px solid #30363d;border-top:none;padding:10px 14px;cursor:pointer;transition:all 0.15s;display:grid;grid-template-columns:70px 1fr 140px;gap:10px;align-items:center;}',
+      '#tsup-panel .ord-row:last-child{border-radius:0 0 8px 8px;}',
+      '#tsup-panel .ord-row:active{background:#1c2333;border-color:#ff6b00;}',
+      '#tsup-panel .ord-op{font-size:18px;font-weight:900;color:#58a6ff;}',
+      '#tsup-panel .ord-meta-sm{font-size:11px;color:#8b949e;line-height:1.5;}',
+      '#tsup-panel .ord-meta-sm b{color:#c9d1d9;font-size:12px;}',
+      '#tsup-panel .ord-item-big{display:flex;flex-direction:column;justify-content:center;padding:4px 10px;border-left:2px solid #30363d;border-right:2px solid #30363d;}',
+      '#tsup-panel .item-tipo{font-size:10px;font-weight:900;color:#ffb300;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px;}',
+      '#tsup-panel .item-med{font-size:20px;font-weight:900;color:#e6edf3;line-height:1.1;}',
+      '#tsup-panel .item-det{font-size:11px;color:#8b949e;margin-top:3px;}',
+      '#tsup-panel .ord-avance{text-align:right;}',
+      '#tsup-panel .avance-bar{width:100%;height:22px;background:#21262d;border-radius:6px;overflow:hidden;margin-top:4px;border:1px solid #30363d;}',
+      '#tsup-panel .avance-fill{height:100%;border-radius:6px;transition:width 0.5s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;}',
+      '#tsup-panel .avance-fill-pct{font-size:11px;font-weight:900;color:rgba(0,0,0,0.75);}',
+      '#tsup-panel .avance-pct{font-size:15px;font-weight:900;}',
+      '#tsup-panel .ord-count{text-align:center;padding:15px;color:#8b949e;font-weight:700;}',
+
+      /* Modal Orden */
+      '#tsup-modalOrden{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:5000;display:none;overflow-y:auto;}',
+      '#tsup-modalOrden.planif-mode{display:flex!important;align-items:center;justify-content:center;overflow:hidden;}',
+      '#tsup-modalOrden.planif-mode .mo-container{width:92vw;max-width:1000px;max-height:88vh;overflow-y:auto;margin:0;min-height:unset;border-radius:12px;}',
+      '#tsup-panel .mo-container{background:#161b22;margin:10px;border-radius:12px;border:2px solid #30363d;min-height:calc(100vh - 20px);}',
+      '#tsup-panel .mo-header{background:#1c2333;padding:15px;border-radius:12px 12px 0 0;border-bottom:2px solid #ff6b00;}',
+      '#tsup-panel .mo-close{float:right;background:none;border:2px solid #f85149;color:#f85149;padding:6px 12px;border-radius:6px;font-weight:900;cursor:pointer;font-size:14px;}',
+      '#tsup-panel .mo-title{font-size:13px;font-weight:900;color:#ff6b00;line-height:1.5;}',
+      '#tsup-panel .mo-sub{font-size:12px;color:#8b949e;margin-top:4px;}',
+      '#tsup-panel .mo-progress{background:#0d1117;padding:12px 15px;display:flex;gap:20px;align-items:center;border-bottom:1px solid #30363d;}',
+      '#tsup-panel .mo-kpi{font-size:12px;color:#8b949e;}',
+      '#tsup-panel .mo-kpi b{font-size:16px;color:#e6edf3;display:block;}',
+      '#tsup-panel .mo-kpi.pending b{color:#ffb300;font-size:20px;}',
+      '#tsup-panel .mo-bar-wrap{flex:1;}',
+      '#tsup-panel .mo-bar{height:22px;background:#21262d;border-radius:6px;overflow:hidden;border:1px solid #30363d;}',
+      '#tsup-panel .mo-bar-fill{height:100%;border-radius:6px;}',
+      '#tsup-panel .mo-body{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:400px;}',
+      '@media(max-width:900px){#tsup-panel .mo-body{grid-template-columns:1fr;}}',
+      '#tsup-panel .mo-left{padding:15px;border-right:1px solid #30363d;}',
+      '#tsup-panel .mo-right{padding:15px;}',
+      '#tsup-panel .mo-section{margin-bottom:15px;}',
+      '#tsup-panel .mo-section-title{font-size:12px;font-weight:900;color:#ff6b00;border-bottom:1px solid #30363d;padding-bottom:5px;margin-bottom:8px;letter-spacing:1px;}',
+      '#tsup-panel .lotes-scroll{max-height:200px;overflow-y:auto;border:1px solid #30363d;border-radius:6px;}',
+      '#tsup-panel .lote-row{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #21262d;font-size:13px;font-weight:700;}',
+      '#tsup-panel .lote-row:nth-child(even){background:#0d1117;}',
+      '#tsup-panel .lote-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:900;}',
+      '#tsup-panel .lote-badge.abierto{background:#1f3a2a;color:#3fb950;}',
+      '#tsup-panel .lote-badge.impreso{background:#1c2d4f;color:#58a6ff;}',
+      '#tsup-panel .lote-badge.usado{background:#3d2712;color:#ffb300;}',
+      '#tsup-panel .btn-gen{background:#238636;border:none;color:white;padding:12px;border-radius:8px;font-weight:900;font-size:14px;cursor:pointer;width:100%;margin-top:8px;}',
+      '#tsup-panel .btn-gen:active{background:#2ea043;}',
+      '#tsup-panel .print-panel{background:#1c2333;padding:12px;border-radius:8px;border:1px solid #30363d;}',
+      '#tsup-panel .print-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}',
+      '#tsup-panel .print-row label{font-size:11px;font-weight:900;color:#ffb300;flex:1;}',
+      '#tsup-panel .inp-lote{width:80px;padding:8px;border:1px solid #30363d;border-radius:6px;background:#0d1117;color:#e6edf3;font-weight:900;text-align:center;font-size:14px;}',
+      '#tsup-panel .btn-print{border:none;padding:10px;border-radius:6px;font-weight:900;font-size:12px;cursor:pointer;flex:1;color:white;}',
+      '#tsup-panel .btn-et1{background:#1976d2;}',
+      '#tsup-panel .btn-et2{background:#00838f;}',
+      '#tsup-panel .btn-rpt{background:#e65100;}',
+      '#tsup-panel .ruta-tbl{width:100%;border-collapse:collapse;font-size:12px;}',
+      '#tsup-panel .ruta-tbl th{background:#0d1117;color:#8b949e;padding:6px 8px;text-align:left;border-bottom:1px solid #30363d;font-size:11px;}',
+      '#tsup-panel .ruta-tbl td{padding:8px;border-bottom:1px solid #21262d;color:#c9d1d9;}',
+      '#tsup-panel .ruta-tbl tr.current{background:#3d2712 !important;}',
+      '#tsup-panel .ruta-tbl tr.current td{color:#ffb300;font-weight:900;}',
+      '#tsup-panel .btn-edit-maq{background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;}',
+      '#tsup-panel .doc-link{display:block;padding:10px;background:#0d1117;border:1px solid #30363d;border-radius:6px;margin-bottom:6px;text-decoration:none;color:#58a6ff;font-weight:700;font-size:13px;}',
+      '#tsup-panel .doc-link:active{background:#1c2d4f;}',
+      '#tsup-panel .doc-grp-title{font-size:10px;font-weight:900;color:#58a6ff;text-transform:uppercase;margin:8px 0 4px;letter-spacing:1px;}',
+
+      /* Mini Modales */
+      '#tsup-panel .mini-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:6000;display:none;justify-content:center;align-items:center;}',
+      '#tsup-panel .mini-box{background:#161b22;border:2px solid #ff6b00;border-radius:12px;padding:25px;width:90%;max-width:380px;}',
+      '#tsup-panel .mini-title{font-size:16px;font-weight:900;color:#ff6b00;margin-bottom:15px;}',
+      '#tsup-panel .mini-input{width:100%;padding:12px;border:2px solid #30363d;border-radius:8px;background:#0d1117;color:#e6edf3;font-size:18px;font-weight:900;text-align:center;margin-bottom:12px;}',
+      '#tsup-panel .mini-input:focus{border-color:#ff6b00;outline:none;}',
+      '#tsup-panel .mini-btn{border:none;padding:12px;border-radius:8px;font-weight:900;font-size:14px;cursor:pointer;width:100%;margin-bottom:8px;color:white;}',
+      '#tsup-panel .mini-ok{background:#238636;}',
+      '#tsup-panel .mini-cancel{background:#484f58;}',
+      '#tsup-panel .mini-select{width:100%;padding:12px;border:2px solid #30363d;border-radius:8px;background:#0d1117;color:#e6edf3;font-size:14px;font-weight:700;margin-bottom:12px;cursor:pointer;}',
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  // ── Inyectar HTML ──
+  ca.innerHTML = `
+<div id="tsup-panel">
+
+  <div id="tsup-miniLoader">⏳ <span id="tsup-miniLoaderTxt">CARGANDO...</span></div>
+
+  <div id="tsup-screenProcesos">
+    <div class="proc-header"><h1>⚙ TABLERO SUPERVISOR</h1><p>Selecciona un proceso para ver sus órdenes</p></div>
+    <div class="proc-grid" id="tsup-gridProcesos"></div>
+  </div>
+
+  <div id="tsup-screenPlan">
+    <div class="plan-topbar">
+      <button class="btn-back" onclick="tsupVolverDesddePlan()">◀</button>
+      <div class="plan-title">📋 PLAN — <span id="tsup-planProceso"></span></div>
+      <button class="btn-imprimir" onclick="tsupImprimirPlan()">🖨 IMPRIMIR</button>
+    </div>
+    <div class="plan-body" id="tsup-planBody">
+      <div class="plan-empty">Cargando plan...</div>
+    </div>
+  </div>
+
+  <div id="tsup-screenTurno">
+    <div class="turno-topbar">
+      <button class="btn-back" onclick="tsupVolverDesdeTurno()">◀</button>
+      <div class="turno-title">🖨 FORM. PRODUCCIÓN — <span id="tsup-turnoProceso"></span></div>
+      <button class="btn-imprimir" onclick="tsupImprimirTurno('horizontal')" style="background:#1565c0;">🖨 Horizontal</button>
+      <button class="btn-imprimir" onclick="tsupImprimirTurno('vertical')" style="background:#2e7d32;margin-left:6px;">🖨 Vertical</button>
+    </div>
+    <div class="turno-body" id="tsup-turnoBody">
+      <div class="turno-empty">Cargando reporte...</div>
+    </div>
+  </div>
+
+  <div id="tsup-screenOrdenes">
+    <div class="ord-topbar">
+      <button class="btn-back" onclick="tsupVolverAProcesos()">◀</button>
+      <div class="ord-title" id="tsup-txtProcesoActual">---</div>
+      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)" style="padding:7px 12px;border:2px solid #ffd600;border-radius:8px;background:#161b22;color:#e6edf3;font-size:13px;font-weight:700;outline:none;width:400px;flex-shrink:0;animation:buscarPulso 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,214,0,0.6);">
+      <style>#tsup-inputBuscar:focus{animation:none!important;box-shadow:0 0 0 3px rgba(255,214,0,0.5)!important;border-color:#ffd600!important;}@keyframes buscarPulso{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.6);border-color:#ffd600;}50%{box-shadow:0 0 0 8px rgba(255,214,0,0);border-color:#ffe57f;}}</style>
+      <button class="btn-hist" id="tsup-btnHist" onclick="tsupToggleHistoricas()">📜 Históricas</button>
+    </div>
+    <div id="tsup-maqFilterBar"></div>
+    <div class="ord-list" id="tsup-listaOrdenes"></div>
+  </div>
+
+  <div id="tsup-modalOrden" onclick="if(event.target===this)tsupCerrarModal()">
+    <div class="mo-container">
+      <div class="mo-header">
+        <button class="mo-close" onclick="tsupCerrarModal()">✕ CERRAR</button>
+        <div class="mo-title" id="tsup-moTitle">---</div>
+        <div class="mo-sub" id="tsup-moSub">---</div>
+      </div>
+      <div class="mo-progress">
+        <div class="mo-kpi"><span>SOLICITADO</span><b id="tsup-moSol">0</b></div>
+        <div class="mo-bar-wrap"><div class="mo-bar"><div class="mo-bar-fill" id="tsup-moBarFill"></div></div></div>
+        <div class="mo-kpi"><span>PRODUCIDO</span><b id="tsup-moProd">0</b></div>
+        <div class="mo-kpi pending"><span>PENDIENTE</span><b id="tsup-moPen">0</b></div>
+      </div>
+      <div class="mo-body">
+        <div class="mo-left">
+          <div class="mo-section">
+            <div class="mo-section-title">📦 LOTES GENERADOS</div>
+            <div class="lotes-scroll" id="tsup-moLotes"></div>
+            <button class="btn-gen" onclick="tsupAbrirGenLotes()">+ GENERAR MÁS LOTES</button>
+          </div>
+          <div class="mo-section">
+            <div class="mo-section-title">🖨 CONFIGURAR IMPRESIÓN</div>
+            <div class="print-panel">
+              <div class="print-row">
+                <label>LOTE INICIAL:</label><input type="number" class="inp-lote" id="tsup-moLoteIni">
+                <label>LOTE FINAL:</label><input type="number" class="inp-lote" id="tsup-moLoteFin">
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn-print btn-et1" onclick="tsupImprimir('ETIQUETA')">🏷 TIPO 1</button>
+                <button class="btn-print btn-et2" onclick="tsupImprimir('ETIQUETA_2')">🏷 TIPO 2</button>
+                <button class="btn-print btn-rpt" onclick="tsupImprimir('REPORTE_SOLO')">📋 REPORTE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mo-right">
+          <div class="mo-section">
+            <div class="mo-section-title">🔧 RUTA DE FABRICACIÓN</div>
+            <div id="tsup-moRuta"><div style="color:#484f58;">Cargando...</div></div>
+          </div>
+          <div class="mo-section">
+            <div class="mo-section-title">📄 DOCUMENTACIÓN TÉCNICA</div>
+            <div id="tsup-moDocs"><div style="color:#484f58;">Cargando...</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mini-modal" id="tsup-miniGenLotes" onclick="if(event.target===this)this.style.display='none'">
+    <div class="mini-box">
+      <div class="mini-title">+ GENERAR LOTES</div>
+      <label style="font-size:12px;color:#8b949e;">CANTIDAD DE LOTES:</label>
+      <input type="number" class="mini-input" id="tsup-genCant" placeholder="Ej: 5">
+      <label style="font-size:12px;color:#8b949e;">PESO POR LOTE (KG):</label>
+      <input type="number" class="mini-input" id="tsup-genPeso" placeholder="0">
+      <button class="mini-btn mini-ok" onclick="tsupConfirmarGenLotes()">✅ CONFIRMAR</button>
+      <button class="mini-btn mini-cancel" onclick="document.getElementById('tsup-miniGenLotes').style.display='none'">CANCELAR</button>
+    </div>
+  </div>
+
+  <div class="mini-modal" id="tsup-miniCambioMaq" onclick="if(event.target===this)this.style.display='none'">
+    <div class="mini-box">
+      <div class="mini-title">🔧 CAMBIAR MÁQUINA</div>
+      <div id="tsup-maqProcLabel" style="font-size:12px;color:#8b949e;margin-bottom:8px;"></div>
+      <select class="mini-select" id="tsup-selectMaq"></select>
+      <button class="mini-btn mini-ok" onclick="tsupConfirmarCambioMaq()">✅ APLICAR</button>
+      <button class="mini-btn mini-cancel" onclick="document.getElementById('tsup-miniCambioMaq').style.display='none'">CANCELAR</button>
+    </div>
+  </div>
+
+</div>`;
+
+  // ── Inicializar estado y cargar datos ──
+  tsup_procesos = [];
+  tsup_procesoActual = '';
+  tsup_ordenesCache = [];
+  tsup_historicasCache = [];
+  tsup_lotesCache = {};
+  tsup_rutasCache = {};
+  tsup_docsCache = {};
+  tsup_configCache = {};
+  tsup_ordenSeleccionada = null;
+  tsup_modoHistoricas = false;
+  tsup_grupoFiltrosActivos = new Set();
+  tsup_cambioMaqData = { sec: 0, codigo: '' };
+  tsup_grupoMaqsMapGlobal = {};
+
+  // Mostrar pantalla de procesos y cargar
+  document.getElementById('tsup-screenProcesos').style.display = 'flex';
+  tsupShowLoader('CARGANDO PROCESOS...');
+  google.script.run
+    .withSuccessHandler(function(d) {
+      tsup_procesos = d.procesos;
+      tsupRenderProcesos();
+      tsupHideLoader();
+    })
+    .withFailureHandler(function(e) {
+      tsupHideLoader();
+      alert('Error cargando procesos: ' + e);
+    })
+    .obtenerProcesosTablero();
+}
+
+// ── Variables de estado del módulo Tablero Supervisor ──
+var tsup_procesos = [];
+var tsup_procesoActual = '';
+var tsup_ordenesCache = [];
+var tsup_historicasCache = [];
+var tsup_lotesCache = {};
+var tsup_rutasCache = {};
+var tsup_docsCache = {};
+var tsup_configCache = {};
+var tsup_ordenSeleccionada = null;
+var tsup_modoHistoricas = false;
+var tsup_grupoFiltrosActivos = new Set();
+var tsup_cambioMaqData = { sec: 0, codigo: '' };
+var tsup_grupoMaqsMapGlobal = {};
+
+// ── Loader del módulo (usa el loader principal del MainApp) ──
+function tsupShowLoader(msg) {
+  showLoader(msg || 'CARGANDO...');
+}
+function tsupHideLoader() {
+  hideLoader();
+}
+function tsupShowMiniLoader(msg) {
+  var ml = document.getElementById('tsup-miniLoader');
+  var txt = document.getElementById('tsup-miniLoaderTxt');
+  if (txt) txt.innerText = msg || 'CARGANDO...';
+  if (ml) ml.style.display = 'flex';
+}
+function tsupHideMiniLoader() {
+  var ml = document.getElementById('tsup-miniLoader');
+  if (ml) ml.style.display = 'none';
+}
+
+// ── Helper formato número ──
+function tsupFmt(n) {
+  var x = Number(n);
+  if (isNaN(x)) return '0';
+  return x.toLocaleString('es-MX');
+}
+
+// ── SVG Icono de máquina ──
+// Copia exacta de obtenerIconoSVG del backend (Codigo_PCP_GS)
+function tsupGetSvgIcono(tipo) {
+  var t = String(tipo || "").toUpperCase().trim();
+  var svgStart = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:100%; height:100%;">';
+  var path = "";
+
+  // --- 1. BLOQUE DE CLAVOS ---
+  if (t.includes("CLAVO")) {
+    if (t.includes("COLATADO") || t.includes("ROOFING")) {
+      path = '<rect x="6" y="4" width="2" height="16" fill="#9e9e9e"/><rect x="5" y="3" width="4" height="1" fill="#757575"/><path d="M6 20 L7 22 L8 20 Z" fill="#9e9e9e"/><rect x="16" y="4" width="2" height="16" fill="#9e9e9e"/><rect x="15" y="3" width="4" height="1" fill="#757575"/><path d="M16 20 L17 22 L18 20 Z" fill="#9e9e9e"/><line x1="6" y1="8" x2="18" y2="8" stroke="#ff8f00" stroke-width="1"/><line x1="6" y1="14" x2="18" y2="14" stroke="#ff8f00" stroke-width="1"/>';
+    } else if (t.includes("BOYA")) {
+      path = '<rect x="8" y="4" width="8" height="16" fill="#212121"/><rect x="6" y="2" width="12" height="2" fill="#000"/><path d="M8 20 L12 24 L16 20 Z" fill="#212121"/><line x1="9" y1="6" x2="15" y2="8" stroke="#616161" stroke-width="0.5"/><line x1="9" y1="9" x2="15" y2="11" stroke="#616161" stroke-width="0.5"/><line x1="9" y1="12" x2="15" y2="14" stroke="#616161" stroke-width="0.5"/><line x1="9" y1="15" x2="15" y2="17" stroke="#616161" stroke-width="0.5"/>';
+    } else if (t.includes("CONCRETO") && (t.includes("LISO") || t.includes("LISA"))) {
+      path = '<rect x="10" y="4" width="4" height="16" fill="#212121"/><rect x="8" y="2" width="8" height="2" fill="#000"/><path d="M10 20 L12 24 L14 20 Z" fill="#212121"/>';
+    } else if (t.includes("CONCRETO")) {
+      path = '<rect x="10" y="4" width="4" height="16" fill="#212121"/><rect x="8" y="2" width="8" height="2" fill="#000"/><path d="M10 20 L12 24 L14 20 Z" fill="#212121"/><line x1="10" y1="6" x2="14" y2="7" stroke="#757575" stroke-width="0.5"/><line x1="10" y1="9" x2="14" y2="10" stroke="#757575" stroke-width="0.5"/><line x1="10" y1="12" x2="14" y2="13" stroke="#757575" stroke-width="0.5"/><line x1="10" y1="15" x2="14" y2="16" stroke="#757575" stroke-width="0.5"/>';
+    } else {
+      path = '<rect x="11" y="4" width="2" height="17" fill="#9e9e9e"/><rect x="9" y="3" width="6" height="1" fill="#616161"/><path d="M11 21 L12 24 L13 21 Z" fill="#9e9e9e"/>';
+    }
+  }
+  // --- 2. BLOQUE DE TORNILLOS Y OTROS ---
+  else if (t.includes("CUA") && t.includes("CN")) {
+    path = '<rect x="4" y="2" width="16" height="8" rx="1" fill="#78909c" stroke="#37474f"/> <rect x="9" y="10" width="6" height="12" fill="#b0bec5"/> <line x1="9" y1="14" x2="15" y2="14" stroke="#78909c"/> <line x1="9" y1="18" x2="15" y2="18" stroke="#78909c"/> <text x="12" y="8" font-family="Arial" font-weight="bold" font-size="5" text-anchor="middle" fill="black">CN</text>';
+  } else if (t.includes("CUA") && t.includes("CV")) {
+    path = '<rect x="4" y="2" width="16" height="8" rx="1" fill="#78909c" stroke="#37474f"/> <rect x="9" y="10" width="6" height="12" fill="#b0bec5"/> <line x1="9" y1="14" x2="15" y2="14" stroke="#78909c"/> <line x1="9" y1="18" x2="15" y2="18" stroke="#78909c"/> <text x="12" y="8" font-family="Arial" font-weight="bold" font-size="5" text-anchor="middle" fill="black">CV</text>';
+  } else if (t.includes("CAR")) {
+    path = '<path d="M4 9 Q12 1 20 9" fill="#90a4ae" stroke="#546e7a"/> <rect x="8" y="9" width="8" height="4" fill="#607d8b"/> <rect x="9" y="13" width="6" height="10" fill="#cfd8dc"/> <line x1="9" y1="16" x2="15" y2="16" stroke="#90a4ae"/> <line x1="9" y1="19" x2="15" y2="19" stroke="#90a4ae"/>';
+  } else if (t.includes("B7") || t.includes("B-7")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <text x="12" y="13" font-family="Arial" font-weight="bold" font-size="6" text-anchor="middle" fill="#333">B-7</text>';
+  } else if (t.includes("A394") && (t.includes("T0") || t.includes("T-0"))) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <text x="12" y="13" font-family="Arial" font-weight="bold" font-size="6" text-anchor="middle" fill="#333">T-0</text>';
+  } else if (t.includes("RED") && t.includes("RAN")) {
+    path = '<path d="M16 6a4 4 0 0 0-8 0" fill="#78909c"/> <rect x="11" y="2" width="2" height="4" fill="#333"/> <rect x="10" y="6" width="4" height="16" fill="#b0bec5"/> <line x1="10" y1="10" x2="14" y2="10" stroke="#78909c"/> <line x1="10" y1="14" x2="14" y2="14" stroke="#78909c"/> <line x1="10" y1="18" x2="14" y2="18" stroke="#78909c"/>';
+  } else if (t.includes("PIJ") || t.includes("PIJA") || t.includes("PHI")) {
+    path = '<path d="M17 5H7V3h10v2z M10 5l2 14 2-14" fill="#757575"/> <path d="M11 9h2 M11 12h2 M11 15h2" stroke="#424242"/>';
+  } else if (t.includes("MAC")) {
+    path = '<rect x="6" y="8" width="12" height="14" fill="#90a4ae" stroke="#546e7a"/> <rect x="10" y="2" width="4" height="6" fill="#cfd8dc" stroke="#546e7a"/>';
+  } else if (t.includes("HEM")) {
+    path = '<path d="M6 2h12v20H6z M10 2v6h4V2" fill="#90a4ae" fill-rule="evenodd" stroke="#546e7a"/>';
+  } else if (t.includes("HEX") && t.includes("G2")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <text x="12" y="13" font-family="Arial" font-weight="bold" font-size="6" text-anchor="middle" fill="#333">G2</text>';
+  } else if (t.includes("G5")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <line x1="12" y1="12" x2="12" y2="4" stroke="black" stroke-width="1.5"/> <line x1="12" y1="12" x2="5" y2="16" stroke="black" stroke-width="1.5"/> <line x1="12" y1="12" x2="19" y2="16" stroke="black" stroke-width="1.5"/>';
+  } else if (t.includes("G8")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <line x1="12" y1="6" x2="12" y2="4" stroke="black" stroke-width="2"/> <line x1="12" y1="18" x2="12" y2="20" stroke="black" stroke-width="2"/> <line x1="6" y1="9" x2="4" y2="8" stroke="black" stroke-width="2"/> <line x1="18" y1="9" x2="20" y2="8" stroke="black" stroke-width="2"/> <line x1="6" y1="15" x2="4" y2="16" stroke="black" stroke-width="2"/> <line x1="18" y1="15" x2="20" y2="16" stroke="black" stroke-width="2"/>';
+  } else if (t.includes("A325") || t.includes("A-325")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <text x="12" y="13" font-family="Arial" font-weight="bold" font-size="5" text-anchor="middle">A325</text>';
+  } else if (t.includes("A490") || t.includes("A-490")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <text x="12" y="13" font-family="Arial" font-weight="bold" font-size="5" text-anchor="middle">A490</text>';
+  } else if (t.includes("T-1") || t.includes("T1")) {
+    path = '<polygon points="12,2 20.6,7 20.6,17 12,22 3.4,17 3.4,7" fill="#bdbdbd" stroke="#616161"/> <text x="12" y="13" font-family="Arial" font-weight="bold" font-size="6" text-anchor="middle">T-1</text>';
+  } else if (t.includes("BIS HEM")) {
+    path = '<rect x="4" y="4" width="10" height="16" fill="#90a4ae"/> <circle cx="18" cy="12" r="3" fill="none" stroke="#546e7a" stroke-width="2"/>';
+  } else if (t.includes("BIS MAC")) {
+    path = '<rect x="10" y="4" width="10" height="16" fill="#90a4ae"/> <rect x="4" y="10" width="6" height="4" fill="#546e7a"/>';
+  } else if (t.includes("ARM")) {
+    path = '<path d="M12 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z M12 14v8" stroke="#616161" stroke-width="2" fill="none"/>';
+  } else if (t.includes("BIR") || t.includes("BIRLO")) {
+    path = '<rect x="8" y="2" width="8" height="20" fill="#bdbdbd"/> <line x1="8" y1="6" x2="16" y2="6" stroke="#424242"/> <line x1="8" y1="10" x2="16" y2="10" stroke="#424242"/> <line x1="8" y1="14" x2="16" y2="14" stroke="#424242"/> <line x1="8" y1="18" x2="16" y2="18" stroke="#424242"/>';
+  } else if (t.includes("GRA") || t.includes("GRAPA")) {
+    path = '<path d="M6 18V8a6 6 0 0 1 12 0v10" fill="none" stroke="#616161" stroke-width="3"/> <path d="M6 18l-2-2 M18 18l2-2" stroke="#616161" stroke-width="2"/>';
+  } else if (t.includes("PER") || t.includes("PERNO")) {
+    path = '<rect x="5" y="2" width="14" height="4" rx="1" fill="#424242"/><rect x="9" y="6" width="6" height="15" fill="#757575"/><path d="M9 21 Q12 23 15 21 Z" fill="#757575"/>';
+  } else if (t.includes("REM") || t.includes("REMACHE")) {
+    path = '<path d="M12 4a4 4 0 0 0-4 4v2h8V8a4 4 0 0 0-4-4z" fill="#78909c"/> <rect x="10" y="10" width="4" height="10" fill="#b0bec5"/>';
+  } else if (t.includes("VARILLA")) {
+    path = '<rect x="7" y="2" width="10" height="20" fill="#bdbdbd" stroke="#424242" stroke-width="0.5"/>' +
+           '<line x1="7" y1="4" x2="17" y2="6" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="6" x2="17" y2="8" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="8" x2="17" y2="10" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="10" x2="17" y2="12" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="12" x2="17" y2="14" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="14" x2="17" y2="16" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="16" x2="17" y2="18" stroke="#616161" stroke-width="0.8"/>' +
+           '<line x1="7" y1="18" x2="17" y2="20" stroke="#616161" stroke-width="0.8"/>';
+  } else if (t.includes("BARRA") || t.includes("COLD") || t.includes("REDONDO")) {
+    var fill = "#bdbdbd";
+    if (t.includes("COLD")) fill = "#a5d6a7";
+    else if (t.includes("REDONDO")) fill = "#fff59d";
+    path = '<rect x="4" y="2" width="16" height="20" fill="' + fill + '" stroke="black" stroke-width="1.0"/>';
+  } else if (t.includes("ALA") || t.includes("ALAMBRE") || t.includes("ROLLO")) {
+    path = '<g fill="none" stroke="#f57c00" stroke-width="2"><circle cx="12" cy="12" r="11"/><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="7"/></g>';
+  }
+
+  // --- 3. FALLBACK ---
+  if (path === "") {
+    path = '<rect x="2" y="6" width="20" height="12" fill="#cfd8dc" stroke="#78909c" stroke-width="2"/> <text x="12" y="15" font-family="Arial" font-weight="bold" font-size="7" text-anchor="middle" fill="#455a64">ESP</text>';
+  }
+
+  return svgStart + path + "</svg>";
+}
+
+// ── Render pantalla de procesos ──
+function tsupRenderProcesos() {
+  var h = '';
+  tsup_procesos.forEach(function(p) {
+  });
+  var nombres = tsup_procesos.map(function(p){ return p.nombre; });
+  document.getElementById('tsup-gridProcesos').innerHTML = renderProcGrid(nombres, function(nombre) {
+    return '<div class="proc-card" onclick="tsupSeleccionarProceso(\''+nombre.replace(/'/g,"\\'")+'\');" style="cursor:pointer;">'
+      + '<button class="btn-rpt-proc" style="background:#2e7d32;border-color:#388e3c;margin-bottom:4px;" onclick="event.stopPropagation();tsupAbrirPlan(\''+nombre.replace(/'/g,"\\'")+'\')">📋 Plan Producción</button>'
+      + getProcSVG(nombre)
+      + '<span>'+nombre+'</span>'
+      + '<button class="btn-rpt-proc" onclick="event.stopPropagation();tsupAbrirTurno(\''+nombre.replace(/'/g,"\\'")+'\')">🖨 FORM. PROD.</button>'
+      + '</div>';
+  });
+}
+
+// ── Seleccionar proceso ──
+function tsupSeleccionarProceso(nombre) {
+  tsup_procesoActual = nombre;
+  tsup_modoHistoricas = false;
+  tsup_grupoFiltrosActivos = new Set();
+  document.getElementById('tsup-btnHist').classList.remove('active');
+  document.getElementById('tsup-txtProcesoActual').innerText = nombre;
+  document.getElementById('tsup-inputBuscar').value = '';
+  document.getElementById('tsup-screenProcesos').style.display = 'none';
+  document.getElementById('tsup-screenOrdenes').style.display = 'flex';
+  tsupCargarOrdenesProceso(nombre);
+}
+window.tsupSeleccionarProceso = tsupSeleccionarProceso;
+
+  window.tsupAbrirPlan = function(nombre) {
+    document.getElementById('tsup-screenProcesos').style.display = 'none';
+    document.getElementById('tsup-screenOrdenes').style.display  = 'none';
+    document.getElementById('tsup-screenPlan').style.display     = 'flex';
+    document.getElementById('tsup-planProceso').textContent      = nombre;
+    document.getElementById('tsup-planBody').innerHTML =
+      '<div class="plan-empty">⏳ Cargando plan de producción...</div>';
+
+    var mini = document.getElementById('tsup-miniLoader');
+    var txt  = document.getElementById('tsup-miniLoaderTxt');
+    if (mini) { if(txt) txt.textContent = 'CARGANDO PLAN...'; mini.style.display = 'flex'; }
+
+    google.script.run
+      .withSuccessHandler(function(raw) {
+        if (mini) mini.style.display = 'none';
+        var lista = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+        window._tsupListaPlan = lista;
+        tsupRenderPlan(lista);
+      })
+      .withFailureHandler(function(e) {
+        if (mini) mini.style.display = 'none';
+        document.getElementById('tsup-planBody').innerHTML =
+          '<div class="plan-empty">❌ Error al cargar el plan: ' + e + '</div>';
+      })
+      .obtenerDatosPlanProduccion(nombre);
+  };
+
+  window.tsupVolverDesddePlan = function() {
+    document.getElementById('tsup-screenPlan').style.display     = 'none';
+    document.getElementById('tsup-screenProcesos').style.display = 'flex';
+  };
+
+  window.tsupAbrirTurno = function(nombre) {
+    document.getElementById('tsup-screenProcesos').style.display = 'none';
+    document.getElementById('tsup-screenOrdenes').style.display  = 'none';
+    document.getElementById('tsup-screenPlan').style.display     = 'none';
+    document.getElementById('tsup-screenTurno').style.display    = 'flex';
+    document.getElementById('tsup-turnoProceso').textContent     = nombre;
+    document.getElementById('tsup-turnoBody').innerHTML = '<div class="turno-empty">⏳ Cargando reporte de turno...</div>';
+    var mini = document.getElementById('tsup-miniLoader');
+    var txt  = document.getElementById('tsup-miniLoaderTxt');
+    if (mini) { if(txt) txt.textContent = 'CARGANDO TURNO...'; mini.style.display = 'flex'; }
+    google.script.run
+      .withSuccessHandler(function(raw) {
+        if (mini) mini.style.display = 'none';
+        var listaTurno = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        window._tsupListaTurno = listaTurno;
+        tsupRenderTurno(listaTurno);
+      })
+      .withFailureHandler(function(e) {
+        if (mini) mini.style.display = 'none';
+        document.getElementById('tsup-turnoBody').innerHTML = '<div class="turno-empty">❌ Error: ' + e + '</div>';
+      })
+      .obtenerDatosReporteTurnoTsup(nombre);
+  };
+
+  window.tsupVolverDesdeTurno = function() {
+    document.getElementById('tsup-screenTurno').style.display    = 'none';
+    document.getElementById('tsup-screenProcesos').style.display = 'flex';
+  };
+
+  // ── helpers HTML compartidos ──
+  function tsupHtmlPlan(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes activas para este proceso.</p>';
+    var html = '';
+    lista.forEach(function(m) {
+      html += '<div style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);">'
+            + '<div style="background:#bbdefb;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #90caf9;text-transform:uppercase;color:#000;">🔧 MÁQUINA: ' + m.nombreMaquina + '</div>'
+            + '<table style="width:100%;border-collapse:collapse;background:white;font-size:11px;"><thead><tr>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:6%">Orden</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:6%">Código</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:10%">Producto</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:5%">Ø</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:4%">Long</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:8%">Detalle</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:4%">Acero</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:6%">Solic</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:6%">Prod</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:13%">Avance</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:6%">Restan</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;width:5%">Inicio</th>'
+            + '<th style="border:1px solid #ccc;padding:4px 3px;font-weight:900;text-align:center;font-size:10px;color:#000;">Notas</th>'
+            + '</tr></thead><tbody>';
+      m.ordenes.forEach(function(o) {
+        var pct = Math.round(o.avance);
+        var barColor = o.avance >= 105 ? '#c62828' : (o.avance >= 98 ? '#2e7d32' : '#1565c0');
+        var w = Math.min(o.avance, 100);
+        html += '<tr>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-weight:900;color:#1565c0;">' + o.orden + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-size:9px;color:#000;">' + o.codigo + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-size:9px;color:#000;">' + o.producto + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;color:#000;">' + o.diametro + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;color:#000;">' + o.longitud + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-size:9px;color:#000;">' + o.detalle + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;color:#000;">' + o.acero + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-weight:900;color:#0000cc;">' + Number(o.sol).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-weight:900;color:#0000cc;">' + Number(o.prod).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;">'
+                + '<div style="display:flex;align-items:center;gap:3px;padding:0 3px;">'
+                + '<div style="flex:1;height:8px;background:#e0e0e0;border-radius:2px;overflow:hidden;border:1px solid #bbb;">'
+                + '<div style="height:100%;width:' + w + '%;background:' + barColor + ';border-radius:2px;"></div></div>'
+                + '<span style="font-size:9px;font-weight:900;min-width:30px;text-align:right;color:#000;">' + pct + '%</span>'
+                + '</div></td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-weight:900;color:#000;">' + Math.round(Number(o.restan)).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:center;font-size:9px;color:#000;">' + (o.fechaInicio || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:3px 2px;text-align:left;font-size:9px;font-style:italic;color:#000;">' + (o.nota || '') + '</td>'
+              + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    return html;
+  }
+
+  function tsupHtmlTurno(lista, procesoNombre) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes para este proceso.</p>';
+    var esColatado = (procesoNombre || document.getElementById('tsup-turnoProceso').textContent || '').toUpperCase().includes('COLATADO');
+    if (esColatado) {
+      return tsupHtmlTurnoColatado(lista);
+    }
+    // ── Render genérico (procesos distintos a COLATADO) ──
+    var html = '';
+    lista.forEach(function(m) {
+      html += '<div style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);">'
+            + '<div style="background:#fff9c4;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #f9a825;text-transform:uppercase;color:#000;">🔧 MÁQUINA: ' + m.nombre + '</div>'
+            + '<table style="width:100%;border-collapse:collapse;background:white;font-size:11px;table-layout:fixed;"><thead><tr>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Orden</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:11%">Producto</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Ø</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Long</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:9%">Detalle</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">SAE</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Solic</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Prod</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Avance</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Restan</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:4%">Ult.Lote</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:4%">P.Ini</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:4%">P.Fin</th>'
+            + '<th style="border:1px solid #bbb;border-left:2px solid #000;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Peso<br>Final</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Peso<br>Ini</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Tina</th>'
+            + '<th style="border:1px solid #bbb;border-right:2px solid #000;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Peso<br>Final</th>'
+            + '</tr></thead><tbody>';
+      m.ordenes.forEach(function(o) {
+        var pct = Math.round(o.avance), w = Math.min(o.avance, 100);
+        html += '<tr>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;">' + o.ordenFull + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;font-size:10px;font-weight:900;color:#000;line-height:1.1;">' + o.producto + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;color:#000;">' + o.medidas.split(' x ')[0] + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;color:#000;">' + o.medidas.split(' x ')[1] + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;color:#000;">' + o.detalle + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + o.acero + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.sol).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.prod).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;">'
+                + '<div style="display:flex;flex-direction:column;align-items:center;">'
+                + '<span style="font-size:9px;font-weight:900;color:#000;">' + pct + '%</span>'
+                + '<div style="width:90%;height:6px;background:#e0e0e0;border:1px solid #777;">'
+                + '<div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></div></td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;">' + Math.round(o.restan).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;color:#000;">' + (o.ultimoLote || '-') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;color:#000;">' + Math.round(Number(o.ultimoPIni) || 0) + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;color:#000;">' + Math.round(Number(o.ultimoPFin) || 0) + '</td>'
+              + '<td style="border:1px solid #ddd;border-left:2px solid #000;padding:2px;background:white;"></td>'
+              + '<td style="border:1px solid #ddd;padding:2px;background:white;"></td>'
+              + '<td style="border:1px solid #ddd;padding:2px;background:white;"></td>'
+              + '<td style="border:1px solid #ddd;border-right:2px solid #000;padding:2px;background:white;"></td>'
+              + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    return html;
+  }
+
+  // ── HTML compartido para vista previa e impresión de COLATADO ──
+  function tsupHtmlTurnoColatado(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#000;">No hay órdenes para este proceso.</p>';
+
+    function getCirculoAvance(avance) {
+      var pct = Math.round(avance);
+      var color = pct <= 50 ? '#2196f3' : pct <= 75 ? '#fbc02d' : pct <= 90 ? '#66bb6a' : pct <= 105 ? '#2e7d32' : '#e91e63';
+      var r = 14, circ = 2 * Math.PI * r;
+      var fill = Math.min(avance, 105);
+      var offset = circ - (fill / 105) * circ;
+      return '<svg width="38" height="38" viewBox="0 0 38 38" style="display:inline-block;vertical-align:middle;">'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="#e0e0e0" stroke-width="4"/>'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4"'
+        + ' stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"'
+        + ' stroke-linecap="round" transform="rotate(-90 19 19)"/>'
+        + '<text x="19" y="23" text-anchor="middle" font-size="8" font-weight="900" fill="' + color + '">' + pct + '%</text>'
+        + '</svg>';
+    }
+
+    var html = '';
+    lista.forEach(function(m) {
+      var ordenesFiltradas = (m.ordenes || []).slice(0, 2);
+
+      var filasDatos = '';
+      ordenesFiltradas.forEach(function(o) {
+        var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+        var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+        filasDatos +=
+          '<tr style="height:28px;">'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;font-weight:900;color:#000;">' + (o.pedido || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#1565c0;">' + (o.ordenFull || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;color:#000;">' + (o.producto || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + diam + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + lon + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerda || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerpo || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px;text-align:center;">' + getCirculoAvance(o.avance || 0) + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:11px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;border-left:3px solid #000;padding:2px;background:#fafafa;width:22px;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-right:3px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-left:2px solid #000;padding:2px;background:#fafafa;width:22px;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '<td style="border:2px solid #000;border-right:3px solid #000;padding:2px;background:#fafafa;"></td>'
+          + '</tr>';
+      });
+
+      html +=
+        '<div style="margin-bottom:36px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);page-break-inside:avoid;break-inside:avoid;">'
+        + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
+        + '<tr style="background:#fff9c4;height:44px;">'
+        + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:12px;text-transform:uppercase;width:30%;color:#000;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:40%;color:#000;">Operador:</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:30%;color:#000;">Total de Rollos: <span style="border:2px solid #000;display:inline-block;width:80px;height:22px;vertical-align:middle;"></span></td>'
+        + '</tr>'
+        + '</table>'
+        + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
+        + '<thead>'
+        + '<tr style="background:#dde3f0;">'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Pedido</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Orden</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:12%">Producto</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Diam.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Long.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:8%">BARNIZ</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">CAJA</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Solic.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Prod.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Av.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:7%">Restan</th>'
+        + '<th style="border:2px solid #000;border-left:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Tarima</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Inicio</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Final</th>'
+        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">Total</th>'
+        + '<th style="border:2px solid #000;border-left:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Tarima</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Inicio</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Final</th>'
+        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">Total</th>'
+        + '</tr>'
+        + '</thead>'
+        + '<tbody>'
+        + filasDatos
+        + '</tbody></table>'
+        + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:10px;font-weight:700;min-height:44px;color:#000;">Observaciones:</div>'
+        + '</div>';
+    });
+    return html;
+  }
+
+  function tsupRenderPlan(lista) {
+    var body = document.getElementById('tsup-planBody');
+    if (body) body.innerHTML = tsupHtmlPlan(lista);
+  }
+  window.tsupRenderPlan = tsupRenderPlan;
+
+  function tsupRenderTurno(lista) {
+    var body = document.getElementById('tsup-turnoBody');
+    var proceso = document.getElementById('tsup-turnoProceso') ? document.getElementById('tsup-turnoProceso').textContent : '';
+    if (body) body.innerHTML = tsupHtmlTurno(lista, proceso);
+  }
+  window.tsupRenderTurno = tsupRenderTurno;
+
+  // ── Imprimir: abrir ventana nueva con HTML limpio ──
+  function tsupAbrirVentanaImpresion(titulo, contenidoHtml) {
+    var win = window.open('', '_blank');
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>' + titulo + '</title>'
+      + '<style>'
+      + '@page{size:letter landscape;margin:10mm 5mm;}'
+      + 'body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'table{width:100%;border-collapse:collapse;}'
+      + 'tr{page-break-inside:avoid;}'
+      + '.no-print{position:fixed;top:10px;right:10px;}'
+      + '@media print{.no-print{display:none;}}'
+      + '</style></head><body>'
+      + '<div class="no-print"><button onclick="window.print()" style="padding:10px 20px;background:#1565c0;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:4px;">🖨️ IMPRIMIR</button></div>'
+      + '<h2 style="margin:0 0 10px 0;font-size:16px;border-bottom:2px solid #000;padding-bottom:4px;">' + titulo + '</h2>'
+      + contenidoHtml
+      + '</body></html>');
+    win.document.close();
+  }
+
+  window.tsupImprimirPlan = function() {
+    var proceso = document.getElementById('tsup-planProceso').textContent;
+    tsupAbrirVentanaImpresion('PLAN DE PRODUCCIÓN — ' + proceso, tsupHtmlPlan(window._tsupListaPlan || []));
+  };
+
+  window.tsupImprimirTurno = function(orientacion) {
+    orientacion = orientacion || 'horizontal';
+    var proceso = document.getElementById('tsup-turnoProceso').textContent;
+    if (proceso.toUpperCase().includes('COLATADO')) {
+      tsupImprimirColatado(proceso, window._tsupListaTurno || [], orientacion);
+    } else {
+      tsupAbrirVentanaImpresion('FORM. PRODUCCIÓN — ' + proceso, tsupHtmlTurno(window._tsupListaTurno || []));
+    }
+  };
+
+  function tsupHtmlTurnoColatadoVertical(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#000;">No hay órdenes para este proceso.</p>';
+
+    function getCirculoAvance(avance) {
+      var pct = Math.round(avance);
+      var color = pct <= 50 ? '#2196f3' : pct <= 75 ? '#fbc02d' : pct <= 90 ? '#66bb6a' : pct <= 105 ? '#2e7d32' : '#e91e63';
+      var r = 14, circ = 2 * Math.PI * r;
+      var fill = Math.min(avance, 105);
+      var offset = circ - (fill / 105) * circ;
+      return '<svg width="38" height="38" viewBox="0 0 38 38" style="display:inline-block;vertical-align:middle;">'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="#e0e0e0" stroke-width="4"/>'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4"'
+        + ' stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"'
+        + ' stroke-linecap="round" transform="rotate(-90 19 19)"/>'
+        + '<text x="19" y="23" text-anchor="middle" font-size="8" font-weight="900" fill="' + color + '">' + pct + '%</text>'
+        + '</svg>';
+    }
+
+    var imgTarima = '<img src="https://supraciclaje.com/wp-content/uploads/2021/06/compra-tarima-estandar-usada-mexico.png" style="width:90px;height:65px;object-fit:contain;display:block;" />';
+
+    var bloqueCaptura = function() {
+      return '<td style="padding:4px 6px;vertical-align:top;width:50%;">'
+        + '<div style="display:flex;align-items:flex-start;gap:6px;">'
+        + '<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;">'
+        + imgTarima
+        + '<table style="border-collapse:collapse;width:90px;margin-top:2px;">'
+        + '<tr style="background:#fff9c4;">'
+        + '<td style="border:1.5px solid #000;padding:2px 4px;font-weight:900;font-size:8px;white-space:nowrap;">Tarima #</td>'
+        + '<td style="border:1.5px solid #000;padding:2px 4px;background:white;width:50px;">&nbsp;</td>'
+        + '</tr>'
+        + '</table>'
+        + '</div>'
+        + '<table style="border-collapse:collapse;flex:1;font-size:9px;">'
+        + '<tr style="height:26px;">'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;font-weight:900;white-space:nowrap;">Rollos Inicio</td>'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;background:white;min-width:60px;">&nbsp;</td>'
+        + '</tr>'
+        + '<tr style="height:26px;">'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;font-weight:900;white-space:nowrap;">Rollos Final</td>'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;background:white;">&nbsp;</td>'
+        + '</tr>'
+        + '<tr style="background:#e8f5e9;height:26px;">'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;font-weight:900;color:#2e7d32;white-space:nowrap;">Total Rollos</td>'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;background:white;">&nbsp;</td>'
+        + '</tr>'
+        + '</table>'
+        + '</div>'
+        + '</td>';
+    };
+
+    var html = '';
+    lista.forEach(function(m) {
+      var ordenesFiltradas = (m.ordenes || []).slice(0, 2);
+      var filasDatos = '';
+      ordenesFiltradas.forEach(function(o) {
+        var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+        var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+        var filaCabecera = '<tr style="background:#dde3f0;">'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:7%">Pedido</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:7%">Orden</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:14%">Producto</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:6%">Diam.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:6%">Long.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:9%">BARNIZ</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:7%">CAJA</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:8%">Solic.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:8%">Prod.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:6%">Av.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:8%">Restan</th>'
+          + '</tr>';
+
+        filasDatos += filaCabecera
+          + '<tr style="height:28px;">'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;font-weight:900;color:#000;">' + (o.pedido || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#1565c0;">' + (o.ordenFull || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;color:#000;">' + (o.producto || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + diam + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + lon + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerda || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerpo || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px;text-align:center;">' + getCirculoAvance(o.avance || 0) + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:11px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+          + '</tr>'
+          + '<tr style="background:#fffde7;">'
+          + '<td colspan="11" style="border:2px solid #000;padding:0;">'
+          + '<table style="width:100%;border-collapse:collapse;"><tr>'
+          + bloqueCaptura()
+          + bloqueCaptura()
+          + '</tr></table>'
+          + '</td>'
+          + '</tr>';
+      });
+
+      html +=
+        '<div style="margin-bottom:54px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);page-break-inside:avoid;break-inside:avoid;">'
+        + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
+        + '<tr style="background:#fff9c4;height:36px;">'
+        + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:40%;color:#000;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:35%;color:#000;">Operador:</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:25%;color:#000;">Total de Rollos:</td>'
+        + '</tr>'
+        + '</table>'
+        + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
+        + '<tbody>'
+        + filasDatos
+        + '</tbody></table>'
+        + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:9px;font-weight:700;min-height:36px;color:#000;">Observaciones:</div>'
+        + '</div>';
+    });
+    return html;
+  }
+
+  function tsupImprimirColatado(proceso, lista, orientacion) {
+    orientacion = orientacion || 'horizontal';
+    var esVertical = orientacion === 'vertical';
+
+    var htmlMaquinas = esVertical
+      ? tsupHtmlTurnoColatadoVertical(lista)
+      : tsupHtmlTurnoColatado(lista);
+
+    var htmlFinal = htmlMaquinas.replace(/(<div style="margin-bottom:1[02]px;)/g, '<div class="bloque-maq" style="margin-bottom:3px;');
+
+    var pageStyle = esVertical
+      ? '@page{size:letter portrait;margin:6mm 5mm;}'
+      : '@page{size:letter landscape;margin:4mm 3mm;}';
+
+    var escalaStyle = esVertical
+      ? '.bloque-maq{break-inside:avoid;page-break-inside:avoid;}'
+      : '.bloque-maq{break-inside:avoid;page-break-inside:avoid;}';
+
+    var win = window.open('', '_blank');
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>FORMATO DE PRODUCCIÓN — PROCESO COLATADO</title>'
+      + '<style>'
+      + pageStyle
+      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'table{border-collapse:collapse;}'
+      + escalaStyle
+      + '.no-print{position:fixed;top:10px;right:10px;z-index:9999;}'
+      + '@media print{.no-print{display:none!important;}}'
+      + '</style></head><body>'
+      + '<div class="no-print">'
+      + '<button onclick="window.print()" style="padding:8px 18px;background:#1565c0;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:4px;">🖨️ IMPRIMIR</button>'
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;margin-bottom:2px;">'
+      + '<tr>'
+      + '<td style="width:80px;padding:0 8px 0 0;vertical-align:middle;">'
+      + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:60px;width:auto;display:block;" onerror="this.style.display=\'none\'">'
+      + '</td>'
+      + '<td style="vertical-align:middle;padding:0 10px;">'
+      + '<div style="font-size:22px;font-weight:900;text-transform:uppercase;line-height:1.1;letter-spacing:1px;">FORMATO DE PRODUCCIÓN</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#e65100;text-transform:uppercase;letter-spacing:2px;">PROCESO COLATADO</div>'
+      + '</td>'
+      + '<td style="width:220px;vertical-align:middle;text-align:right;">'
+      + '<table style="border-collapse:collapse;margin-left:auto;">'
+      + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;color:#000;">Fecha:</td>'
+      + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+      + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;color:#000;">Turno:</td>'
+      + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+      + '</table>'
+      + '</td>'
+      + '</tr>'
+      + '</table>'
+      + '<hr style="border:2px solid #000;margin:0 0 4px 0;">'
+      + htmlFinal
+      + '</body></html>');
+    win.document.close();
+  }
+
+// ── Volver a procesos ──
+function tsupVolverAProcesos() {
+  document.getElementById('tsup-screenOrdenes').style.display = 'none';
+  document.getElementById('tsup-screenProcesos').style.display = 'flex';
+  tsup_ordenesCache = [];
+  tsup_historicasCache = [];
+  tsup_lotesCache = {};
+  tsup_rutasCache = {};
+  tsup_docsCache = {};
+  tsup_configCache = {};
+}
+window.tsupVolverAProcesos = tsupVolverAProcesos;
+
+// ── Cargar órdenes del proceso (lazy: solo ordenes + lotes) ──
+function tsupCargarOrdenesProceso(proc) {
+  tsupShowLoader('CARGANDO ÓRDENES DE ' + proc + '...');
+  google.script.run
+    .withSuccessHandler(function(data) {
+      tsup_ordenesCache = data.ordenes;
+      tsup_lotesCache = data.lotes;
+      tsup_configCache = data.config;
+      tsup_grupoMaqsMapGlobal = data.grupoMaqsMap || {};
+      tsup_rutasCache = {};
+      tsup_docsCache = {};
+      tsupRenderChipsGrupos(tsup_ordenesCache);
+      tsupRenderOrdenes(tsup_ordenesCache);
+      tsupHideLoader();
+    })
+    .withFailureHandler(function(e) {
+      alert('Error: ' + e);
+      tsupHideLoader();
+    })
+    .obtenerOrdenesTableroLight(proc);
+}
+
+// ── Chips por familia/grupo ──
+function tsupRenderChipsGrupos(lista) {
+  var gs = new Set();
+  lista.forEach(function(o) { if (o.grupo) gs.add(o.grupo); });
+  var grupos = Array.from(gs).sort();
+  tsup_grupoFiltrosActivos = new Set(); // reset al recargar lista
+  var bar = document.getElementById('tsup-maqFilterBar');
+  if (grupos.length === 0) { bar.innerHTML = ''; return; }
+  var h = '<div class="maq-chip chip-all" id="tsup-chipTodoNada" onclick="tsupToggleTodoNada()">✦ TODO / NADA</div>';
+  h += grupos.map(function(g) {
+    return '<div class="maq-chip" data-grupo="' + g + '" onclick="tsupToggleGrupoChip(\'' + g + '\')">' + g + '</div>';
+  }).join('');
+  bar.innerHTML = h;
+}
+
+function tsupToggleTodoNada() {
+  var chips = document.querySelectorAll('#tsup-maqFilterBar .maq-chip[data-grupo]');
+  var btn = document.getElementById('tsup-chipTodoNada');
+  if (tsup_grupoFiltrosActivos.size === 0) {
+    chips.forEach(function(c) { tsup_grupoFiltrosActivos.add(c.dataset.grupo); c.classList.add('active'); });
+    btn.innerText = '✦ NADA'; btn.classList.add('nada');
+  } else {
+    tsup_grupoFiltrosActivos.clear();
+    chips.forEach(function(c) { c.classList.remove('active'); });
+    btn.innerText = '✦ TODO'; btn.classList.remove('nada');
+  }
+  tsupRenderOrdenes(tsupAplicarFiltros(tsup_modoHistoricas ? tsup_historicasCache : tsup_ordenesCache, ''));
+}
+window.tsupToggleTodoNada = tsupToggleTodoNada;
+
+function tsupToggleGrupoChip(grupo) {
+  if (tsup_grupoFiltrosActivos.has(grupo)) tsup_grupoFiltrosActivos.delete(grupo);
+  else tsup_grupoFiltrosActivos.add(grupo);
+  document.querySelectorAll('#tsup-maqFilterBar .maq-chip[data-grupo]').forEach(function(c) {
+    c.classList.toggle('active', tsup_grupoFiltrosActivos.has(c.dataset.grupo));
+  });
+  var btn = document.getElementById('tsup-chipTodoNada');
+  if (btn) {
+    btn.innerText = tsup_grupoFiltrosActivos.size === 0 ? '✦ TODO' : '✦ NADA';
+    btn.classList.toggle('nada', tsup_grupoFiltrosActivos.size > 0);
+  }
+  tsupRenderOrdenes(tsupAplicarFiltros(tsup_modoHistoricas ? tsup_historicasCache : tsup_ordenesCache, ''));
+}
+window.tsupToggleGrupoChip = tsupToggleGrupoChip;
+
+// ── Aplicar filtros (grupo + texto) ──
+function tsupAplicarFiltros(lista, txt) {
+  txt = (txt || '').toLowerCase();
+  return lista.filter(function(o) {
+    // Filtro de grupo: si hay grupos activos, la orden debe pertenecer a uno de ellos
+    if (tsup_grupoFiltrosActivos.size > 0) {
+      var grupoOrden = (o.grupo || '').toUpperCase().trim();
+      var match = false;
+      tsup_grupoFiltrosActivos.forEach(function(g) {
+        if (g.toUpperCase().trim() === grupoOrden) match = true;
+      });
+      if (!match) return false;
+    }
+    if (txt) {
+      var op = (o.serie + '.' + ('0000' + o.orden).slice(-4)).toLowerCase();
+      var s = [op, o.pedido, o.codigo, o.tipo, o.diametro, o.longitud, o.cuerda, o.cuerpo, o.acero, o.maquina].join(' ').toLowerCase();
+      if (!s.includes(txt)) return false;
+    }
+    return true;
+  });
+}
+
+// ── Render lista de órdenes agrupadas por máquina ──
+function tsupRenderOrdenes(lista) {
+  var el = document.getElementById('tsup-listaOrdenes');
+  if (lista.length === 0) { el.innerHTML = '<div class="ord-count">No hay órdenes para mostrar</div>'; return; }
+  var grupos = {};
+  lista.forEach(function(o) { var m = (o.maquina || 'SIN MÁQUINA').trim(); if (!grupos[m]) grupos[m] = []; grupos[m].push(o); });
+  // Ordenar órdenes dentro de cada máquina por prioridad ascendente
+  Object.keys(grupos).forEach(function(maq) {
+    grupos[maq].sort(function(a, b) { return (a.prioridad || 999) - (b.prioridad || 999); });
+  });
+  var maqsSorted = Object.keys(grupos).sort();
+  var h = '<style>@keyframes tsupSobrePulso{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0.7);border-color:#ff1744;}50%{box-shadow:0 0 0 8px rgba(255,23,68,0);border-color:#ff6090;}}</style>'
+    + '<div class="ord-count">' + lista.length + ' órdenes · ' + maqsSorted.length + ' máquina(s)</div>';
+  maqsSorted.forEach(function(maq) {
+    var ords = grupos[maq];
+    h += '<div class="maq-group">';
+    h += '<div class="maq-group-header"><span class="maq-group-name">⚙ ' + maq + '</span><span class="maq-group-cnt">' + ords.length + ' ORD</span></div>';
+    ords.forEach(function(o) {
+      var pct = o.sol > 0 ? Math.min(100, Math.round(o.prod / o.sol * 100)) : 0;
+      var color = pct < 50 ? '#ff6b00' : pct < 95 ? '#58a6ff' : '#3fb950';
+      var opName = o.serie + '.' + ('0000' + o.orden).slice(-4);
+      var det = [o.cuerpo, o.cuerda, o.acero].filter(function(x) { return x && x.trim() && x.trim() !== 'undefined'; }).join(' · ');
+      var sobreproducido = (!o.cerrada && o.sol > 0 && o.prod > o.sol);
+      var rowStyle = o.cerrada ? 'opacity:0.55;border-left:3px solid #484f58;' : (sobreproducido ? 'border:2px solid #ff1744;animation:tsupSobrePulso 1.2s ease-in-out infinite;' : '');
+      var estadoBadge = o.cerrada
+        ? '<span style="font-size:9px;background:#21262d;color:#8b949e;padding:1px 6px;border-radius:8px;font-weight:900;margin-left:4px;">' + o.estado + '</span>'
+        : '';
+      var detLine = det ? det + ' &nbsp;·&nbsp; ' : '';
+      h += '<div class="ord-row" onclick="tsupAbrirOrden(\'' + o.id + '\')" style="' + rowStyle + '">';
+      h += '<div style="display:flex;align-items:center;justify-content:center;padding:4px;flex-shrink:0;">';
+      h += '<div style="background:white;border-radius:8px;padding:5px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.3);">';
+      h += tsupGetSvgIcono(o.tipo);
+      h += '</div></div>';
+      h += '<div class="ord-item-big"><div class="ord-op">' + opName + estadoBadge + '</div><div class="item-tipo">' + o.tipo + '</div><div class="item-med">' + o.diametro + ' × ' + o.longitud + '</div><div class="item-det">' + detLine + '<span style="color:#c9d1d9;font-weight:700;">' + o.codigo + '</span> <span style="color:#6e7681;">' + o.pedido + '</span></div></div>';
+      h += '<div class="ord-avance"><div class="avance-pct" style="color:' + color + '">' + pct + '%</div>';
+      h += '<div class="avance-bar"><div class="avance-fill" style="width:' + pct + '%;background:' + color + '"><span class="avance-fill-pct">' + (pct >= 20 ? pct + '%' : '') + '</span></div></div>';
+      h += '<div style="font-size:10px;color:#8b949e;margin-top:2px;">' + tsupFmt(o.prod) + ' / ' + tsupFmt(o.sol) + '</div></div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  el.innerHTML = h;
+}
+
+function tsupFiltrarOrdenes(txt) {
+  tsupRenderOrdenes(tsupAplicarFiltros(tsup_modoHistoricas ? tsup_historicasCache : tsup_ordenesCache, txt));
+}
+window.tsupFiltrarOrdenes = tsupFiltrarOrdenes;
+
+// ── Toggle históricas ──
+function tsupToggleHistoricas() {
+  tsup_modoHistoricas = !tsup_modoHistoricas;
+  document.getElementById('tsup-btnHist').classList.toggle('active', tsup_modoHistoricas);
+  if (tsup_modoHistoricas && tsup_historicasCache.length === 0) {
+    tsupShowLoader('CARGANDO HISTÓRICAS...');
+    google.script.run
+      .withSuccessHandler(function(d) {
+        tsup_historicasCache = d;
+        tsupRenderChipsGrupos(d);
+        tsupRenderOrdenes(d);
+        tsupHideLoader();
+      })
+      .withFailureHandler(function(e) { alert('Error: ' + e); tsupHideLoader(); })
+      .obtenerHistoricasTablero(tsup_procesoActual);
+  } else {
+    var b = tsup_modoHistoricas ? tsup_historicasCache : tsup_ordenesCache;
+    tsupRenderChipsGrupos(b);
+    tsupRenderOrdenes(b);
+  }
+  document.getElementById('tsup-inputBuscar').value = '';
+}
+window.tsupToggleHistoricas = tsupToggleHistoricas;
+
+// ── Abrir Formulario de Producción del Proceso ──
+function tsupAbrirFormProd() {
+  if (!tsup_procesoActual) { alert('Selecciona un proceso primero'); return; }
+  var APP_URL = 'https://script.google.com/macros/s/AKfycbyUE_d2XeLxNMzx94J40FmpLnhCbvYumvMVewc5nQNPYO4ezSnZKNsAg55gtSau_uN9/exec';
+  var url = APP_URL + '?tipo=REPORTE_TURNO&procesos=' + encodeURIComponent(tsup_procesoActual);
+  window.open(url, '_blank');
+}
+window.tsupAbrirFormProd = tsupAbrirFormProd;
+
+// ── Abrir modal de orden (lazy: ruta+docs al abrir) ──
+function tsupAbrirOrden(id) {
+  var o = tsup_ordenesCache.find(function(x) { return x.id == id; }) ||
+          tsup_historicasCache.find(function(x) { return x.id == id; });
+  if (!o) { alert('Orden no encontrada'); return; }
+  tsup_ordenSeleccionada = o;
+  var opName = o.serie + '.' + ('0000' + o.orden).slice(-4);
+  document.getElementById('tsup-moTitle').innerText = 'ORDEN ' + opName + ' – ' + o.tipo + ' – ' + o.diametro + '×' + o.longitud + ' – ' + o.cuerda + ' ' + o.cuerpo + ' ' + o.acero;
+  document.getElementById('tsup-moSub').innerText = 'PEDIDO: ' + o.pedido + ' | CÓD: ' + o.codigo + ' | CANT: ' + tsupFmt(o.cantidad) + ' ' + o.unidad + ' | MÁQ: ' + o.maquina;
+  var sol = o.sol, prod = o.prod;
+  document.getElementById('tsup-moSol').innerText = tsupFmt(sol);
+  document.getElementById('tsup-moProd').innerText = tsupFmt(prod);
+  document.getElementById('tsup-moPen').innerText = tsupFmt(Math.max(0, sol - prod));
+  var pct = sol > 0 ? Math.min(100, (prod / sol) * 100) : 0;
+  var fill = document.getElementById('tsup-moBarFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct < 50 ? '#ff6b00' : pct < 95 ? '#58a6ff' : '#3fb950';
+  var so = o.serie + '.' + ('0000' + o.orden).slice(-4);
+  tsupRenderModalLotes(tsup_lotesCache[so] || []);
+  document.getElementById('tsup-moLoteIni').value = o.loteIni || 1;
+  document.getElementById('tsup-moLoteFin').value = o.loteFin || 1;
+  document.getElementById('tsup-moRuta').innerHTML = '<div style="color:#484f58;padding:10px;">Cargando ruta...</div>';
+  document.getElementById('tsup-moDocs').innerHTML = '<div style="color:#484f58;padding:10px;">Cargando docs...</div>';
+  document.getElementById('tsup-modalOrden').style.display = 'block';
+  document.getElementById('tsup-modalOrden').scrollTop = 0;
+  if (tsup_rutasCache[o.codigo] && tsup_docsCache[o.codigo] !== undefined) {
+    tsupRenderModalRuta(o);
+    tsupRenderModalDocs(o.codigo);
+  } else {
+    tsupShowMiniLoader('CARGANDO RUTA...');
+    google.script.run
+      .withSuccessHandler(function(data) {
+        tsup_rutasCache[o.codigo] = data.ruta || [];
+        tsup_docsCache[o.codigo] = data.docs || {};
+        tsupRenderModalRuta(o);
+        tsupRenderModalDocs(o.codigo);
+        tsupHideMiniLoader();
+      })
+      .withFailureHandler(function(e) {
+        document.getElementById('tsup-moRuta').innerHTML = '<div style="color:#f85149;">Error: ' + e + '</div>';
+        tsupHideMiniLoader();
+      })
+      .obtenerRutaYDocsOrden(o.codigo, tsup_procesoActual, o.id);
+  }
+}
+window.tsupAbrirOrden = tsupAbrirOrden;
+
+function tsupCerrarModal() {
+  document.getElementById('tsup-modalOrden').style.display = 'none';
+  tsup_ordenSeleccionada = null;
+}
+window.tsupCerrarModal = tsupCerrarModal;
+
+// ── Render lotes en modal ──
+function tsupRenderModalLotes(lotes) {
+  if (lotes.length === 0) {
+    document.getElementById('tsup-moLotes').innerHTML = '<div style="padding:15px;text-align:center;color:#484f58;">Sin lotes generados</div>';
+    return;
+  }
+  var h = '';
+  lotes.slice().reverse().forEach(function(l) {
+    var cls = l.estado.toLowerCase().includes('impreso') ? 'impreso' : l.estado.toLowerCase().includes('usado') ? 'usado' : 'abierto';
+    h += '<div class="lote-row"><span>' + l.lote + '</span><span>' + tsupFmt(l.peso) + ' KG <span class="lote-badge ' + cls + '">' + l.estado + '</span></span></div>';
+  });
+  document.getElementById('tsup-moLotes').innerHTML = h;
+}
+
+// ── Render ruta en modal ──
+function tsupRenderModalRuta(o) {
+  var ruta = tsup_rutasCache[o.codigo] || [];
+  if (ruta.length === 0) { document.getElementById('tsup-moRuta').innerHTML = '<div style="color:#484f58;">Sin ruta disponible</div>'; return; }
+  var h = '<table class="ruta-tbl"><tr><th>SEC</th><th>PROCESO</th><th>MÁQUINA</th><th></th></tr>';
+  ruta.forEach(function(r) {
+    var cur = r.proceso.toUpperCase() === tsup_procesoActual.toUpperCase();
+    h += '<tr class="' + (cur ? 'current' : '') + '"><td>' + r.sec + '</td><td>' + r.proceso + '</td><td>' + r.maquinaActual + '</td>';
+    h += '<td><button class="btn-edit-maq" onclick="tsupAbrirCambioMaq(' + r.sec + ',\'' + o.codigo + '\')" title="Cambiar máquina">✏️</button></td></tr>';
+  });
+  document.getElementById('tsup-moRuta').innerHTML = h + '</table>';
+}
+
+// ── Render documentación en modal ──
+function tsupRenderModalDocs(codigo) {
+  var docs = tsup_docsCache[codigo] || {};
+  var tipos = Object.keys(docs);
+  if (tipos.length === 0) { document.getElementById('tsup-moDocs').innerHTML = '<div style="color:#484f58;padding:10px;">Sin documentación</div>'; return; }
+  var h = '';
+  tipos.forEach(function(t) {
+    h += '<div class="doc-grp-title">' + t + '</div>';
+    docs[t].forEach(function(d) { h += '<a href="' + d.url + '" target="_blank" class="doc-link">📄 ' + d.nombre + '</a>'; });
+  });
+  document.getElementById('tsup-moDocs').innerHTML = h;
+}
+
+// ── Generar lotes ──
+function tsupAbrirGenLotes() {
+  var o = tsup_ordenSeleccionada; if (!o) return;
+  var so = o.serie + '.' + ('0000' + o.orden).slice(-4);
+  var cfg = tsup_configCache[so] || {};
+  document.getElementById('tsup-genCant').value = '';
+  document.getElementById('tsup-genPeso').value = cfg.pesoDefault || 0;
+  document.getElementById('tsup-miniGenLotes').style.display = 'flex';
+  document.getElementById('tsup-genCant').focus();
+}
+window.tsupAbrirGenLotes = tsupAbrirGenLotes;
+
+function tsupConfirmarGenLotes() {
+  var cant = Number(document.getElementById('tsup-genCant').value);
+  var peso = Number(document.getElementById('tsup-genPeso').value);
+  if (!cant || cant <= 0) { alert('Cantidad inválida'); return; }
+  document.getElementById('tsup-miniGenLotes').style.display = 'none';
+  tsupShowLoader('GENERANDO ' + cant + ' LOTES...');
+  var o = tsup_ordenSeleccionada;
+  var so = o.serie + '.' + ('0000' + o.orden).slice(-4);
+  var cfg = tsup_configCache[so] || { maxConsec: 0 };
+  google.script.run
+    .withSuccessHandler(function(res) {
+      var nv = res.nuevosLotes || [];
+      if (!tsup_lotesCache[so]) tsup_lotesCache[so] = [];
+      nv.forEach(function(l) { tsup_lotesCache[so].push(l); });
+      cfg.maxConsec = (cfg.maxConsec || 0) + cant;
+      tsup_configCache[so] = cfg;
+      tsupRenderModalLotes(tsup_lotesCache[so]);
+      tsupHideLoader();
+    })
+    .withFailureHandler(function(e) { alert('Error: ' + e); tsupHideLoader(); })
+    .generarLotesTablero({ serieOrden: so, serie: o.serie, ordenNum: o.orden, consecInicial: cfg.maxConsec, cantidad: cant, peso: peso, idOrdenPrimerProc: o.idPrimerProc || o.id });
+}
+window.tsupConfirmarGenLotes = tsupConfirmarGenLotes;
+
+// ── Imprimir ──
+function tsupImprimir(tipoReporte) {
+  var ini = document.getElementById('tsup-moLoteIni').value;
+  var fin = document.getElementById('tsup-moLoteFin').value;
+  if (!ini || !fin) { alert('Define Lote Inicial y Final'); return; }
+  var o = tsup_ordenSeleccionada;
+  var idOrd = o.idPrimerProc || o.id;
+  var APP_URL = 'https://script.google.com/macros/s/AKfycbyUE_d2XeLxNMzx94J40FmpLnhCbvYumvMVewc5nQNPYO4ezSnZKNsAg55gtSau_uN9/exec';
+  var url = APP_URL + '?tipo=' + tipoReporte + '&idOrden=' + idOrd + '&inicio=' + ini + '&fin=' + fin;
+  window.open(url, '_blank');
+  // fire-and-forget para guardar rango
+  google.script.run
+    .withSuccessHandler(function() {})
+    .withFailureHandler(function() {})
+    .guardarRangoImpresion(idOrd, ini, fin);
+}
+window.tsupImprimir = tsupImprimir;
+
+// ── Cambio de máquina ──
+function tsupAbrirCambioMaq(sec, codigo) {
+  tsup_cambioMaqData = { sec: sec, codigo: codigo };
+  var ruta = tsup_rutasCache[codigo] || [];
+  var proc = ruta.find(function(r) { return r.sec == sec; });
+  if (!proc) { alert('Proceso no encontrado'); return; }
+  document.getElementById('tsup-maqProcLabel').innerText = 'Proceso: ' + proc.proceso + ' (SEC ' + sec + ')';
+  var sel = document.getElementById('tsup-selectMaq');
+  sel.innerHTML = '';
+  (proc.maquinasDisponibles || []).forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m; opt.text = m;
+    if (m === proc.maquinaActual) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  document.getElementById('tsup-miniCambioMaq').style.display = 'flex';
+}
+window.tsupAbrirCambioMaq = tsupAbrirCambioMaq;
+
+function tsupConfirmarCambioMaq() {
+  var nuevaMaq = document.getElementById('tsup-selectMaq').value;
+  if (!nuevaMaq) return;
+  document.getElementById('tsup-miniCambioMaq').style.display = 'none';
+  var o = tsup_ordenSeleccionada;
+  tsupShowLoader('CAMBIANDO MÁQUINA...');
+  google.script.run
+    .withSuccessHandler(function() {
+      var ruta = tsup_rutasCache[o.codigo] || [];
+      var proc = ruta.find(function(r) { return r.sec == tsup_cambioMaqData.sec; });
+      if (proc) proc.maquinaActual = nuevaMaq;
+      if (proc && proc.proceso.toUpperCase() === tsup_procesoActual.toUpperCase()) o.maquina = nuevaMaq;
+      tsupRenderModalRuta(o);
+      tsupRenderOrdenes(tsupAplicarFiltros(tsup_modoHistoricas ? tsup_historicasCache : tsup_ordenesCache, ''));
+      tsupHideLoader();
+    })
+    .withFailureHandler(function(e) { alert('Error: ' + e); tsupHideLoader(); })
+    .cambiarMaquinaOrden(o.id, tsup_cambioMaqData.sec, nuevaMaq, tsup_procesoActual, o.codigo);
+}
+window.tsupConfirmarCambioMaq = tsupConfirmarCambioMaq;
+

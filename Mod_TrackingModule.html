@@ -1,0 +1,774 @@
+// ══ TRACKING MODULE JS ══════════════════════════════════════
+
+async function trkExportarProduccion() {
+  var fechaIni = document.getElementById('trk-expFechaIni').value;
+  var fechaFin = document.getElementById('trk-expFechaFin').value;
+  if (!fechaIni || !fechaFin) { sAlert('Selecciona fecha inicio y fecha fin','warning'); return; }
+  if (fechaIni > fechaFin)    { sAlert('La fecha inicio no puede ser mayor que la fecha fin','warning'); return; }
+
+  // Cargar ExcelJS si no está cargado
+  if (typeof ExcelJS === 'undefined') {
+    showLoader('Cargando librería...');
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  showLoader('Consultando datos de producción...');
+  try {
+    var res = await new Promise(function(resolve, reject) {
+      google.script.run
+        .withSuccessHandler(function(r) { resolve(typeof r === 'string' ? JSON.parse(r) : r); })
+        .withFailureHandler(function(e) { reject(new Error(e.message||String(e))); })
+        .rastreoExportarProduccion(fechaIni, fechaFin);
+    });
+    if (!res.success) { hideLoader(); sAlert('Error: ' + (res.msg||'Sin datos'), 'error'); return; }
+    var filas = res.filas || [];
+    if (!filas.length) { hideLoader(); sAlert('No hay registros en ese rango de fechas', 'warning'); return; }
+
+    showLoader('Generando Excel...');
+
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'ToolCN PCP';
+    wb.created = new Date();
+    var ws = wb.addWorksheet('Producción', { views:[{state:'frozen',ySplit:1}] });
+
+    // ── Definir columnas ──
+    var cols = [
+      {header:'FECHA',          key:'FECHA',          width:14},
+      {header:'TURNO',          key:'TURNO',          width:8},
+      {header:'PEDIDO',         key:'PEDIDO',         width:16},
+      {header:'SERIE',          key:'SERIE',          width:8},
+      {header:'ORDEN',          key:'ORDEN',          width:8},
+      {header:'CODIGO',         key:'CODIGO',         width:14},
+      {header:'DESCRIPCION',    key:'DESCRIPCION',    width:40},
+      {header:'PROCESO',        key:'PROCESO',        width:18},
+      {header:'PESO',           key:'PESO',           width:10},
+      {header:'TIPO',           key:'TIPO',           width:14},
+      {header:'DIAMETRO',       key:'DIAMETRO',       width:10},
+      {header:'LONGITUD',       key:'LONGITUD',       width:10},
+      {header:'CUERDA',         key:'CUERDA',         width:10},
+      {header:'CUERPO',         key:'CUERPO',         width:10},
+      {header:'ACERO',          key:'ACERO',          width:10},
+      {header:'LOTE',           key:'LOTE',           width:18},
+      {header:'MAQUINA',        key:'MAQUINA',        width:14},
+      {header:'PESO_I',         key:'PESO_I',         width:10},
+      {header:'PESO_F',         key:'PESO_F',         width:10},
+      {header:'PESO_TINA',      key:'PESO_TINA',      width:10},
+      {header:'PRODUCIDO',      key:'PRODUCIDO',      width:12},
+      {header:'SELLO',          key:'SELLO',          width:12},
+      {header:'OPERADOR',       key:'OPERADOR',       width:28},
+      {header:'USER',           key:'USER',           width:14},
+      {header:'CAMBIOS',        key:'CAMBIOS',        width:20},
+    ];
+    ws.columns = cols;
+
+    // ── Estilo encabezado ──
+    var headerRow = ws.getRow(1);
+    headerRow.height = 22;
+    headerRow.eachCell(function(cell) {
+      cell.fill   = {type:'pattern', pattern:'solid', fgColor:{argb:'FF0D2137'}};
+      cell.font   = {name:'Calibri', bold:true, size:11, color:{argb:'FF00D4FF'}};
+      cell.border = {
+        top:    {style:'thin', color:{argb:'FF00D4FF'}},
+        bottom: {style:'medium', color:{argb:'FF00D4FF'}},
+        left:   {style:'thin', color:{argb:'FF1E3A5F'}},
+        right:  {style:'thin', color:{argb:'FF1E3A5F'}}
+      };
+      cell.alignment = {vertical:'middle', horizontal:'center', wrapText:false};
+    });
+
+    // Columnas numéricas por key
+    var colsNum = ['PESO','PESO_I','PESO_F','PESO_TINA','PRODUCIDO'];
+
+    // ── Insertar filas de datos ──
+    filas.forEach(function(f, idx) {
+      var row = ws.addRow(f);
+      var isOdd = (idx % 2 === 0);
+      row.height = 18;
+      row.eachCell({includeEmpty:true}, function(cell, colNumber) {
+        var colKey = cols[colNumber-1] ? cols[colNumber-1].key : '';
+        var isNum  = colsNum.indexOf(colKey) >= 0;
+        cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb: isOdd ? 'FF0F1C2E' : 'FF142033'}};
+        cell.font = {name:'Calibri', size:10, color:{argb:'FFE2E8F0'}};
+        cell.border = {
+          top:    {style:'hair', color:{argb:'FF1E3A5F'}},
+          bottom: {style:'hair', color:{argb:'FF1E3A5F'}},
+          left:   {style:'thin', color:{argb:'FF1E3A5F'}},
+          right:  {style:'thin', color:{argb:'FF1E3A5F'}}
+        };
+        cell.alignment = {vertical:'middle', horizontal: isNum ? 'right' : 'left', wrapText:false};
+        if (isNum && cell.value !== null && cell.value !== '') {
+          cell.numFmt = '#,##0.00';
+        }
+      });
+      // Colorear columna PRODUCIDO en verde
+      var prodColIdx = cols.findIndex(function(c){return c.key==='PRODUCIDO';})+1;
+      if (prodColIdx > 0) {
+        var prodCell = row.getCell(prodColIdx);
+        prodCell.font = {name:'Calibri', size:10, color:{argb:'FF22C55E'}, bold:true};
+      }
+    });
+
+    // ── Autofilter en encabezado ──
+    ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:cols.length} };
+
+    // ── Descargar ──
+    var buffer = await wb.xlsx.writeBuffer();
+    var blob   = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url    = URL.createObjectURL(blob);
+    var a      = document.createElement('a');
+    var fi     = fechaIni.replace(/-/g,'');
+    var ff     = fechaFin.replace(/-/g,'');
+    a.href     = url;
+    a.download = 'Produccion_' + fi + '_' + ff + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    hideLoader();
+    sAlert('Archivo generado con ' + filas.length + ' registros', 'success');
+  } catch(e) {
+    hideLoader();
+    sAlert('Error al generar Excel: ' + e.message, 'error');
+  }
+}
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+var TRK_GAS_URL = 'https://script.google.com/macros/s/AKfycbyUE_d2XeLxNMzx94J40FmpLnhCbvYumvMVewc5nQNPYO4ezSnZKNsAg55gtSau_uN9/exec';
+
+// ══════════════════════════════════════════════════════
+// LOADER
+// ══════════════════════════════════════════════════════
+function trkShowLoader() { document.getElementById('trk-loader').style.display='flex'; }
+function trkHideLoader() { document.getElementById('trk-loader').style.display='none'; }
+
+// ══════════════════════════════════════════════════════
+// GAS FETCH — llama al web app con action + params
+// ══════════════════════════════════════════════════════
+async function trkGasCall(action, params) {
+  if (!TRK_GAS_URL) {
+    sAlert('⚠️ Configura la URL del Web App primero.');
+    throw new Error('Sin URL');
+  }
+  var url = TRK_GAS_URL + (TRK_GAS_URL.includes('?')?'&':'?') + 'action=' + action;
+  for (var k in params) url += '&' + k + '=' + encodeURIComponent(params[k]);
+  var resp = await fetch(url);
+  var text = await resp.text();
+  try { return JSON.parse(text); }
+  catch(e) { return { error: text }; }
+}
+
+// ══════════════════════════════════════════════════════
+// BÚSQUEDA
+// ══════════════════════════════════════════════════════
+var _trkAllData = null; // caché
+var _trkPedidosData = [];
+
+async function trkBuscar() {
+  var q = document.getElementById('trk-txtBuscar').value.trim();
+  if (!q) { document.getElementById('trk-resultsContainer').innerHTML='<div class="empty-state"><div class="icon">🔍</div><p>Escribe algo para buscar</p></div>'; return; }
+  trkShowLoader();
+  try {
+    var res = await trkGasCall('rastreo_buscar', { q: q });
+    _trkPedidosData = (res.pedidos || []).sort((a,b) => {
+      // más reciente primero
+      return new Date(b.fecha||0) - new Date(a.fecha||0);
+    });
+    trkRenderResults(_trkPedidosData);
+  } catch(e) {
+    document.getElementById('trk-resultsContainer').innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Error al consultar: ' + e.message + '</p></div>';
+  }
+  trkHideLoader();
+}
+
+function trkRenderResults(pedidos) {
+  var cont = document.getElementById('trk-resultsContainer');
+  if (!pedidos.length) {
+    cont.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No se encontraron resultados</p></div>';
+    return;
+  }
+  var html = '<div class="results-header"><div class="results-count">Se encontraron <span>' + pedidos.length + '</span> coincidencia(s) — del más reciente al más antiguo</div></div>';
+  pedidos.forEach(function(p, i) {
+    var est = (p.estado||'').toUpperCase();
+    var estClass = est.includes('TERM') ? 'estado-terminado' : est.includes('ABIERT') ? 'estado-abierto' : est.includes('PROCESO') || est.includes('PARCIAL') ? 'estado-proceso' : est.includes('CANCEL') ? 'estado-cancelado' : '';
+    var chipClass = est.includes('TERM') ? 'chip-terminado' : est.includes('ABIERT') ? 'chip-abierto' : est.includes('PROCESO') ? 'chip-proceso' : est.includes('PARCI') ? 'chip-parcial' : est.includes('PLANEA') ? 'chip-planeado' : est.includes('CANCEL') ? 'chip-cancelado' : 'chip-neutral';
+    html += '<div class="result-card ' + estClass + '" onclick="trkAbrirDetalle(' + i + ')">';
+    // SVG del servidor (obtenerIconoSVG GAS) con fallback local
+    var iconHtml = p.svgIcono
+      ? '<div style="width:34px;height:34px;">' + p.svgIcono + '</div>'
+      : trkGetProductIcon(p.codigo||'');
+    html += '<div class="rc-icon">' + iconHtml + '</div>';
+    html += '<div class="rc-body">';
+    html += '<div class="rc-pedido">' + (p.pedido||'—') + '</div>';
+    html += '<div class="rc-desc">' + (p.descripcion||p.codigo||'—') + '</div>';
+    html += '<div class="rc-meta">';
+    html += '<span class="rc-chip ' + chipClass + '">' + est + '</span>';
+    html += '<span class="rc-chip chip-neutral">📦 ' + trkFmt(p.cantidad) + ' ' + (p.unidad||'') + '</span>';
+    if (p.partida) html += '<span class="rc-chip chip-neutral">P.' + p.partida + '</span>';
+    html += '</div></div>';
+    html += '<div class="rc-right"><div class="rc-fecha">' + trkFmtFecha(p.fecha) + '</div>';
+    if (p.fechaEntrega) html += '<div style="font-size:11px;color:#fbbf24;margin-top:3px;font-weight:700;">📅 ' + trkFmtFecha(p.fechaEntrega) + '</div>';
+    html += '<div class="rc-fecha" style="margin-top:4px;color:#64748b">' + (p.codigo||'') + '</div><div class="rc-arrow">→</div></div>';
+    html += '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════
+// DETALLE
+// ══════════════════════════════════════════════════════
+var _trkTabs = {}; // { key: pedido object }
+var _trkActiveTab = 'search';
+
+async function trkAbrirDetalle(idx) {
+  var p = _trkPedidosData[idx];
+  if (!p) return;
+  var key = 'ped_' + (p.pedido||idx);
+  if (_trkTabs[key]) { trkSwitchTab(key); return; }
+
+  trkShowLoader();
+  try {
+    var res = await trkGasCall('rastreo_detalle', { pedido: p.pedido, partida: p.partida||1 });
+    _trkTabs[key] = { pedido: p, detalle: res };
+    trkAddTab(key, p.pedido);
+    trkRenderDetalle(key);
+    trkSwitchTab(key);
+  } catch(e) {
+    sAlert('Error cargando detalle: ' + e.message);
+  }
+  trkHideLoader();
+}
+
+function trkAddTab(key, label) {
+  var bar = document.getElementById('trk-tabsBar');
+  var btn = document.createElement('button');
+  btn.className = 'tab-btn';
+  btn.id = 'trk-tab-' + key;
+  btn.innerHTML = '📋 ' + label + ' <span class="tab-close" onclick="trkCerrarTab(event,\'' + key + '\')">×</span>';
+  btn.onclick = function(e) { if(!e.target.classList.contains('tab-close')) trkSwitchTab(key); };
+  bar.appendChild(btn);
+}
+
+function trkCerrarTab(e, key) {
+  e.stopPropagation();
+  var btn = document.getElementById('trk-tab-' + key);
+  if (btn) btn.remove();
+  var el = document.getElementById('trk-detail-' + key);
+  if (el) el.remove();
+  delete _trkTabs[key];
+  if (_trkActiveTab === key) trkSwitchTab('search');
+}
+
+function trkSwitchTab(key) {
+  _trkActiveTab = key;
+  document.querySelectorAll('#trk-panel .tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.getElementById('trk-tab-' + key);
+  if (btn) btn.classList.add('active');
+
+  if (key === 'search') {
+    document.getElementById('trk-screenSearch').style.display = 'flex';
+    document.getElementById('trk-screenDetail').style.display = 'none';
+  } else {
+    document.getElementById('trk-screenSearch').style.display = 'none';
+    var detail = document.getElementById('trk-screenDetail');
+    detail.style.display = 'block';
+    detail.querySelectorAll('#trk-panel .trk-detail-pane').forEach(function(el) { el.style.display='none'; });
+    var pane = document.getElementById('trk-detail-' + key);
+    if (pane) pane.style.display = 'block';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER DETALLE
+// ══════════════════════════════════════════════════════
+function trkRenderDetalle(key) {
+  var t = _trkTabs[key];
+  if (!t) return;
+  var p = t.pedido;
+  var d = t.detalle || {};
+  var ordenes = d.ordenes || [];
+  var enviados = d.enviados || [];
+
+  var est = (p.estado||'').toUpperCase();
+  var chipClass = est.includes('TERM') ? 'chip-terminado' : est.includes('ABIERT') ? 'chip-abierto' : est.includes('PROCESO') ? 'chip-proceso' : est.includes('PARCI') ? 'chip-parcial' : est.includes('PLANEA') ? 'chip-planeado' : est.includes('CANCEL') ? 'chip-cancelado' : 'chip-neutral';
+
+  // ── calcular avance global (convertido a unidad del pedido) ──
+  // Tomamos la unidad del primer proceso con maxSec para saber peso/tipo/longitud
+  var refOrden = ordenes.find(function(o){ return o.sec == o.maxSec; }) || ordenes[0] || {};
+  var totalSolConv = 0, totalProdConv = 0;
+  ordenes.forEach(function(o) {
+    if (o.sec == o.maxSec) {
+      totalSolConv  += trkCalcUnidades(o.solicitado, o);
+      totalProdConv += trkCalcUnidades(o.producido, o);
+    }
+  });
+  var uniGlobal = trkFmtUnidad(refOrden);
+  var pctGlobal = totalSolConv > 0 ? Math.min(100, Math.round((totalProdConv/totalSolConv)*100)) : 0;
+
+  // ── agrupar ordenes por serie.orden ──
+  var grupos = {};
+  ordenes.forEach(function(o) {
+    var k = o.serie + '.' + String(o.orden||'').padStart(4,'0');
+    if (!grupos[k]) grupos[k] = { key:k, ordenes:[] };
+    grupos[k].ordenes.push(o);
+  });
+
+  // ── CALCULAR FECHAS CON LÓGICA DE GAPS ──
+  // Para cada grupo: ordenar procesos por SEC, asignar fechas con mínimo 1 día entre inicio de procesos
+  // y +1 día de protección en fecha fin
+  function calcFechasGrupo(ordenesGrupo) {
+    var sorted = ordenesGrupo.slice().sort(function(a,b){return (a.sec||0)-(b.sec||0);});
+    var resultado = {};
+    var ultimaFechaInicio = null;
+
+    sorted.forEach(function(o) {
+      var fi = null, ff = null;
+
+      // Fecha inicio: usar la real si existe, si no calcular desde la anterior
+      if (o.fechaInicio) {
+        fi = new Date(o.fechaInicio);
+        fi.setHours(0,0,0,0);
+      }
+      // Garantizar que inicio sea al menos 1 día después del inicio anterior
+      if (ultimaFechaInicio && fi) {
+        var minInicio = new Date(ultimaFechaInicio);
+        minInicio.setDate(minInicio.getDate() + 1);
+        if (fi < minInicio) fi = minInicio;
+      } else if (ultimaFechaInicio && !fi) {
+        fi = new Date(ultimaFechaInicio);
+        fi.setDate(fi.getDate() + 1);
+      }
+
+      // Fecha fin: usar la real si existe, siempre +1 día de protección
+      if (o.fechaFin) {
+        ff = new Date(o.fechaFin);
+        ff.setHours(0,0,0,0);
+        ff.setDate(ff.getDate() + 1); // +1 día protección
+      } else if (fi) {
+        // Sin fecha fin: estimamos fi + 1 día protección
+        ff = new Date(fi);
+        ff.setDate(ff.getDate() + 1);
+      }
+
+      if (fi) ultimaFechaInicio = new Date(fi);
+      resultado[String(o.id)] = { fi: fi, ff: ff };
+    });
+    return resultado;
+  }
+
+  // Calcular fechas para todos los grupos y encontrar fecha de entrega global (último proceso de todos los grupos)
+  var fechasMap = {};
+  var fechaEntregaCalc = null;
+  for (var gk in grupos) {
+    var gFechas = calcFechasGrupo(grupos[gk].ordenes);
+    for (var id in gFechas) fechasMap[id] = gFechas[id];
+    // La fecha entrega es el fin del último proceso (mayor sec) de este grupo
+    var sorted = grupos[gk].ordenes.slice().sort(function(a,b){return (b.sec||0)-(a.sec||0);});
+    var ultimoId = String(sorted[0].id);
+    if (fechasMap[ultimoId] && fechasMap[ultimoId].ff) {
+      if (!fechaEntregaCalc || fechasMap[ultimoId].ff > fechaEntregaCalc) {
+        fechaEntregaCalc = fechasMap[ultimoId].ff;
+      }
+    }
+  }
+
+  // ── HTML ──
+  var html = '<div class="trk-detail-pane" id="trk-detail-' + key + '">';
+  html += '<div class="detail-back" onclick="trkSwitchTab(\'search\')">← Volver a búsqueda</div>';
+
+  // Pedido Hero
+  html += '<div class="pedido-hero">';
+  var heroSvg = p.svgIcono || trkBuildProductSVG(p.tipo||p.codigo||'', 80);
+  html += '<div class="pedido-hero-svg" style="width:90px;height:90px;display:flex;align-items:center;justify-content:center;">' + heroSvg + '</div>';
+  html += '<div class="pedido-hero-info">';
+  html += '<div class="pedido-numero">' + p.pedido + '</div>';
+  html += '<div class="pedido-desc">' + (p.descripcion||'—') + '</div>';
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">';
+  html += '<span class="rc-chip ' + chipClass + '">' + est + '</span>';
+  if (p.codigo) html += '<span class="rc-chip chip-neutral">COD: ' + p.codigo + '</span>';
+  if (p.unidad) html += '<span class="rc-chip chip-neutral">' + trkFmt(p.cantidad) + ' ' + p.unidad + '</span>';
+  // Fecha entrega: primero la real del pedido, luego la calculada desde procesos
+  var fechaEntregaFinal = p.fechaEntrega ? new Date(p.fechaEntrega) : fechaEntregaCalc;
+  if (fechaEntregaFinal) {
+    html += '<span class="rc-chip" style="background:rgba(251,191,36,.2);color:#fbbf24;border:1px solid rgba(251,191,36,.4);">📅 ENTREGA: ' + trkFmtFecha(fechaEntregaFinal) + '</span>';
+  }
+  html += '</div>';
+  html += '<div class="pedido-codigo" style="color:#94a3b8;font-size:13px;">FECHA REGISTRO: ' + trkFmtFecha(p.fecha) + '</div>';
+  html += '</div>';
+  // Stats — valores ya convertidos a unidad del pedido
+  html += '<div class="pedido-stats">';
+  html += trkStatBox(pctGlobal + '%', 'AVANCE');
+  html += trkStatBox(trkFmt(totalProdConv) + ' ' + uniGlobal, 'PRODUCIDO');
+  html += trkStatBox(trkFmt(totalSolConv)  + ' ' + uniGlobal, 'SOLICITADO');
+  html += trkStatBox(enviados.length, 'ENVÍOS');
+  html += '</div></div>';
+
+  // Donuts de procesos
+  var procResumen = trkCalcProcResumen(ordenes);
+  if (procResumen.length) {
+    html += '<div class="donut-row">';
+    procResumen.slice(0,4).forEach(function(pr) {
+      html += trkDonutCard(pr);
+    });
+    html += '</div>';
+  }
+
+  // Ordenes timeline
+  html += '<div class="section-title">⚙️ ÓRDENES DE PRODUCCIÓN</div>';
+  html += '<div class="ordenes-grid">';
+  var colorPool = ['#00d4ff','#a855f7','#ff6b2b','#22c55e','#fbbf24','#ef4444','#06b6d4','#f97316'];
+  var gi = 0;
+  for (var gk in grupos) {
+    var g = grupos[gk];
+    var color = colorPool[gi++ % colorPool.length];
+    var prods = g.ordenes.reduce(function(s,o){return s+trkCalcUnidades(o.producido,o);},0);
+    var sols  = g.ordenes.reduce(function(s,o){return s+trkCalcUnidades(o.solicitado,o);},0);
+    var uniGrupo = trkFmtUnidad(g.ordenes[0] || {});
+    var pctOrd = sols>0 ? Math.min(100,Math.round(prods/sols*100)) : 0;
+    var estOrds = g.ordenes.map(function(o){return (o.estado||'').toUpperCase();});
+    var estOrd = estOrds.some(function(e){return e.includes('PROCESO');}) ? 'EN PROCESO' :
+                 estOrds.every(function(e){return e.includes('TERM');}) ? 'TERMINADO' :
+                 estOrds.some(function(e){return e.includes('TERM');}) ? 'PARCIAL' : 'ABIERTO';
+    var estChip = estOrd.includes('TERM') ? 'chip-terminado' : estOrd.includes('PROCESO') ? 'chip-proceso' : estOrd.includes('PARCI') ? 'chip-parcial' : 'chip-abierto';
+
+    // Rango de fechas del grupo
+    var sortedG = g.ordenes.slice().sort(function(a,b){return (a.sec||0)-(b.sec||0);});
+    var firstId = String(sortedG[0].id);
+    var lastId  = String(sortedG[sortedG.length-1].id);
+    var fiGrupo = fechasMap[firstId] ? fechasMap[firstId].fi : null;
+    var ffGrupo = fechasMap[lastId]  ? fechasMap[lastId].ff  : null;
+    var rangoFechas = '';
+    if (fiGrupo || ffGrupo) {
+      rangoFechas = ' · ';
+      if (fiGrupo) rangoFechas += '<span style="color:#34d399">▶ ' + trkFmtFecha(fiGrupo) + '</span>';
+      if (fiGrupo && ffGrupo) rangoFechas += ' → ';
+      if (ffGrupo) rangoFechas += '<span style="color:#fb923c">⏹ ' + trkFmtFecha(ffGrupo) + '</span>';
+    }
+
+    html += '<div class="orden-card">';
+    html += '<div class="orden-head" onclick="toggleOrden(this)">';
+    html += '<div class="orden-num" style="background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;">' + gi + '</div>';
+    html += '<div class="orden-head-info"><div class="orden-name" style="color:' + color + '">' + gk + '</div>';
+    html += '<div class="orden-sub" style="font-size:13px;color:#94a3b8;">' + g.ordenes.length + ' proceso(s) · <span style="color:#fbbf24;font-weight:700;">' + trkFmt(prods) + ' ' + uniGrupo + '</span>' + rangoFechas + '</div></div>';
+    html += '<div class="orden-right">';
+    html += '<span class="rc-chip ' + estChip + '">' + estOrd + '</span>';
+    html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pctOrd + '%;background:' + color + '"></div></div>';
+    html += '<div style="font-size:12px;color:' + color + ';margin-top:4px;font-weight:700;">' + pctOrd + '%</div>';
+    html += '</div><div style="margin-left:10px;color:#64748b;font-size:18px;" class="toggle-icon">▼</div>';
+    html += '</div>';
+    // Procesos inside
+    html += '<div class="proceso-list" style="display:none;">';
+    var sortedProcs = g.ordenes.slice().sort(function(a,b){return (a.sec||0)-(b.sec||0);});
+    sortedProcs.forEach(function(o, pi) {
+      var oEst = (o.estado||'').toUpperCase();
+      var dotClass = oEst.includes('TERM') ? 'dot-terminado' : oEst.includes('PROCESO') || oEst.includes('PARCI') ? 'dot-proceso' : oEst.includes('CANCEL') ? 'dot-cancelado' : 'dot-abierto';
+      var dotIcon  = oEst.includes('TERM') ? '✓' : oEst.includes('PROCESO') ? '▶' : oEst.includes('CANCEL') ? '✕' : '○';
+      var oChipClass = oEst.includes('TERM') ? 'chip-terminado' : oEst.includes('PROCESO') ? 'chip-proceso' : oEst.includes('PARCI') ? 'chip-parcial' : oEst.includes('CANCEL') ? 'chip-cancelado' : 'chip-abierto';
+
+      // Fechas calculadas para este proceso
+      var oFechas = fechasMap[String(o.id)] || {};
+      var oFi = oFechas.fi || null;
+      var oFf = oFechas.ff || null;
+
+      html += '<div class="proceso-item">';
+      html += '<div class="proceso-connector">';
+      html += '<div class="proceso-dot ' + dotClass + '">' + dotIcon + '</div>';
+      if (pi < sortedProcs.length-1) html += '<div class="proceso-line"></div>';
+      html += '</div>';
+      html += '<div class="proceso-content">';
+      html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+      html += '<span class="proceso-name">SEC.' + (o.sec||'?') + ' · ' + (o.proceso||'—') + '</span>';
+      html += '<span class="rc-chip ' + oChipClass + '">' + (o.estado||'—') + '</span>';
+      if (o.pt) html += '<span class="mat-badge">✓ MATERIAL</span>';
+      html += '</div>';
+      html += '<div class="proceso-detail">';
+      html += '<span class="dt-maq">🏭 ' + (o.maquina||'—') + '</span>';
+      // Convertir producido y solicitado a unidad del pedido
+      var prodConv = trkCalcUnidades(o.producido, o);
+      var solConv  = trkCalcUnidades(o.solicitado, o);
+      var uniLabel = trkFmtUnidad(o);
+      html += '<span class="dt-kg">📊 ' + trkFmt(prodConv) + '/' + trkFmt(solConv) + ' ' + uniLabel + '</span>';
+      if (oFi) html += '<span class="dt-inicio">▶ INICIO: ' + trkFmtFecha(oFi) + '</span>';
+      if (oFf) html += '<span class="dt-fin">⏹ FIN: ' + trkFmtFecha(oFf) + '</span>';
+      html += '</div>';
+      // Produccion registros — FECHA, TURNO, LOTE, OPERADOR, PRODUCIDO (convertido), SELLO
+      if (o.produccion && o.produccion.length) {
+        html += '<div class="prod-table-wrap"><table class="prod-table"><thead><tr>';
+        html += '<th>FECHA</th><th>TURNO</th><th>LOTE</th><th>OPERADOR</th><th>PRODUCIDO</th><th>SELLO</th>';
+        html += '</tr></thead><tbody>';
+        o.produccion.forEach(function(pr) {
+          var prConv = trkCalcUnidades(pr.producido, o);
+          html += '<tr>';
+          html += '<td>' + trkFmtFecha(pr.fecha) + '</td>';
+          html += '<td style="color:#a78bfa;font-weight:700;">' + (pr.turno||'—') + '</td>';
+          html += '<td style="color:#00d4ff;font-weight:600;">' + (pr.lote||'—') + '</td>';
+          html += '<td style="color:#c7d6f0;">' + (pr.operador||'—') + '</td>';
+          html += '<td style="color:#22c55e;font-weight:700;">' + trkFmt(prConv) + ' ' + uniLabel + '</td>';
+          html += '<td style="color:#fbbf24;font-weight:600;">' + (pr.sello||'—') + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div></div>';
+  }
+  html += '</div>';
+
+  // Enviados
+  html += '<div class="section-title">🚚 MATERIAL ENVIADO</div>';
+  if (enviados.length) {
+    html += '<div class="enviado-section">';
+    enviados.forEach(function(env) {
+      html += '<div class="enviado-item" style="flex-direction:column;gap:6px;">';
+      // Encabezado: código + descripción
+      html += '<div style="display:flex;align-items:center;gap:10px;width:100%;">';
+      html += '<div class="enviado-icon">📦</div>';
+      html += '<div style="flex:1;">';
+      html += '<div style="font-weight:900;font-size:15px;color:#00d4ff;letter-spacing:1px;">' + (env.codigo||'—') + '</div>';
+      html += '<div style="font-size:13px;color:#c7d6f0;margin-top:2px;">' + (env.descripcion||'—') + '</div>';
+      html += '</div>';
+      // Folio envío
+      if (env.envio) html += '<span class="rc-chip" style="background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3);font-size:12px;">' + env.envio + '</span>';
+      html += '</div>';
+      // Datos: fecha, kilos, piezas
+      html += '<div style="display:flex;gap:20px;flex-wrap:wrap;padding-left:46px;">';
+      html += '<span style="font-size:13px;color:#94a3b8;">📅 ' + trkFmtFecha(env.fecha) + '</span>';
+      html += '<span style="font-size:14px;color:#22c55e;font-weight:700;">⚖️ ' + trkFmt(env.kilos) + ' kg</span>';
+      if (env.piezas) html += '<span style="font-size:13px;color:#fbbf24;font-weight:600;">📦 ' + trkFmt(env.piezas) + ' pzas</span>';
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="enviado-section"><div class="empty-state"><div class="icon">📭</div><p>Sin registros de envío</p></div></div>';
+  }
+
+  // ── Otros pedidos del mismo código ──
+  var codigoBuscado = String(p.codigo||'').trim();
+  var otrosPedidos = _trkPedidosData.filter(function(x) {
+    return String(x.codigo||'').trim() === codigoBuscado && String(x.pedido||'') !== String(p.pedido||'');
+  }).sort(function(a,b) {
+    var df = new Date(b.fecha||0) - new Date(a.fecha||0);
+    if (df !== 0) return df;
+    var nA = parseInt(String(a.pedido||'').replace(/\D/g,'')) || 0;
+    var nB = parseInt(String(b.pedido||'').replace(/\D/g,'')) || 0;
+    return nB - nA;
+  });
+
+  html += '<div class="section-title">🔗 OTROS PEDIDOS DEL MISMO CÓDIGO</div>';
+  if (otrosPedidos.length === 0) {
+    html += '<div class="enviado-section"><div class="empty-state"><div class="icon">📋</div><p>No hay otros pedidos para este código</p></div></div>';
+  } else {
+    var idOtros = 'otros_' + key;
+    html += '<div class="enviado-section" id="' + idOtros + '">';
+    // Renderiza primeros 10
+    otrosPedidos.slice(0, 10).forEach(function(x, xi) {
+      var xEst = (x.estado||'').toUpperCase();
+      var xChip = xEst.includes('TERM') ? 'chip-terminado' : xEst.includes('ABIERT') ? 'chip-abierto' : xEst.includes('PROCESO') ? 'chip-proceso' : xEst.includes('PARCI') ? 'chip-parcial' : xEst.includes('PLANEA') ? 'chip-planeado' : xEst.includes('CANCEL') ? 'chip-cancelado' : 'chip-neutral';
+      // Buscar índice en _trkPedidosData para poder abrir con abrirDetalle
+      var xIdx = _trkPedidosData.indexOf(x);
+      html += '<div class="enviado-item" style="cursor:pointer;transition:background .2s;" onmouseover="this.style.background=\'rgba(0,212,255,0.05)\'" onmouseout="this.style.background=\'\'" onclick="trkAbrirDetalle(' + xIdx + ')">';
+      html += '<div class="enviado-icon" style="background:rgba(0,212,255,0.08);border-color:rgba(0,212,255,0.2);">' + (x.svgIcono ? '<div style="width:32px;height:32px;">' + x.svgIcono + '</div>' : '📋') + '</div>';
+      html += '<div style="flex:1;">';
+      html += '<div style="font-weight:700;font-size:14px;color:#e2e8f0;">' + (x.pedido||'—') + '</div>';
+      html += '<div style="font-size:12px;color:#64748b;margin-top:2px;">' + trkFmtFecha(x.fecha) + ' · ' + (x.descripcion||'—') + '</div>';
+      html += '</div>';
+      html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">';
+      html += '<span class="rc-chip ' + xChip + '">' + xEst + '</span>';
+      html += '<div style="font-size:11px;color:#64748b;">' + trkFmt(x.cantidad) + ' ' + (x.unidad||'') + '</div>';
+      html += '</div>';
+      html += '<div style="margin-left:10px;color:#00d4ff;font-size:16px;">→</div>';
+      html += '</div>';
+    });
+    // Botón 10+ si hay más de 10
+    if (otrosPedidos.length > 10) {
+      var restantes = otrosPedidos.length - 10;
+      html += '<div id="btn10mas_' + key + '" style="text-align:center;padding:12px;">';
+      html += '<button onclick="mostrarMasPedidos(\'' + key + '\')" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;padding:10px 28px;border-radius:20px;font-family:\'Exo 2\',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;" onmouseover="this.style.background=\'rgba(0,212,255,0.2)\'" onmouseout="this.style.background=\'rgba(0,212,255,0.1)\'">';
+      html += '10+ VER MÁS (' + restantes + ' restantes)</button></div>';
+    }
+    html += '</div>';
+    // Guardar lista completa para paginación
+    _otrosPedidosCache[key] = { lista: otrosPedidos, offset: 10 };
+  }
+
+  html += '</div>'; // detail-pane
+
+  var detail = document.getElementById('trk-screenDetail');
+  detail.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleOrden(head) {
+  var list = head.nextElementSibling;
+  var icon = head.querySelector('.toggle-icon');
+  var open = list.style.display !== 'none';
+  list.style.display = open ? 'none' : 'flex';
+  if (icon) icon.textContent = open ? '▼' : '▲';
+  head.classList.toggle('expanded', !open);
+}
+
+// ── CACHÉ PAGINACIÓN OTROS PEDIDOS ──
+var _otrosPedidosCache = {};
+
+function mostrarMasPedidos(key) {
+  var cache = _otrosPedidosCache[key];
+  if (!cache) return;
+  var lista = cache.lista;
+  var offset = cache.offset;
+  var siguiente = offset + 10;
+  var contenedor = document.getElementById('otros_' + key);
+  var btnWrap = document.getElementById('btn10mas_' + key);
+  if (!contenedor || !btnWrap) return;
+
+  // Insertar los siguientes 10 antes del botón
+  lista.slice(offset, siguiente).forEach(function(x) {
+    var xEst = (x.estado||'').toUpperCase();
+    var xChip = xEst.includes('TERM') ? 'chip-terminado' : xEst.includes('ABIERT') ? 'chip-abierto' : xEst.includes('PROCESO') ? 'chip-proceso' : xEst.includes('PARCI') ? 'chip-parcial' : xEst.includes('PLANEA') ? 'chip-planeado' : xEst.includes('CANCEL') ? 'chip-cancelado' : 'chip-neutral';
+    var xIdx = _trkPedidosData.indexOf(x);
+    var div = document.createElement('div');
+    div.className = 'enviado-item';
+    div.style.cssText = 'cursor:pointer;transition:background .2s;';
+    div.onmouseover = function(){this.style.background='rgba(0,212,255,0.05)';};
+    div.onmouseout  = function(){this.style.background='';};
+    div.onclick = function(){ trkAbrirDetalle(xIdx); };
+    div.innerHTML =
+      '<div class="enviado-icon" style="background:rgba(0,212,255,0.08);border-color:rgba(0,212,255,0.2);">' + (x.svgIcono ? '<div style="width:32px;height:32px;">' + x.svgIcono + '</div>' : '📋') + '</div>' +
+      '<div style="flex:1;"><div style="font-weight:700;font-size:14px;color:#e2e8f0;">' + (x.pedido||'—') + '</div>' +
+      '<div style="font-size:12px;color:#64748b;margin-top:2px;">' + trkFmtFecha(x.fecha) + ' · ' + (x.descripcion||'—') + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><span class="rc-chip ' + xChip + '">' + xEst + '</span>' +
+      '<div style="font-size:11px;color:#64748b;">' + trkFmt(x.cantidad) + ' ' + (x.unidad||'') + '</div></div>' +
+      '<div style="margin-left:10px;color:#00d4ff;font-size:16px;">→</div>';
+    contenedor.insertBefore(div, btnWrap);
+  });
+
+  cache.offset = siguiente;
+  // Actualizar o quitar botón
+  if (siguiente >= lista.length) {
+    btnWrap.remove();
+  } else {
+    var restantes = lista.length - siguiente;
+    btnWrap.querySelector('button').textContent = '10+ VER MÁS (' + restantes + ' restantes)';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// HELPERS UI
+// ══════════════════════════════════════════════════════
+function trkStatBox(val, lbl) {
+  return '<div class="stat-box"><div class="stat-val">' + val + '</div><div class="stat-lbl">' + lbl + '</div></div>';
+}
+
+function trkDonutCard(pr) {
+  var pct = Math.min(100, Math.round(pr.pct));
+  var color = pct >= 100 ? '#22c55e' : pct >= 70 ? '#00d4ff' : pct >= 40 ? '#fbbf24' : '#ff6b2b';
+  var r = 30, circ = 2 * Math.PI * r;
+  var dash = (pct / 100) * circ;
+  return '<div class="donut-card">' +
+    '<div class="donut-wrap">' +
+    '<svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>' +
+    '<circle cx="36" cy="36" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="8" stroke-dasharray="' + dash + ' ' + (circ-dash) + '" stroke-linecap="round"/></svg>' +
+    '<div class="donut-pct" style="color:' + color + '">' + pct + '%</div></div>' +
+    '<div class="donut-info"><h4>' + pr.proceso + '</h4><p>' + trkFmt(pr.prod) + ' / ' + trkFmt(pr.sol) + ' ' + (pr.uni||'') + '</p></div>' +
+    '</div>';
+}
+
+function trkCalcProcResumen(ordenes) {
+  var map = {};
+  ordenes.forEach(function(o) {
+    var k = o.proceso || 'SIN PROCESO';
+    if (!map[k]) map[k] = { proceso:k, sol:0, prod:0, _ref:o };
+    // Convertir a unidad del pedido para que los donuts sean comparables
+    map[k].sol  += trkCalcUnidades(o.solicitado, o);
+    map[k].prod += trkCalcUnidades(o.producido, o);
+  });
+  return Object.values(map).map(function(v) {
+    v.pct = v.sol > 0 ? (v.prod/v.sol)*100 : 0;
+    v.uni = trkFmtUnidad(v._ref);
+    return v;
+  }).sort(function(a,b){return (a.sec||0)-(b.sec||0);});
+}
+
+// ══════════════════════════════════════════════════════
+// CONVERSIÓN DE UNIDADES — Regla de Oro
+// ══════════════════════════════════════════════════════
+// Convierte KG reportados a la unidad del pedido
+// Reglas:
+//   ROL / KG        → sin conversión, mostrar tal cual
+//   PZA / CTO (Tornillo/Pija/etc) → KG ÷ peso
+//   PZA / CTO (Varilla) → KG ÷ (peso × longitud)
+function trkCalcUnidades(kgReportados, orden) {
+  var uni = String(orden.unidad || '').toUpperCase().trim();
+  var tipo = String(orden.tipo || '').toUpperCase();
+  var peso = parseFloat(orden.peso) || 0;
+  var long = parseFloat(orden.longitud) || 0;
+
+  // KG o ROL: sin conversión
+  if (uni === 'KG' || uni === 'ROL' || uni === '') return parseFloat(kgReportados) || 0;
+
+  // PZA o CTO: necesita conversión
+  if (uni === 'PZA' || uni === 'CTO') {
+    if (peso <= 0) return parseFloat(kgReportados) || 0; // sin peso, no podemos convertir
+    if (tipo.includes('VARILLA') && long > 0) {
+      return (parseFloat(kgReportados) || 0) / (peso * long);
+    }
+    return (parseFloat(kgReportados) || 0) / peso;
+  }
+
+  return parseFloat(kgReportados) || 0;
+}
+
+// Etiqueta de unidad para mostrar
+function trkFmtUnidad(orden) {
+  var uni = String(orden.unidad || '').toUpperCase().trim();
+  if (uni === 'KG') return 'KG';
+  if (uni === 'ROL') return 'ROL';
+  if (uni === 'PZA') return 'PZA';
+  if (uni === 'CTO') return 'CTO';
+  return uni || 'KG';
+}
+
+function trkFmt(n) {
+  var num = parseFloat(n) || 0;
+  return num.toLocaleString('es-MX', {maximumFractionDigits:1});
+}
+
+function trkFmtFecha(f) {
+  if (!f) return '—';
+  var d = new Date(f);
+  if (isNaN(d)) return String(f).substring(0,10);
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function trkGetProductIcon(codigo) {
+  var c = String(codigo);
+  if (c.startsWith('7')) return '<svg viewBox="0 0 40 40" width="30" height="30"><circle cx="20" cy="20" r="14" fill="none" stroke="#00d4ff" stroke-width="3"/><circle cx="20" cy="20" r="4" fill="#00d4ff"/></svg>';
+  if (c.startsWith('9')) return '<svg viewBox="0 0 40 40" width="30" height="30"><rect x="10" y="8" width="20" height="24" rx="3" fill="none" stroke="#a855f7" stroke-width="3"/><line x1="15" y1="16" x2="25" y2="16" stroke="#a855f7" stroke-width="2"/><line x1="15" y1="22" x2="22" y2="22" stroke="#a855f7" stroke-width="2"/></svg>';
+  return '<svg viewBox="0 0 40 40" width="30" height="30"><polygon points="20,6 34,14 34,26 20,34 6,26 6,14" fill="none" stroke="#fbbf24" stroke-width="3"/></svg>';
+}
+
+function trkBuildProductSVG(tipo, size) {
+  var t = String(tipo).toUpperCase();
+  var s = size || 80;
+  var half = s/2;
+  // Tornillo tipo SVG
+  if (t.includes('TORN') || t.includes('7')) {
+    return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 80 80"><defs><linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#0099cc"/></linearGradient></defs><circle cx="40" cy="40" r="28" fill="none" stroke="url(#tg)" stroke-width="4" opacity=".3"/><rect x="28" y="18" width="24" height="44" rx="4" fill="none" stroke="#00d4ff" stroke-width="3"/><line x1="28" y1="30" x2="52" y2="30" stroke="#00d4ff" stroke-width="2" opacity=".5"/><line x1="28" y1="38" x2="52" y2="38" stroke="#00d4ff" stroke-width="2" opacity=".5"/><line x1="28" y1="46" x2="52" y2="46" stroke="#00d4ff" stroke-width="2" opacity=".5"/><polygon points="40,10 48,18 32,18" fill="#00d4ff" opacity=".7"/></svg>';
+  }
+  if (t.includes('CLAVAD') || t.includes('CLAVO')) {
+    return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 80 80"><defs><linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f97316"/></linearGradient></defs><line x1="40" y1="8" x2="40" y2="66" stroke="url(#cg)" stroke-width="6" stroke-linecap="round"/><polygon points="40,68 35,58 45,58" fill="#fbbf24"/><rect x="30" y="8" width="20" height="12" rx="2" fill="none" stroke="#fbbf24" stroke-width="2"/></svg>';
+  }
+  return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 80 80"><polygon points="40,8 68,22 68,58 40,72 12,58 12,22" fill="none" stroke="#a855f7" stroke-width="3"/><polygon points="40,20 58,30 58,50 40,60 22,50 22,30" fill="none" stroke="#a855f7" stroke-width="2" opacity=".4"/><circle cx="40" cy="40" r="8" fill="#a855f7" opacity=".5"/></svg>';
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULO MRP MATERIA PRIMA  —  prefijo: mrpmp_
+// ══════════════════════════════════════════════════════════════════════════════
+var mrpmp_datos = null;
+var mrpmp_serieActual = 'TODAS';
+

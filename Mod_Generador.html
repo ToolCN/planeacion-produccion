@@ -1,0 +1,777 @@
+function loadGenerador() {
+  var area = document.getElementById('content-area');
+  area.style.padding = '1rem 1.5rem 2rem';
+  area.innerHTML = `
+<div id="gen-panel">
+
+  <!-- MODALES -->
+  <div id="gen-modalDetalle" class="gen-modal">
+    <div class="gen-modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 id="gen-detTitle" style="margin:0;color:#1565c0;font-size:18px;"></h2>
+        <button onclick="document.getElementById('gen-modalDetalle').style.display='none'" style="font-size:30px;border:none;background:none;cursor:pointer;">&times;</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;font-size:14px;">
+          <thead>
+            <tr style="background:#f5f5f5;">
+              <th style="padding:10px;background:#263238;color:white;">ORDEN</th>
+              <th style="padding:10px;background:#263238;color:white;">CANT (I)</th>
+              <th style="padding:10px;background:#263238;color:white;">SOLIC (N)</th>
+              <th style="padding:10px;background:#263238;color:white;">PROD (O)</th>
+              <th style="padding:10px;background:#263238;color:white;">MÁQUINA</th>
+              <th style="padding:10px;background:#263238;color:white;">ACCIÓN</th>
+            </tr>
+          </thead>
+          <tbody id="gen-detBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="gen-modal" class="gen-modal">
+    <div class="gen-modal-content" style="max-width:450px;">
+      <h3 id="gen-mdlTitle" style="margin-top:0;color:#1565c0;"></h3>
+      <div id="gen-mdlInfo" style="background:#e3f2fd;padding:15px;border-radius:8px;margin-bottom:15px;font-size:15px;font-weight:bold;"></div>
+      <div style="margin-bottom:15px;">
+        <label style="font-weight:bold;font-size:13px;color:#666;">CANTIDAD POR CADA ORDEN:</label>
+        <input type="number" id="gen-inpCantOrd" style="width:100%;padding:14px;font-size:20px;font-weight:900;border:2px solid #1565c0;border-radius:8px;margin-top:6px;">
+      </div>
+      <div>
+        <label style="font-weight:bold;font-size:13px;color:#666;">¿CUÁNTAS ÓRDENES IGUALES?</label>
+        <input type="number" id="gen-inpNumOrd" value="1" style="width:100%;padding:14px;font-size:20px;font-weight:900;border:2px solid #1565c0;border-radius:8px;margin-top:6px;">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:25px;">
+        <button onclick="document.getElementById('gen-modal').style.display='none'" style="flex:1;padding:14px;border-radius:8px;border:1px solid #ccc;font-weight:900;font-size:15px;cursor:pointer;">CANCELAR</button>
+        <button onclick="genConfirmarParcial()" style="flex:1;padding:14px;background:#1565c0;color:white;border:none;border-radius:8px;font-weight:900;font-size:15px;cursor:pointer;">AGREGAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA PRINCIPAL: GENERADOR -->
+  <div id="gen-main-view">
+    <div class="gen-container">
+      <div class="gen-header-tools">
+        <div class="gen-tabs">
+          <div id="gen-tabPend" class="gen-tab active" onclick="genSetTab('PENDIENTES')">📦 VIVOS</div>
+          <div id="gen-tabCerr" class="gen-tab" onclick="genSetTab('CERRADOS')">📂 HISTORIAL</div>
+        </div>
+        <button onclick="genAbrirRellenoMP()" style="background:#2e7d32;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:900;font-size:13px;cursor:pointer;" title="Rellenar columna MP en órdenes existentes">🔧 RELLENAR MP MASIVO</button>
+        <button onclick="genIrTEM()" style="background:#7b1fa2;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:900;font-size:13px;cursor:pointer;">🔄 REEMPLAZO PEDIDOS</button>
+      </div>
+
+      <button id="gen-btnSave" class="gen-fab-save" onclick="genPreviaGuardar()">
+        💾 APLICAR <span id="gen-count">0</span> CAMBIOS
+      </button>
+
+      <input type="text" id="gen-search" class="gen-search-box"
+             placeholder="🔍 Buscar pedido, código o descripción..."
+             onkeyup="genRender()">
+
+      <div class="gen-filter-container">
+        <div class="gen-chip gen-active-chip" onclick="genSetSubFilter('TODOS', this)">TODOS</div>
+        <div class="gen-chip" onclick="genSetSubFilter('ABIERTO', this)">ABIERTO</div>
+        <div class="gen-chip" onclick="genSetSubFilter('PARCIAL', this)">PARCIAL</div>
+        <div class="gen-chip" onclick="genSetSubFilter('PLANEADO', this)">PLANEADO</div>
+        <div class="gen-chip" onclick="genSetSubFilter('EN PROCESO', this)">EN PROCESO</div>
+      </div>
+
+      <div style="overflow-x:auto;max-height:65vh;border:1px solid #ddd;border-radius:8px;">
+        <table id="gen-tbl">
+          <thead>
+            <tr>
+              <th>FECHA</th><th>FOLIO</th><th>CÓDIGO</th><th>DESCRIPCIÓN</th>
+              <th>CANTIDAD (PLAN/TOT)</th><th>ESTADO</th><th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="gen-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA REEMPLAZO TEM -->
+  <div id="tem-view">
+    <div class="tem-container">
+      <div class="tem-header">
+        <button class="tem-back-btn" onclick="genVolverGenerador()">← VOLVER</button>
+        <span class="tem-title">EDITOR DE PEDIDOS (TEM)</span>
+        <button class="tem-reload-btn" onclick="genIrTEM()" title="Recargar">🔄</button>
+      </div>
+      <input type="text" id="tem-search" class="tem-search"
+             placeholder="🔍 Buscar por folio, código o descripción..."
+             oninput="temFiltrar()">
+      <div class="tem-table-wrap">
+        <table class="tem-table">
+          <thead>
+            <tr>
+              <th style="width:20%">PEDIDO (EDIT)</th>
+              <th style="width:10%">FECHA</th>
+              <th style="width:14%">CÓDIGO</th>
+              <th style="width:28%">DESCRIPCIÓN</th>
+              <th style="width:5%;text-align:center">PART</th>
+              <th style="width:13%">CANT (EDIT)</th>
+              <th style="width:10%">UNIDAD</th>
+            </tr>
+          </thead>
+          <tbody id="tem-body"></tbody>
+        </table>
+      </div>
+      <button id="tem-btnSave" class="tem-save-btn" onclick="temGuardar()">
+        💾 GUARDAR (<span id="tem-count">0</span>)
+      </button>
+    </div>
+  </div>
+
+</div>`;
+
+  gen_rawData        = [];
+  gen_cambios        = {};
+  gen_currentTab     = 'PENDIENTES';
+  gen_subFilter      = 'TODOS';
+  gen_activeEditId   = null;
+  gen_ultimaOrden    = {};
+  gen_foliosPreview  = {};
+
+  // ── Carga inicial: datos + últimas órdenes por serie en paralelo ──
+  showLoader('Cargando Generador de Órdenes...');
+  var gen_cargaCompleta = { datos: false, series: false, rawData: [], ultimaOrden: {} };
+  function genVerificarCargaCompleta() {
+    if (!gen_cargaCompleta.datos || !gen_cargaCompleta.series) return;
+    gen_rawData     = gen_cargaCompleta.rawData;
+    gen_ultimaOrden = gen_cargaCompleta.ultimaOrden;
+    genRender();
+    genIniciarDelegado();
+    hideLoader();
+  }
+  google.script.run
+    .withSuccessHandler(function(res) {
+      gen_cargaCompleta.rawData = res;
+      gen_cargaCompleta.datos   = true;
+      genVerificarCargaCompleta();
+    })
+    .withFailureHandler(function(err) { hideLoader(); sAlert('Error al cargar datos: ' + err); })
+    .obtenerDatosGenerador();
+  google.script.run
+    .withSuccessHandler(function(res) {
+      try { gen_cargaCompleta.ultimaOrden = JSON.parse(res); } catch(e) { gen_cargaCompleta.ultimaOrden = {}; }
+      gen_cargaCompleta.series = true;
+      genVerificarCargaCompleta();
+    })
+    .withFailureHandler(function(err) { gen_cargaCompleta.series = true; genVerificarCargaCompleta(); })
+    .obtenerUltimasOrdenesPorSerie();
+}
+
+// ── Variables globales del módulo Generador ──
+var gen_rawData        = [];
+var gen_cambios        = {};
+var gen_currentTab     = 'PENDIENTES';
+var gen_subFilter      = 'TODOS';
+var gen_activeEditId   = null;
+var gen_ultimaOrden    = {};   // { serie -> ultimoNumero } cargado al iniciar
+var gen_foliosPreview  = {};   // id -> [{ serie, numero }] asignados localmente
+
+function genSetTab(t) {
+  gen_currentTab = t;
+  var tabPend = document.getElementById('gen-tabPend');
+  var tabCerr = document.getElementById('gen-tabCerr');
+  if (tabPend) tabPend.classList.remove('active');
+  if (tabCerr) tabCerr.classList.remove('active');
+  if (t === 'PENDIENTES' && tabPend) tabPend.classList.add('active');
+  else if (tabCerr) tabCerr.classList.add('active');
+  genRender();
+}
+
+function genSetSubFilter(sf, el) {
+  gen_subFilter = sf;
+  document.querySelectorAll('#gen-panel .gen-chip').forEach(function(c) { c.classList.remove('gen-active-chip'); });
+  el.classList.add('gen-active-chip');
+  genRender();
+}
+
+function genRender() {
+  var busqueda = (document.getElementById('gen-search').value || '').toUpperCase();
+  var body = document.getElementById('gen-body');
+  if (!body) return;
+
+  var filtrados = gen_rawData.filter(function(r) {
+    var matchBusqueda = (r.codigo + r.folio + r.descripcion).toUpperCase().indexOf(busqueda) > -1;
+    var isPend = ['ABIERTO','PLANEADO','PARCIAL','EN PROCESO'].indexOf(r.estado) > -1;
+    var matchTab = (gen_currentTab === 'PENDIENTES' ? isPend : !isPend);
+    var matchSub = (gen_subFilter === 'TODOS' || r.estado === gen_subFilter);
+    return matchBusqueda && matchTab && matchSub;
+  });
+
+  var ordenEstados = { 'ABIERTO':1,'PARCIAL':2,'PLANEADO':3,'EN PROCESO':4,'CANCELADO':5,'TERMINADO':6 };
+  filtrados.sort(function(a,b) { return (ordenEstados[a.estado]||99) - (ordenEstados[b.estado]||99); });
+
+  body.innerHTML = filtrados.map(function(r) {
+    var c = gen_cambios[r.id];
+    var trClass = c ? (c.accion === 'CANCELAR' ? 'gen-cancelled' : 'gen-modified') : '';
+
+    var estadoDisplay = c ? c.nuevoEstadoPedido : r.estado;
+    var claseEstado = '';
+    if      (r.estado === 'ABIERTO')      claseEstado = 'gen-st-abierto';
+    else if (r.estado === 'PARCIAL')      claseEstado = 'gen-st-parcial';
+    else if (r.estado === 'PLANEADO')     claseEstado = 'gen-st-planeado';
+    else if (r.estado === 'EN PROCESO')   claseEstado = 'gen-st-proceso';
+    else if (r.estado === 'ULT PROCESO')  claseEstado = 'gen-st-ultproc';
+
+    // Calcular si hay sobreplanificación (planeado + pendiente > cantidad * 1.05)
+    var totalPendiente = 0;
+    if (c && c.accion === 'GENERAR') totalPendiente = (c.cantPorOrden||0) * (c.nOrdenes||1);
+    var totalConPendiente = (r.planeado||0) + totalPendiente;
+    var sobrepasado = totalConPendiente > (r.cantidad||0) * 1.05;
+    var claseSobre = sobrepasado ? 'gen-sobrepasado' : '';
+
+    var colorEstado = { 'ABIERTO':'#ff9800','PLANEADO':'#1565c0','PARCIAL':'#4caf50','EN PROCESO':'#7b1fa2','ULT PROCESO':'#1b5e20','CANCELADO':'#c62828','TERMINADO':'#37474f' };
+    var badgeColor  = colorEstado[r.estado] || '#607d8b';
+
+    var sid = String(r.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    var actions = (gen_currentTab === 'PENDIENTES') ?
+      '<button class="gen-btn-action gen-btn-fast"    data-genid="' + sid + '" data-genaccion="fast"    title="Generar Orden por toda la cantidad">⚡</button>' +
+      '<button class="gen-btn-action gen-btn-partial" data-genid="' + sid + '" data-genaccion="partial" title="Generar Orden parcial">✨</button>' +
+      '<button class="gen-btn-action gen-btn-cancel"  data-genid="' + sid + '" data-genaccion="cancel"  title="Cancelar Pedido">✕</button>'
+      :
+      '<button class="gen-btn-action gen-btn-refresh" data-genid="' + sid + '" data-genaccion="reactivar">🔄</button>';
+
+    var undoBtn = c ? '<button class="gen-btn-action gen-btn-undo" data-genid="' + sid + '" data-genaccion="undo">↩️</button>' : '';
+    var folioPreviewHtml = '';
+    if (c && c.accion === 'GENERAR' && c._foliosPreview && c._foliosPreview.length > 0) {
+      folioPreviewHtml = '<div style="margin-top:3px;font-size:11px;color:#1565c0;font-weight:700;">' +
+        c._foliosPreview.map(function(f){ return f.serie + '.' + f.numero; }).join(' · ') + '</div>';
+    }
+
+    return '<tr class="' + trClass + ' ' + claseEstado + ' ' + claseSobre + '">' +
+      '<td>' + r.fecha + '</td>' +
+      '<td><b>' + r.folio + '</b>' + folioPreviewHtml + '</td>' +
+      '<td>' + r.codigo + '</td>' +
+      '<td>' + r.descripcion + '</td>' +
+      '<td class="gen-col-plan" onclick="genVerDetalle(\'' + r.folio + '\',\'' + (r.partida||'') + '\')">' +
+        '<b>' + (r.planeado||0).toLocaleString('es-MX') + ' / ' + (r.cantidad||0).toLocaleString('es-MX') + '</b><br>' +
+        '<small style="font-weight:400;color:#555;">' + (r.unidad||'') + ' (Ver órdenes)</small>' +
+      '</td>' +
+      '<td><span class="gen-est-badge" style="background:' + badgeColor + ';">' + estadoDisplay + '</span></td>' +
+      '<td style="white-space:nowrap;">' + actions + undoBtn + '</td>' +
+      '</tr>';
+  }).join('');
+
+  genUpdateFab();
+}
+
+function genVerDetalle(folio, partida) {
+  var modal = document.getElementById('gen-modalDetalle');
+  if (!modal) return;
+  var tituloPartida = (partida !== undefined && partida !== '') ? ' — Partida ' + partida : '';
+  document.getElementById('gen-detTitle').innerText = 'Pedido: ' + folio + tituloPartida;
+  document.getElementById('gen-detBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Cargando...</td></tr>';
+  modal.style.display = 'flex';
+  google.script.run
+    .withSuccessHandler(function(ordenes) {
+      if (!ordenes || ordenes.length === 0) {
+        document.getElementById('gen-detBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Sin órdenes activas.</td></tr>';
+        return;
+      }
+      document.getElementById('gen-detBody').innerHTML = ordenes.map(function(o) {
+        return '<tr>' +
+          '<td><b>' + o.serie + '.' + o.numero + '</b></td>' +
+          '<td>' + (o.cantidad||0).toLocaleString('es-MX') + '</td>' +
+          '<td>' + (o.solicitado||0).toLocaleString('es-MX') + '</td>' +
+          '<td>' + (o.producido||0).toLocaleString('es-MX') + '</td>' +
+          '<td>' + (o.maquina||'') + '</td>' +
+          '<td><button class="gen-btn-action gen-btn-cancel" style="padding:5px 10px;font-size:12px;" ' +
+            'onclick="genCancelarOrdenIndividual(\'' + folio + '\',\'' + o.serie + '\',\'' + o.numero + '\')">CANCELAR</button></td>' +
+          '</tr>';
+      }).join('');
+    })
+    .obtenerDetalleOrdenes(folio, partida);
+}
+
+function genCancelarOrdenIndividual(folio, serie, numero) {
+  // Swal inline confirm below
+  showLoader('Cancelando orden...');
+  google.script.run
+    .withSuccessHandler(function() {
+      hideLoader();
+      sAlert('Orden cancelada.');
+      document.getElementById('gen-modalDetalle').style.display = 'none';
+      genRecargarTodo();
+    })
+    .withFailureHandler(function(err) { hideLoader(); sAlert('Error: ' + err); })
+    .cancelarOrdenEspecifica(folio, serie, numero);
+}
+
+function genCalcularFoliosPreview(id, nOrdenes, serie) {
+  // Encuentra el mayor número ya reservado por otros cambios pendientes de la misma serie
+  var maxReservado = gen_ultimaOrden[serie] || 0;
+  Object.keys(gen_foliosPreview).forEach(function(otherId) {
+    if (otherId === id) return;
+    (gen_foliosPreview[otherId] || []).forEach(function(f) {
+      if (f.serie === serie && f.numero > maxReservado) maxReservado = f.numero;
+    });
+  });
+  var folios = [];
+  for (var i = 1; i <= nOrdenes; i++) folios.push({ serie: serie, numero: maxReservado + i });
+  gen_foliosPreview[id] = folios;
+  return folios;
+}
+
+function genRecalcularTodosFolios() {
+  // Reordena todos los foliosPreview por el orden de inserción en gen_cambios
+  // para que al hacer undo los consecutivos queden correctos
+  var seriesUsadas = {};
+  Object.keys(gen_cambios).forEach(function(id) {
+    var c = gen_cambios[id];
+    if (c.accion !== 'GENERAR') return;
+    var serie = c.serie || '';
+    if (!serie) return;
+    if (!seriesUsadas[serie]) seriesUsadas[serie] = gen_ultimaOrden[serie] || 0;
+    var base = seriesUsadas[serie];
+    var folios = [];
+    for (var i = 1; i <= (c.nOrdenes||1); i++) folios.push({ serie: serie, numero: base + i });
+    gen_foliosPreview[id] = folios;
+    c._foliosPreview = folios;
+    seriesUsadas[serie] = base + (c.nOrdenes||1);
+  });
+}
+
+function genGenerarFast(id) {
+  var item = gen_rawData.find(function(x) { return String(x.id) === String(id); });
+  if (!item) return;
+  var serie  = item.serie || '';
+  var folios = genCalcularFoliosPreview(id, 1, serie);
+  // Advertencia si se sobrepasa cantidad del pedido en >5%
+  var totalConNuevo = (item.planeado||0) + (item.cantidad||0);
+  if (totalConNuevo > (item.cantidad||0) * 1.05) {
+    Swal.fire({ icon:'warning', title:'⚠️ Sobreplanificación', text:'La cantidad a generar supera el 5% del pedido. Se generará de todas formas.', confirmButtonColor:'#e65100', timer:3000, timerProgressBar:true });
+  }
+  gen_cambios[id] = Object.assign({}, item, { accion:'GENERAR', cantPorOrden:item.cantidad, nOrdenes:1, nuevoEstadoPedido:'PLANEADO', serie:serie, _foliosPreview:folios });
+  genRender();
+}
+
+function genAbrirParcial(id) {
+  gen_activeEditId = id;
+  var item = gen_rawData.find(function(x) { return String(x.id) === String(id); });
+  if (!item) return;
+  document.getElementById('gen-mdlTitle').innerText = 'Pedido: ' + item.folio;
+  document.getElementById('gen-mdlInfo').innerText = 'Planeado: ' + (item.planeado||0).toLocaleString('es-MX') + ' de ' + (item.cantidad||0).toLocaleString('es-MX');
+  document.getElementById('gen-inpCantOrd').value = Math.max(0, item.cantidad - (item.planeado||0));
+  document.getElementById('gen-inpNumOrd').value = 1;
+  document.getElementById('gen-modal').style.display = 'flex';
+}
+
+function genConfirmarParcial() {
+  var id   = gen_activeEditId;
+  var item = gen_rawData.find(function(x) { return String(x.id) === String(id); });
+  if (!item) return;
+  var cant = parseFloat(document.getElementById('gen-inpCantOrd').value);
+  var num  = parseInt(document.getElementById('gen-inpNumOrd').value);
+  if (!cant || cant <= 0 || !num || num <= 0) { sAlert('Valores inválidos'); return; }
+  var totalNuevo = (item.planeado||0) + (cant * num);
+  var nEstado    = totalNuevo >= item.cantidad ? 'PLANEADO' : 'PARCIAL';
+  var serie      = item.serie || '';
+  var folios     = genCalcularFoliosPreview(id, num, serie);
+  // Advertencia sobreplanificación
+  if (totalNuevo > (item.cantidad||0) * 1.05) {
+    Swal.fire({ icon:'warning', title:'⚠️ Sobreplanificación', text:'La cantidad supera el 5% del pedido. Se generará de todas formas.', confirmButtonColor:'#e65100', timer:3000, timerProgressBar:true });
+  }
+  gen_cambios[id] = Object.assign({}, item, { accion:'GENERAR', cantPorOrden:cant, nOrdenes:num, nuevoEstadoPedido:nEstado, serie:serie, _foliosPreview:folios });
+  document.getElementById('gen-modal').style.display = 'none';
+  genRender();
+}
+
+function genCancelar(id) {
+  var item = gen_rawData.find(function(x) { return String(x.id) === String(id); });
+  if (!item) return;
+  gen_cambios[id] = Object.assign({}, item, { accion: 'CANCELAR', nuevoEstadoPedido: 'CANCELADO' });
+  genRender();
+}
+
+function genReactivar(id) {
+  var item = gen_rawData.find(function(x) { return String(x.id) === String(id); });
+  if (!item) return;
+  gen_cambios[id] = Object.assign({}, item, { accion: 'ACTIVAR', nuevoEstadoPedido: 'PLANEADO' });
+  genRender();
+}
+
+function genUndo(id) {
+  delete gen_cambios[id];
+  delete gen_foliosPreview[id];
+  genRecalcularTodosFolios();
+  genRender();
+}
+
+function genUpdateFab() {
+  var n = Object.keys(gen_cambios).length;
+  var btn = document.getElementById('gen-btnSave');
+  var cnt = document.getElementById('gen-count');
+  if (btn) btn.style.display = n > 0 ? 'block' : 'none';
+  if (cnt) cnt.innerText = n;
+}
+
+// ── GEN PROGRESS LOADER ─────────────────────────────
+var _genProgTimer = null;
+var _genProgDone  = false;
+
+function genProgStart(totalOrdenes) {
+  _genProgDone = false;
+  var SEGS_POR_ORDEN = 20;
+  var totalSeg = totalOrdenes * SEGS_POR_ORDEN;
+  var elapsed  = 0;
+  var ordenesShown = 0;
+
+  // Mostrar sección de progreso, ocultar dots normales
+  document.getElementById('gen-progress-wrap').style.display = 'flex';
+  document.querySelector('.dot-row').style.display = 'none';
+  document.getElementById('g-loader-txt').style.display = 'none';
+
+  function actualizarUI() {
+    var pct = Math.min((elapsed / totalSeg) * 100, 100);
+    var ordenesActuales = Math.min(Math.floor(elapsed / SEGS_POR_ORDEN), totalOrdenes);
+    if (ordenesActuales !== ordenesShown) {
+      ordenesShown = ordenesActuales;
+      document.getElementById('gen-progress-title').innerText =
+        'Subiendo órdenes ' + ordenesShown + ' de ' + totalOrdenes;
+    }
+    document.getElementById('gen-progress-bar-fill').style.width = pct + '%';
+    var restantes = Math.max(totalSeg - elapsed, 0);
+    document.getElementById('gen-progress-timer').innerText = restantes + ' seg restantes';
+
+    if (elapsed >= totalSeg && !_genProgDone) {
+      // Tiempo agotado, mostrar spinner de espera
+      document.getElementById('gen-progress-bar-fill').style.width = '95%';
+      document.getElementById('gen-progress-timer').innerText = 'Esperando respuesta del servidor…';
+      document.getElementById('gen-progress-spinner').style.display = 'flex';
+    }
+  }
+
+  actualizarUI();
+  if (_genProgTimer) clearInterval(_genProgTimer);
+  _genProgTimer = setInterval(function() {
+    if (_genProgDone) return;
+    elapsed++;
+    actualizarUI();
+  }, 1000);
+}
+
+function genProgFinish(totalOrdenes) {
+  _genProgDone = true;
+  if (_genProgTimer) { clearInterval(_genProgTimer); _genProgTimer = null; }
+  // Llenar barra de golpe y mostrar TERMINADO
+  document.getElementById('gen-progress-bar-fill').style.width = '100%';
+  document.getElementById('gen-progress-bar-fill').style.transition = 'width .3s ease';
+  document.getElementById('gen-progress-title').innerText = '¡TERMINADO! ✅';
+  document.getElementById('gen-progress-title').style.color = '#16a34a';
+  document.getElementById('gen-progress-timer').innerText = totalOrdenes + ' de ' + totalOrdenes + ' órdenes generadas';
+  document.getElementById('gen-progress-spinner').style.display = 'none';
+}
+
+function genProgReset() {
+  _genProgDone = false;
+  if (_genProgTimer) { clearInterval(_genProgTimer); _genProgTimer = null; }
+  document.getElementById('gen-progress-wrap').style.display = 'none';
+  document.querySelector('.dot-row').style.display = 'flex';
+  document.getElementById('g-loader-txt').style.display = 'block';
+  document.getElementById('gen-progress-bar-fill').style.width = '0%';
+  document.getElementById('gen-progress-bar-fill').style.transition = 'width .6s ease';
+  document.getElementById('gen-progress-title').innerText = 'Subiendo órdenes 0 de 0';
+  document.getElementById('gen-progress-title').style.color = '#0f172a';
+  document.getElementById('gen-progress-timer').innerText = '-- seg restantes';
+  document.getElementById('gen-progress-spinner').style.display = 'none';
+}
+// ────────────────────────────────────────────────────
+
+function genPreviaGuardar() {
+  var cambiosList = Object.values(gen_cambios);
+  if (cambiosList.length === 0) return;
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html += '<thead><tr style="background:#263238;color:white;">' +
+    '<th style="padding:8px;">Pedido</th><th style="padding:8px;">Código</th>' +
+    '<th style="padding:8px;">Acción</th><th style="padding:8px;">Cant. Orden</th>' +
+    '<th style="padding:8px;">Folio(s) Est.</th><th style="padding:8px;">Nuevo Estado</th>' +
+    '</tr></thead><tbody>';
+  cambiosList.forEach(function(c) {
+    var accionHtml = '', cantHtml = '', folioHtml = '';
+    if (c.accion === 'GENERAR') {
+      accionHtml = '<span style="color:#2e7d32;font-weight:900;">GENERAR</span>';
+      cantHtml   = (c.cantPorOrden||0).toLocaleString('es-MX') + ' ' + (c.unidad||'') + (c.nOrdenes>1?' × '+c.nOrdenes:'');
+      folioHtml  = (c._foliosPreview && c._foliosPreview.length)
+        ? c._foliosPreview.map(function(f){ return '<b>'+f.serie+'.'+f.numero+'</b>'; }).join(', ')
+        : '<i style="color:#888;">Se asignará al guardar</i>';
+    } else if (c.accion === 'CANCELAR') {
+      accionHtml = '<span style="color:#d32f2f;font-weight:900;">CANCELAR</span>';
+      cantHtml = '—'; folioHtml = '<i style="color:#888;">Cancela todas las órdenes</i>';
+    } else if (c.accion === 'ACTIVAR') {
+      accionHtml = '<span style="color:#1565c0;font-weight:900;">REACTIVAR</span>';
+      cantHtml = '—'; folioHtml = '—';
+    }
+    html += '<tr style="border-bottom:1px solid #eee;">' +
+      '<td style="padding:8px;font-weight:700;">' + (c.folio||'') + '</td>' +
+      '<td style="padding:8px;">' + (c.codigo||'') + '</td>' +
+      '<td style="padding:8px;text-align:center;">' + accionHtml + '</td>' +
+      '<td style="padding:8px;text-align:right;">' + cantHtml + '</td>' +
+      '<td style="padding:8px;">' + folioHtml + '</td>' +
+      '<td style="padding:8px;text-align:center;font-weight:700;">' + (c.nuevoEstadoPedido||'') + '</td>' +
+      '</tr>';
+  });
+  html += '</tbody></table></div>';
+  Swal.fire({
+    title: '📋 Confirmar Cambios', html: html, width: '90%',
+    showCancelButton: true, confirmButtonText: '✅ Confirmar y Guardar',
+    cancelButtonText: 'Revisar', confirmButtonColor: '#2e7d32', cancelButtonColor: '#546e7a',
+    reverseButtons: true
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    var totalOrdenesGEN = cambiosList.filter(function(c){ return c.accion === 'GENERAR'; }).length;
+    var nOrdTotal = 0;
+    cambiosList.forEach(function(c){ if(c.accion==='GENERAR') nOrdTotal += (c.nOrdenes||1); });
+    var usarProgress = nOrdTotal > 0;
+    if (usarProgress) {
+      showLoader('');
+      genProgStart(nOrdTotal);
+    } else {
+      showLoader('Aplicando cambios...');
+    }
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (usarProgress) {
+          genProgFinish(nOrdTotal);
+          setTimeout(function() {
+            genProgReset();
+            hideLoader();
+            if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
+            sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
+            gen_cambios = {}; gen_foliosPreview = {};
+            genRecargarTodo();
+          }, 1200);
+        } else {
+          hideLoader();
+          if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
+          sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
+          gen_cambios = {}; gen_foliosPreview = {};
+          genRecargarTodo();
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (usarProgress) genProgReset();
+        hideLoader();
+        sAlert('Error: ' + err, 'error');
+      })
+      .ejecutarCambiosGenerador(cambiosList);
+  });
+}
+
+function genRecargarTodo() {
+  showLoader('Actualizando datos...');
+  gen_cambios       = {};
+  gen_foliosPreview = {};
+  google.script.run
+    .withSuccessHandler(function(res) {
+      gen_rawData = res;
+      genRender();
+      hideLoader();
+    })
+    .withFailureHandler(function(err) { hideLoader(); sAlert('Error al recargar: ' + err); })
+    .obtenerDatosGenerador();
+}
+
+function genIniciarDelegado() {
+  var body = document.getElementById('gen-body');
+  if (!body || body._genDelegado) return;
+  body._genDelegado = true;
+  body.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-genaccion]');
+    if (!btn) return;
+    var id     = btn.getAttribute('data-genid');
+    var accion = btn.getAttribute('data-genaccion');
+    if (!id) return;
+    if      (accion === 'fast')      genGenerarFast(id);
+    else if (accion === 'partial')   genAbrirParcial(id);
+    else if (accion === 'cancel')    genCancelar(id);
+    else if (accion === 'reactivar') genReactivar(id);
+    else if (accion === 'undo')      genUndo(id);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// MÓDULO: REEMPLAZO PEDIDOS TEM (vista interna del Generador)
+// ══════════════════════════════════════════════════════
+var tem_rawData   = [];
+var tem_cambios   = new Map();
+
+function genIrTEM() {
+  document.getElementById('gen-main-view').style.display = 'none';
+  document.getElementById('tem-view').style.display      = 'block';
+  tem_rawData = [];
+  tem_cambios = new Map();
+  temActualizarBtnSave();
+  showLoader('Cargando Pedidos TEM...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      try {
+        var data = JSON.parse(res);
+        if (data.error) { sAlert('Error en Servidor: ' + data.error); return; }
+        temRenderTabla(data);
+      } catch(e) { sAlert('Error al procesar datos: ' + e); }
+    })
+    .withFailureHandler(function(err) { hideLoader(); sAlert('Error de Conexión: ' + err); })
+    .obtenerPedidosTEM();
+}
+
+// ── Relleno Masivo MP ─────────────────────────────────────────────────────
+function genAbrirRellenoMP() {
+  Swal.fire({
+    title: '🔩 Rellenar MP Masivo',
+    html: '<p style="font-size:13px;color:#555;margin-bottom:12px;">Esto llenará la columna <b>ALERTA_SECUENCIA (Col AD)</b> de todas las órdenes que <b>no tengan MP asignada</b>, tomando la primera MP disponible de RUTAS.</p>' +
+      '<p style="font-size:12px;color:#e65100;">Solo se llenan los procesos: ESTAMPADO, FORJA, ROSCADO, ESTIRADO, TREFILADO, COLATADO.</p>' +
+      '<p style="font-size:12px;color:#888;margin-top:8px;">Las órdenes que ya tienen MP no se modifican.</p>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '✅ Ejecutar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#2e7d32',
+    cancelButtonColor: '#546e7a'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoader('Rellenando MP en órdenes... esto puede tardar unos segundos.');
+    google.script.run
+      .withSuccessHandler(function(json) {
+        hideLoader();
+        var res = JSON.parse(json);
+        if (res.success) {
+          Swal.fire({ icon: 'success', title: '¡Listo!',
+            html: '<p>' + res.msg + '</p><p style="font-size:12px;color:#888;margin-top:8px;">Verifica en la hoja ORDENES columna AD.</p>',
+            confirmButtonColor: '#2e7d32'
+          });
+        } else {
+          sAlert('Error: ' + res.msg, 'error');
+        }
+      })
+      .withFailureHandler(function(e) { hideLoader(); sAlert('Error: ' + e); })
+      .rellenarMPMasivo();
+  });
+}
+window.genAbrirRellenoMP = genAbrirRellenoMP;
+
+
+function genVolverGenerador() {
+  document.getElementById('tem-view').style.display      = 'none';
+  document.getElementById('gen-main-view').style.display = 'block';
+}
+
+function temFiltrar() {
+  var q = (document.getElementById('tem-search').value || '').toUpperCase();
+  var filtered = tem_rawData.filter(function(r) {
+    return (r.pedido + r.codigo + r.desc).toUpperCase().indexOf(q) > -1;
+  });
+  temRenderTabla(filtered);
+}
+
+function temRenderTabla(data) {
+  tem_rawData = data;
+  tem_cambios = new Map();
+  temActualizarBtnSave();
+  var body = document.getElementById('tem-body');
+  if (!body) return;
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">No se encontraron pedidos TEM activos.</td></tr>';
+    return;
+  }
+  var html = '';
+  data.forEach(function(row, idx) {
+    // Formatear fecha YYYY-MM-DD → DD/MM/YYYY
+    var fechaVis = row.fecha || '';
+    if (fechaVis.indexOf('-') > -1) {
+      var p = fechaVis.split('-');
+      if (p.length === 3) fechaVis = p[2] + '/' + p[1] + '/' + p[0];
+    }
+    html += '<tr id="tem-tr-' + idx + '" onclick="temHighlightRow(' + idx + ')">' +
+      '<td><input id="tem-ped-' + idx + '" class="tem-inp" value="' + temEsc(row.pedido) + '" ' +
+        'onfocus="temHighlightRow(' + idx + ')" ' +
+        'oninput="temRegistrar(' + idx + ')" ' +
+        'onkeydown="temNav(event,' + idx + ',\'ped\')"></td>' +
+      '<td style="text-align:center;white-space:nowrap;">' + fechaVis + '</td>' +
+      '<td>' + temEsc(row.codigo) + '</td>' +
+      '<td>' + temEsc(row.desc) + '</td>' +
+      '<td style="text-align:center;">' + (row.partida || '') + '</td>' +
+      '<td><input id="tem-cant-' + idx + '" class="tem-inp-cant" type="number" value="' + (row.cant || 0) + '" ' +
+        'onfocus="temHighlightRow(' + idx + ')" ' +
+        'oninput="temRegistrar(' + idx + ')" ' +
+        'onkeydown="temNav(event,' + idx + ',\'cant\')"></td>' +
+      '<td>' + temEsc(row.unidad) + '</td>' +
+      '</tr>';
+  });
+  body.innerHTML = html;
+}
+
+function temEsc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function temHighlightRow(idx) {
+  var prev = document.querySelector('#tem-body .tem-active-row');
+  if (prev) prev.classList.remove('tem-active-row');
+  var tr = document.getElementById('tem-tr-' + idx);
+  if (tr) tr.classList.add('tem-active-row');
+}
+
+function temNav(e, idx, col) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    var next = document.getElementById(col === 'ped' ? 'tem-ped-' : 'tem-cant-' + (idx + 1)) ||
+               document.getElementById('tem-' + col + '-' + (idx + 1));
+    if (next) { next.focus(); next.select(); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    var prev = document.getElementById('tem-' + col + '-' + (idx - 1));
+    if (prev) { prev.focus(); prev.select(); }
+  }
+}
+
+function temRegistrar(idx) {
+  var row = tem_rawData[idx];
+  if (!row) return;
+  var tr      = document.getElementById('tem-tr-' + idx);
+  var newPed  = document.getElementById('tem-ped-'  + idx).value.trim();
+  var newCant = parseFloat(document.getElementById('tem-cant-' + idx).value) || 0;
+
+  if (newPed !== row.pedido || newCant !== row.cant) {
+    if (tr) tr.classList.add('tem-row-modified');
+    tem_cambios.set(row.id, {
+      id:             row.id,
+      originalPedido: row.pedido,
+      newPedido:      newPed,
+      newCant:        newCant,
+      partida:        row.partida,
+      unidad:         row.unidad
+    });
+  } else {
+    if (tr) tr.classList.remove('tem-row-modified');
+    tem_cambios.delete(row.id);
+  }
+  temActualizarBtnSave();
+}
+
+function temActualizarBtnSave() {
+  var n   = tem_cambios.size;
+  var btn = document.getElementById('tem-btnSave');
+  var cnt = document.getElementById('tem-count');
+  if (btn) btn.style.display = n > 0 ? 'block' : 'none';
+  if (cnt) cnt.innerText = n;
+}
+
+function temGuardar() {
+  var lista = Array.from(tem_cambios.values());
+  if (!lista.length) return;
+  // Swal inline confirm below
+  showLoader('Guardando...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      sAlert(res);
+      genIrTEM(); // recarga con datos frescos
+    })
+    .withFailureHandler(function(err) { hideLoader(); sAlert('Error: ' + err); })
+    .guardarCambiosTEM(lista);
+}

@@ -1,0 +1,464 @@
+function loadNuevaRuta() {
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+
+  // Inyectar CSS una sola vez
+  if (!document.getElementById('nr-style')) {
+    var st = document.createElement('style');
+    st.id = 'nr-style';
+    st.textContent = `
+      #nr-panel { font-family:'Roboto',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); }
+      #nr-panel .nr-header-card { background:white; padding:20px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-top:5px solid #212121; }
+      #nr-panel .nr-title { font-size:22px; font-weight:900; color:#1565c0; margin-bottom:15px; }
+      #nr-panel .nr-field-label { font-size:10px; color:#666; font-weight:900; text-transform:uppercase; margin-bottom:3px; display:block; }
+      #nr-panel .nr-main-input { width:100%; padding:8px; font-size:13px; border:2px solid #ddd; border-radius:4px; font-weight:bold; color:#333; box-sizing:border-box; }
+      #nr-panel .nr-main-input:focus { border-color:#1976d2; outline:none; }
+      #nr-panel .nr-grid-global { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-top:15px; padding-top:15px; border-top:1px solid #eee; }
+      #nr-panel .nr-btn { padding:10px 15px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
+      #nr-panel .nr-btn-primary { background:#1976d2; color:white; width:100%; padding:12px; margin-top:15px; }
+      #nr-panel .nr-btn-action { background:#212121; color:white; }
+      #nr-panel .nr-btn-icon { width:25px; height:25px; padding:0; font-size:12px; border-radius:4px; }
+      #nr-panel .nr-btn-danger { background:#ef5350; color:white; }
+      #nr-panel .nr-btn-config { background:#ff9800; color:white; }
+      #nr-panel .nr-btn-purple { background:#7b1fa2; color:white; width:100%; margin-top:5px; }
+      #nr-panel .nr-workspace { display:none; margin-top:20px; }
+      #nr-panel .nr-view-section { display:none; }
+      #nr-panel .nr-active { display:block; }
+      #nr-panel .nr-route-card { background:white; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); border-left:5px solid #1976d2; }
+      #nr-panel .nr-step-header { font-weight:900; font-size:14px; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px; color:#333; display:flex; justify-content:space-between; align-items:center; }
+      #nr-panel .nr-grid-fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:10px; }
+      #nr-panel .nr-field-input { padding:6px; border:1px solid #ddd; border-radius:4px; font-size:12px; width:100%; background:#fafafa; box-sizing:border-box; }
+      #nr-panel .nr-sortable-item { background:white; border-radius:6px; padding:10px; margin-bottom:8px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+      #nr-panel .nr-handle { font-size:20px; color:#bbb; cursor:grab; }
+      #nr-panel .nr-step-badge { background:#333; color:white; width:25px; height:25px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:12px; font-weight:bold; }
+      #nr-panel .nr-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:2000; }
+      #nr-panel .nr-modal-content { background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; }
+      #nr-panel .nr-checkbox-item { padding:10px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:10px; cursor:pointer; transition:background 0.2s; }
+      #nr-panel .nr-checkbox-item:hover { background:#f9f9f9; }
+      #nr-panel .nr-machine-check { width:20px; height:20px; border:2px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px; color:white; background:white; }
+      #nr-panel .nr-machine-check.selected { background:#1976d2; border-color:#1976d2; }
+      @keyframes nrPulse { 0%{opacity:0.6} 50%{opacity:1} 100%{opacity:0.6} }
+    `;
+    document.head.appendChild(st);
+  }
+
+  // Asegurarse de que Sortable.js esté cargado
+  function nr_initUI() {
+    // Resetear estado
+    nr_datosRuta = [];
+    nr_catalogo = {};
+    nr_maquinasSeleccionadas = [];
+    nr_indiceEditandoMaquinas = -1;
+    nr_codigoVerificado = "";
+
+    ca.innerHTML = `
+<div id="nr-panel">
+  <div class="nr-header-card">
+    <div class="nr-title">NUEVA RUTA DE INGENIERÍA</div>
+    <div style="display:grid; grid-template-columns:1fr 3fr; gap:15px;">
+      <div>
+        <label class="nr-field-label">CÓDIGO (ITEM)</label>
+        <input type="text" class="nr-main-input" id="nr-txtCodigo" placeholder="Ej: 12050..." onblur="nr_validarCodigoExistente()">
+        <button id="nr-btnDuplicar" class="nr-btn nr-btn-purple" style="display:none;" onclick="nr_abrirModalDuplicar()">📑 DUPLICAR RUTA</button>
+      </div>
+      <div>
+        <label class="nr-field-label">DESCRIPCIÓN GENERAL</label>
+        <input type="text" class="nr-main-input" id="nr-txtDescripcion" placeholder="Descripción del producto..." oninput="nr_syncDescripcionGlobal(this.value)">
+      </div>
+    </div>
+    <div class="nr-grid-global">
+      <div>
+        <label class="nr-field-label">FAMILIA</label>
+        <select id="nr-selFamilia" class="nr-main-input"><option value="">-- Seleccionar --</option></select>
+      </div>
+      <div>
+        <label class="nr-field-label">SERIE</label>
+        <select id="nr-selSerie" class="nr-main-input">
+          <option value="P">Serie P</option><option value="T">Serie T</option><option value="F">Serie F</option>
+        </select>
+      </div>
+      <div>
+        <label class="nr-field-label">UNIDAD</label>
+        <select id="nr-selUnidad" class="nr-main-input">
+          <option value="PZA">PZA</option><option value="CTO">CTO</option><option value="ROL">ROL</option><option value="KG">KG</option>
+        </select>
+      </div>
+      <div>
+        <label class="nr-field-label">MP (Materia Prima)</label>
+        <input type="text" id="nr-txtMP" class="nr-main-input" placeholder="Ej: ALAMBRE 1018...">
+      </div>
+      <div>
+        <label class="nr-field-label">CANT. LOTE</label>
+        <input type="number" id="nr-txtCantLote" class="nr-main-input" value="1000">
+      </div>
+      <div>
+        <label class="nr-field-label">GENERA INT</label>
+        <select id="nr-selGeneraInt" class="nr-main-input"><option value="NO">NO</option><option value="SI">SI</option></select>
+      </div>
+    </div>
+    <div id="nr-msgValidacion" style="margin-top:10px; font-weight:bold; font-size:12px;"></div>
+  </div>
+
+  <div id="nr-workspace" class="nr-workspace">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:15px;">
+      <button class="nr-btn nr-btn-action" onclick="nr_toggleMode()" id="nr-btn-mode">⚙️ VER ESTRUCTURA</button>
+    </div>
+    <div id="nr-view-fields" class="nr-view-section nr-active">
+      <div id="nr-container-fields"></div>
+      <div style="text-align:center; padding:20px; color:#999; border:2px dashed #ccc; border-radius:8px; margin-bottom:10px;" id="nr-emptyMsg">Sin procesos. Agrega el primero abajo.</div>
+      <button class="nr-btn nr-btn-action" style="width:100%; margin-bottom:10px;" onclick="nr_abrirModalAgregar()">(+) AGREGAR PROCESO</button>
+      <button class="nr-btn nr-btn-primary" onclick="nr_guardarTodo()">💾 GUARDAR NUEVA RUTA</button>
+    </div>
+    <div id="nr-view-structure" class="nr-view-section">
+      <div id="nr-container-structure"></div>
+      <div style="text-align:center; margin:20px;">
+        <button class="nr-btn nr-btn-action" style="width:100%;" onclick="nr_abrirModalAgregar()">(+) AGREGAR PROCESO</button>
+      </div>
+      <button class="nr-btn nr-btn-primary" onclick="nr_guardarTodo()">💾 GUARDAR ESTRUCTURA</button>
+    </div>
+  </div>
+
+  <!-- MODAL AGREGAR PROCESO -->
+  <div id="nr-modalAdd" class="nr-modal-overlay">
+    <div class="nr-modal-content">
+      <h3>Nuevo Proceso</h3>
+      <label class="nr-field-label">PROCESO</label>
+      <select id="nr-newProc" class="nr-main-input" onchange="nr_cargarMaquinasModalAdd()"></select>
+      <br><br>
+      <label class="nr-field-label">MÁQUINA (Opcional)</label>
+      <select id="nr-newMaq" class="nr-main-input"></select>
+      <br><br>
+      <div style="display:flex; gap:10px;">
+        <button class="nr-btn" style="background:#eee; color:#333; flex:1;" onclick="document.getElementById('nr-modalAdd').style.display='none'">Cancelar</button>
+        <button class="nr-btn nr-btn-primary" style="margin-top:0; flex:1;" onclick="nr_confirmarAgregar()">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MAQUINAS -->
+  <div id="nr-modalMaquinas" class="nr-modal-overlay">
+    <div class="nr-modal-content">
+      <h3 id="nr-lblTituloMaquinas">Seleccionar Máquinas</h3>
+      <div id="nr-listaCheckMaquinas" style="max-height:300px; overflow-y:auto; margin-bottom:15px; border:1px solid #eee;"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="nr-btn" style="background:#eee; color:#333; flex:1;" onclick="document.getElementById('nr-modalMaquinas').style.display='none'">Cancelar</button>
+        <button class="nr-btn nr-btn-primary" style="margin-top:0; flex:1;" onclick="nr_guardarSeleccionMaquinas()">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DUPLICAR -->
+  <div id="nr-modalDuplicar" class="nr-modal-overlay">
+    <div class="nr-modal-content">
+      <h3 style="color:#7b1fa2; margin-top:0;">Duplicar Ruta</h3>
+      <p style="color:#666; margin-bottom:15px;">Ingresa el nuevo código para crear la copia.</p>
+      <label class="nr-field-label">NUEVO CÓDIGO DESTINO</label>
+      <input type="text" id="nr-txtNewCode" class="nr-main-input" placeholder="Ej: 12050_V2">
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button class="nr-btn" style="background:#eee; color:#333; flex:1;" onclick="document.getElementById('nr-modalDuplicar').style.display='none'">Cancelar</button>
+        <button class="nr-btn" style="background:#7b1fa2; color:white; flex:1;" onclick="nr_verificarYDuplicar()">✔ CREAR COPIA</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+    // Cargar catálogos
+    showLoader('Cargando catálogos de Nueva Ruta...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        nr_catalogo = res.maquinas;
+        var selFam = document.getElementById('nr-selFamilia');
+        res.familias.forEach(function(f) {
+          var opt = document.createElement('option'); opt.value = f; opt.text = f; selFam.add(opt);
+        });
+        hideLoader();
+      })
+      .withFailureHandler(function(err) { hideLoader(); Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los catálogos: ' + err }); })
+      .obtenerCatalogosParaNuevaRuta();
+  }
+
+  if (typeof Sortable === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js';
+    s.onload = nr_initUI;
+    document.head.appendChild(s);
+  } else {
+    nr_initUI();
+  }
+}
+
+window.nr_validarCodigoExistente = function() {
+  var codigo = document.getElementById('nr-txtCodigo').value.trim();
+  if (codigo === '' || codigo === nr_codigoVerificado) return;
+  showLoader('Verificando código...');
+  document.getElementById('nr-btnDuplicar').style.display = 'none';
+  google.script.run.withSuccessHandler(function(res) {
+    hideLoader();
+    var msg = document.getElementById('nr-msgValidacion');
+    if (res.existe) {
+      Swal.fire({ icon: 'warning', title: 'Código existente', text: 'El código ' + codigo + ' YA EXISTE. Se cargarán los datos para editar.', confirmButtonColor: '#1976d2' });
+      nr_datosRuta = res.ruta;
+      if (nr_datosRuta.length > 0) {
+        var r = nr_datosRuta[0];
+        document.getElementById('nr-txtDescripcion').value = r.DESCRIPCION || '';
+        if (r.SERIE) document.getElementById('nr-selSerie').value = r.SERIE;
+        if (r.UNIDAD) document.getElementById('nr-selUnidad').value = r.UNIDAD;
+        if (r.MP) document.getElementById('nr-txtMP').value = r.MP;
+        if (r.CANT_LOTE) document.getElementById('nr-txtCantLote').value = r.CANT_LOTE;
+        if (r.GENERA_INT) document.getElementById('nr-selGeneraInt').value = r.GENERA_INT;
+        if (r.FAMILIA) document.getElementById('nr-selFamilia').value = r.FAMILIA;
+      }
+      msg.style.color = '#ef6c00'; msg.innerText = '⚠️ Editando ruta existente';
+      document.getElementById('nr-btnDuplicar').style.display = 'block';
+    } else {
+      nr_datosRuta = [];
+      msg.style.color = 'green'; msg.innerText = '✅ Creando nueva ruta';
+      document.getElementById('nr-btnDuplicar').style.display = 'none';
+    }
+    nr_codigoVerificado = codigo;
+    nr_mostrarWorkspace();
+  }).buscarRutaPorCodigo(codigo);
+};
+
+window.nr_mostrarWorkspace = function() {
+  document.getElementById('nr-workspace').style.display = 'block';
+  nr_renderVistas();
+};
+
+window.nr_toggleMode = function() {
+  var vF = document.getElementById('nr-view-fields');
+  var vS = document.getElementById('nr-view-structure');
+  var btn = document.getElementById('nr-btn-mode');
+  if (vF.classList.contains('nr-active')) {
+    vF.classList.remove('nr-active'); vS.classList.add('nr-active');
+    btn.innerText = '📝 EDITAR DETALLES';
+  } else {
+    vS.classList.remove('nr-active'); vF.classList.add('nr-active');
+    btn.innerText = '⚙️ VER ESTRUCTURA';
+  }
+  nr_renderVistas();
+};
+
+window.nr_renderVistas = function() {
+  nr_enforceRules(); nr_renderVistaCampos(); nr_renderVistaEstructura();
+  var em = document.getElementById('nr-emptyMsg');
+  if (em) em.style.display = nr_datosRuta.length === 0 ? 'block' : 'none';
+};
+
+window.nr_enforceRules = function() {
+  var serie = document.getElementById('nr-selSerie').value;
+  var unidad = document.getElementById('nr-selUnidad').value;
+  var mp = document.getElementById('nr-txtMP').value;
+  var lote = document.getElementById('nr-txtCantLote').value;
+  var genera = document.getElementById('nr-selGeneraInt').value;
+  var desc = document.getElementById('nr-txtDescripcion').value;
+  var familia = document.getElementById('nr-selFamilia').value;
+  nr_datosRuta.forEach(function(step, i) {
+    step.SEC = i + 1;
+    var esUltimo = (i === nr_datosRuta.length - 1);
+    step.PT = esUltimo ? 'SI' : 'NO'; step.VENTA = esUltimo ? 'SI' : 'NO';
+    step.SERIE = serie; step.UNIDAD = unidad; step.MP = mp;
+    step.CANT_LOTE = lote; step.GENERA_INT = genera;
+    step.DESCRIPCION = desc; step.FAMILIA = familia;
+  });
+};
+
+window.nr_syncDescripcionGlobal = function(val) { nr_datosRuta.forEach(function(s){ s.DESCRIPCION = val; }); };
+
+window.nr_updateDato = function(idx, field, val) {
+  nr_datosRuta[idx][field] = val;
+  if (idx === 0) {
+    var campos = ['PESO','ACERO','DIAMETRO','LONGITUD','CUERDA','CUERPO','TIPO'];
+    if (campos.includes(field)) {
+      for (var i = 1; i < nr_datosRuta.length; i++) { nr_datosRuta[i][field] = val; }
+      var inputs = document.querySelectorAll('#nr-panel [data-field="' + field + '"]');
+      inputs.forEach(function(inp, i){ if(i > 0) inp.value = val; });
+    }
+  }
+};
+
+window.nr_renderVistaCampos = function() {
+  var html = '';
+  nr_datosRuta.forEach(function(step, idx) {
+    var labelPT = step.PT == 'SI' ? "<span style='color:green;font-weight:bold'>[FIN]</span>" : '';
+    html += '<div class="nr-route-card">'
+      + '<div class="nr-step-header"><span>#' + step.SEC + ' - ' + step.PROCESO + ' ' + labelPT + '</span>'
+      + '<button class="nr-btn nr-btn-icon nr-btn-danger" onclick="nr_eliminarPaso(' + idx + ')">X</button></div>'
+      + '<div class="nr-grid-fields">'
+      + nr_makeInput(idx,'PESO',step.PESO,'number')
+      + nr_makeInput(idx,'TIPO',step.TIPO)
+      + nr_makeInput(idx,'DIAMETRO',step.DIAMETRO)
+      + nr_makeInput(idx,'LONGITUD',step.LONGITUD)
+      + nr_makeInput(idx,'CUERDA',step.CUERDA)
+      + nr_makeInput(idx,'CUERPO',step.CUERPO)
+      + nr_makeInput(idx,'ACERO',step.ACERO)
+      + '<div><label class="nr-field-label">MÁQUINAS</label><div style="display:flex;gap:5px;">'
+      + '<input class="nr-field-input" value="' + (step.MAQUINA||'') + '" readonly onclick="nr_abrirEditorMaquinas(' + idx + ')">'
+      + '<button class="nr-btn nr-btn-config" style="padding:2px 6px;" onclick="nr_abrirEditorMaquinas(' + idx + ')">⚙️</button></div></div>'
+      + '</div>'
+      + '<div class="nr-grid-fields" style="margin-top:8px; border-top:1px dashed #eee; padding-top:8px;">'
+      + nr_makeInput(idx,'ESP_1',step.ESP_1)
+      + nr_makeInput(idx,'ESP_2',step.ESP_2)
+      + nr_makeInput(idx,'ESP_3',step.ESP_3)
+      + '<div></div></div></div>';
+  });
+  var cont = document.getElementById('nr-container-fields');
+  if (cont) cont.innerHTML = html;
+};
+
+function nr_makeInput(idx, field, val, type) {
+  type = type || 'text';
+  return '<div><label class="nr-field-label">' + field + '</label>'
+    + '<input type="' + type + '" class="nr-field-input" value="' + (val||'') + '" data-field="' + field
+    + '" onchange="nr_updateDato(' + idx + ',\'' + field + '\',this.value)"></div>';
+}
+
+window.nr_renderVistaEstructura = function() {
+  var html = '';
+  nr_datosRuta.forEach(function(step, idx) {
+    html += '<div class="nr-sortable-item" data-idx="' + idx + '">'
+      + '<div class="nr-handle">☰</div>'
+      + '<div class="nr-step-badge">' + step.SEC + '</div>'
+      + '<div style="flex:1"><div style="font-weight:bold;">' + step.PROCESO + '</div>'
+      + '<div style="font-size:10px;color:#666;">' + (step.MAQUINA || 'Sin máquina') + '</div></div>'
+      + '<div style="font-size:10px;font-weight:bold;margin-right:10px;color:' + (step.PT=='SI'?'green':'#ccc') + '">'
+      + (step.PT=='SI'?'FIN':'PROCESO') + '</div>'
+      + '<button class="nr-btn nr-btn-icon nr-btn-config" onclick="nr_abrirEditorMaquinas(' + idx + ')">⚙️</button>'
+      + '<button class="nr-btn nr-btn-icon nr-btn-danger" onclick="nr_eliminarPaso(' + idx + ')">🗑️</button>'
+      + '</div>';
+  });
+  var el = document.getElementById('nr-container-structure');
+  if (!el) return;
+  el.innerHTML = html;
+  new Sortable(el, { handle: '.nr-handle', animation: 150, onEnd: function(){ nr_reordenarDatosDOM(); } });
+};
+
+window.nr_reordenarDatosDOM = function() {
+  var newOrder = [];
+  document.querySelectorAll('#nr-container-structure .nr-sortable-item').forEach(function(c){ newOrder.push(nr_datosRuta[c.getAttribute('data-idx')]); });
+  nr_datosRuta = newOrder; nr_renderVistas();
+};
+
+window.nr_abrirModalAgregar = function() {
+  var sel = document.getElementById('nr-newProc'); sel.innerHTML = '';
+  Object.keys(nr_catalogo).sort().forEach(function(p){ sel.innerHTML += '<option value="' + p + '">' + p + '</option>'; });
+  nr_cargarMaquinasModalAdd();
+  document.getElementById('nr-modalAdd').style.display = 'flex';
+};
+
+window.nr_cargarMaquinasModalAdd = function() {
+  var proc = document.getElementById('nr-newProc').value;
+  var maqs = nr_catalogo[proc] || [];
+  var sel = document.getElementById('nr-newMaq');
+  sel.innerHTML = "<option value=''>-- Ninguna --</option>";
+  maqs.forEach(function(m){ sel.innerHTML += '<option value="' + m + '">' + m + '</option>'; });
+};
+
+window.nr_confirmarAgregar = function() {
+  var proc = document.getElementById('nr-newProc').value;
+  var maq = document.getElementById('nr-newMaq').value;
+  var base = nr_datosRuta.length > 0 ? JSON.parse(JSON.stringify(nr_datosRuta[nr_datosRuta.length-1])) : {};
+  base.PROCESO = proc; base.MAQUINA = maq; base.ID = '';
+  base.ESP_1 = ''; base.ESP_2 = ''; base.ESP_3 = '';
+  nr_datosRuta.push(base);
+  nr_renderVistas();
+  document.getElementById('nr-modalAdd').style.display = 'none';
+};
+
+window.nr_abrirEditorMaquinas = function(idx) {
+  nr_indiceEditandoMaquinas = idx;
+  var paso = nr_datosRuta[idx];
+  var procKey = Object.keys(nr_catalogo).find(function(k){ return k.trim().toUpperCase() === String(paso.PROCESO).trim().toUpperCase(); });
+  var maquinasPosibles = nr_catalogo[procKey] || [];
+  nr_maquinasSeleccionadas = [];
+  if (paso.MAQUINA) {
+    String(paso.MAQUINA).split(',').forEach(function(m){ var s=m.trim(); if(s) nr_maquinasSeleccionadas.push(s); });
+  }
+  var html = '';
+  maquinasPosibles.forEach(function(maq) {
+    var idxSel = nr_maquinasSeleccionadas.indexOf(maq);
+    var claseSel = (idxSel > -1) ? 'selected' : '';
+    var numDisplay = (idxSel > -1) ? (idxSel+1) : '';
+    html += '<div class="nr-checkbox-item" onclick="nr_toggleMaquina(this)" data-maq="' + maq + '">'
+      + '<div class="nr-machine-check ' + claseSel + '">' + numDisplay + '</div>'
+      + '<span style="font-size:13px;">' + maq + '</span></div>';
+  });
+  document.getElementById('nr-lblTituloMaquinas').innerText = 'Máquinas: ' + paso.PROCESO;
+  document.getElementById('nr-listaCheckMaquinas').innerHTML = html;
+  document.getElementById('nr-modalMaquinas').style.display = 'flex';
+};
+
+window.nr_toggleMaquina = function(el) {
+  var maq = el.getAttribute('data-maq');
+  var idx = nr_maquinasSeleccionadas.indexOf(maq);
+  if (idx > -1) nr_maquinasSeleccionadas.splice(idx,1); else nr_maquinasSeleccionadas.push(maq);
+  document.querySelectorAll('#nr-panel .nr-checkbox-item').forEach(function(div) {
+    var m = div.getAttribute('data-maq');
+    var check = div.querySelector('.nr-machine-check');
+    var i = nr_maquinasSeleccionadas.indexOf(m);
+    if (i > -1) { check.innerText = (i+1); check.classList.add('selected'); }
+    else { check.innerText = ''; check.classList.remove('selected'); }
+  });
+};
+
+window.nr_guardarSeleccionMaquinas = function() {
+  nr_datosRuta[nr_indiceEditandoMaquinas].MAQUINA = nr_maquinasSeleccionadas.join(', ');
+  document.getElementById('nr-modalMaquinas').style.display = 'none';
+  nr_renderVistas();
+};
+
+window.nr_eliminarPaso = function(idx) {
+  Swal.fire({ icon: 'question', title: '¿Eliminar paso?', text: 'Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#ef5350' })
+    .then(function(r) { if (r.isConfirmed) { nr_datosRuta.splice(idx,1); nr_renderVistas(); } });
+};
+
+window.nr_abrirModalDuplicar = function() {
+  var current = document.getElementById('nr-txtCodigo').value;
+  document.getElementById('nr-txtNewCode').value = current + '_COPY';
+  document.getElementById('nr-modalDuplicar').style.display = 'flex';
+  document.getElementById('nr-txtNewCode').focus();
+};
+
+window.nr_verificarYDuplicar = function() {
+  var newCode = document.getElementById('nr-txtNewCode').value.trim();
+  if (!newCode) { Swal.fire({ icon: 'warning', text: 'Escribe un código válido.' }); return; }
+  document.getElementById('nr-modalDuplicar').style.display = 'none';
+  showLoader('Verificando disponibilidad...');
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.existe) {
+      hideLoader();
+      Swal.fire({ icon: 'error', title: 'Código ocupado', text: 'El código "' + newCode + '" YA EXISTE. Elige otro código.', confirmButtonColor: '#ef5350' })
+        .then(function(){ document.getElementById('nr-modalDuplicar').style.display = 'flex'; });
+    } else {
+      showLoader('Clonando datos...');
+      setTimeout(function(){ hideLoader(); nr_ejecutarClonacion(newCode); }, 500);
+    }
+  }).buscarRutaPorCodigo(newCode);
+};
+
+window.nr_ejecutarClonacion = function(newCode) {
+  var copiaDatos = JSON.parse(JSON.stringify(nr_datosRuta));
+  copiaDatos.forEach(function(r){ r.ID = ''; });
+  nr_datosRuta = copiaDatos;
+  document.getElementById('nr-txtCodigo').value = newCode;
+  nr_codigoVerificado = newCode;
+  var msg = document.getElementById('nr-msgValidacion');
+  msg.style.color = 'green'; msg.innerText = '✅ Nueva ruta (COPIA)';
+  document.getElementById('nr-btnDuplicar').style.display = 'none';
+  nr_renderVistas();
+  Swal.fire({ icon: 'success', title: '¡Listo!', text: 'Datos clonados al código: ' + newCode + '. Puedes editar y guardar.', confirmButtonColor: '#1976d2' });
+};
+
+window.nr_guardarTodo = function() {
+  nr_enforceRules();
+  if (nr_datosRuta.length === 0) { Swal.fire({ icon: 'warning', text: 'Agrega al menos un proceso.' }); return; }
+  var codigo = document.getElementById('nr-txtCodigo').value;
+  if (!codigo) { Swal.fire({ icon: 'warning', text: 'Falta el CÓDIGO del producto.' }); return; }
+  showLoader('Guardando Nueva Ruta...');
+  var payload = { codigo: codigo, ruta: nr_datosRuta, serie: nr_datosRuta[0].SERIE };
+  google.script.run
+    .withSuccessHandler(function(res) { hideLoader(); Swal.fire({ icon: 'success', title: '¡Guardado!', text: res, confirmButtonColor: '#1976d2' }); })
+    .withFailureHandler(function(err) { hideLoader(); Swal.fire({ icon: 'error', title: 'Error', text: String(err) }); })
+    .guardarNuevaRutaCompleta(payload);
+};
+

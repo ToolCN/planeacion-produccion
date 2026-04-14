@@ -1,0 +1,834 @@
+function loadNuevoPedido(){
+  // ── CSS guard ──────────────────────────────────────────────────────────────
+  if(!document.getElementById('np-style')){
+    var st=document.createElement('style'); st.id='np-style';
+    st.textContent=[
+      '#np-panel { display:flex; flex-direction:column; height:100%; background:#0d1b2a; color:#eceff1; font-family:"Segoe UI",sans-serif; overflow:hidden; }',
+      '#np-panel .np-topbar { background:#0a1628; border-bottom:2px solid #1e3a5f; padding:10px 18px; display:flex; align-items:center; gap:12px; flex-shrink:0; }',
+      '#np-panel .np-topbar-title { font-size:16px; font-weight:900; color:#90caf9; }',
+      '#np-panel .np-body { display:flex; flex:1; overflow:hidden; gap:0; }',
+      '#np-panel .np-form-col { width:420px; flex-shrink:0; background:#0f1f33; border-right:2px solid #1e3a5f; display:flex; flex-direction:column; overflow-y:auto; }',
+      '#np-panel .np-form-inner { padding:18px; }',
+      '#np-panel .np-list-col { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#0d1b2a; }',
+      '#np-panel .np-list-header { padding:12px 18px; background:#0a1628; border-bottom:2px solid #1e3a5f; font-size:13px; font-weight:900; color:#90caf9; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }',
+      '#np-panel .np-list-body { flex:1; overflow-y:auto; padding:12px 18px; }',
+      '#np-panel .np-field { margin-bottom:14px; }',
+      '#np-panel .np-label { font-size:11px; font-weight:900; color:#90caf9; margin-bottom:4px; display:block; }',
+      '#np-panel .np-inp { width:100%; box-sizing:border-box; background:#162535; border:2px solid #1e3a5f; color:#eceff1; border-radius:6px; padding:8px 10px; font-size:13px; transition:border-color 0.2s; }',
+      '#np-panel .np-inp:focus { outline:none; border-color:#42a5f5; }',
+      '#np-panel .np-inp.np-error { border-color:#e53935; animation:np-blink 0.6s ease-in-out 4; }',
+      '#np-panel .np-inp-readonly { background:#1a2535; color:#90a4ae; cursor:default; }',
+      '@keyframes np-blink { 0%,100%{border-color:#e53935;} 50%{border-color:#ff8a80;box-shadow:0 0 8px #ff5252;} }',
+      '#np-panel .np-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }',
+      '#np-panel .np-btn { border:none; border-radius:7px; padding:10px 18px; font-size:13px; font-weight:900; cursor:pointer; transition:opacity 0.2s; }',
+      '#np-panel .np-btn:hover { opacity:0.85; }',
+      '#np-panel .np-btn-save { background:#2e7d32; color:white; }',
+      '#np-panel .np-btn-new { background:#1565c0; color:white; }',
+      '#np-panel .np-btn-mass { background:#6a1b9a; color:white; }',
+      '#np-panel .np-btn-sm { padding:5px 12px; font-size:11px; border-radius:5px; }',
+      '#np-panel .np-desc-box { background:#162535; border:2px solid #1e3a5f; border-radius:6px; padding:8px 10px; font-size:12px; color:#90a4ae; min-height:36px; }',
+      '#np-panel .np-actions { display:flex; gap:8px; flex-wrap:wrap; padding:14px 18px; border-top:2px solid #1e3a5f; flex-shrink:0; }',
+      '#np-panel .np-card { background:#0f1f33; border:2px solid #1e3a5f; border-radius:10px; padding:12px 14px; margin-bottom:10px; position:relative; }',
+      '#np-panel .np-card.np-card-dup { border-color:#e53935; background:#1c0f0f; }',
+      '#np-panel .np-card-num { font-size:10px; color:#546e7a; position:absolute; top:8px; right:10px; }',
+      '#np-panel .np-card-title { font-size:14px; font-weight:900; color:#ffe082; }',
+      '#np-panel .np-card-sub { font-size:11px; color:#90a4ae; margin-top:2px; }',
+      '#np-panel .np-card-badge { display:inline-block; font-size:10px; font-weight:900; padding:2px 7px; border-radius:20px; background:#1565c0; color:white; margin-top:4px; }',
+      '#np-panel .np-card-badge.dup { background:#c62828; }',
+      '#np-panel .np-empty { color:#546e7a; font-size:13px; padding:30px; text-align:center; }',
+      '#np-panel .np-divider { border:none; border-top:1px solid #1e3a5f; margin:14px 0; }',
+      '#np-panel .np-mass-overlay { display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; }',
+      '#np-panel .np-mass-overlay.open { display:flex; }',
+      '#np-panel .np-mass-box { background:#0f1f33; border:2px solid #1e3a5f; border-radius:14px; width:900px; max-width:96vw; max-height:88vh; display:flex; flex-direction:column; }',
+      '#np-panel .np-mass-title { padding:14px 18px; font-size:15px; font-weight:900; color:#90caf9; border-bottom:2px solid #1e3a5f; display:flex; justify-content:space-between; align-items:center; }',
+      '#np-panel .np-mass-body { flex:1; overflow-y:auto; padding:14px 18px; }',
+      '#np-panel .np-mass-foot { padding:12px 18px; border-top:2px solid #1e3a5f; display:flex; gap:10px; justify-content:flex-end; }',
+      '#np-panel .np-mass-drop { border:3px dashed #1e3a5f; border-radius:10px; padding:30px; text-align:center; color:#546e7a; cursor:pointer; margin-bottom:14px; transition:border-color 0.2s; }',
+      '#np-panel .np-mass-drop:hover,.np-mass-drop.drag-over { border-color:#42a5f5; color:#90caf9; }',
+      '#np-panel .np-prev-table { width:100%; border-collapse:collapse; font-size:12px; }',
+      '#np-panel .np-prev-table th { background:#0a1628; color:#90caf9; padding:7px 8px; text-align:left; position:sticky; top:0; z-index:1; }',
+      '#np-panel .np-prev-table td { padding:5px 8px; border-bottom:1px solid #1e3a5f; vertical-align:middle; }',
+      '#np-panel .np-prev-table tr.dup-row { background:#1c0f0f; }',
+      '#np-panel .np-prev-table tr.dup-row td { color:#ef9a9a; }',
+      '#np-panel .np-prev-inp { background:#162535; border:1px solid #37474f; color:#eceff1; border-radius:4px; padding:3px 6px; font-size:11px; width:100%; box-sizing:border-box; }',
+      '#np-panel .np-prev-inp.dup { border-color:#e53935; }',
+      '#np-panel .np-spinner { border:3px solid #1e3a5f; border-top:3px solid #42a5f5; border-radius:50%; width:18px; height:18px; animation:np-spin 0.8s linear infinite; display:inline-block; vertical-align:middle; }',
+      '@keyframes np-spin { to{transform:rotate(360deg);} }',
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  // ── HTML ───────────────────────────────────────────────────────────────────
+  var ca=document.getElementById('content-area'); if(!ca) return;
+  ca.innerHTML=
+    '<div id="np-panel">'+
+      '<div class="np-topbar">'+
+        '<span class="np-topbar-title">📝 NUEVO PEDIDO</span>'+
+        '<button class="np-btn np-btn-mass" onclick="np_abrirMasivo()">📤 Importar Excel</button>'+
+      '</div>'+
+      '<div class="np-body">'+
+        // ── Columna formulario ──
+        '<div class="np-form-col">'+
+          '<div class="np-form-inner">'+
+            '<div class="np-field">'+
+              '<label class="np-label">CÓDIGO <span id="np-codSpinner" style="display:none;"><span class="np-spinner"></span></span></label>'+
+              '<input class="np-inp" id="np-inpCodigo" placeholder="000010001" maxlength="12" oninput="np_buscarCodigo()" autofocus>'+
+            '</div>'+
+            '<div class="np-field">'+
+              '<label class="np-label">DESCRIPCIÓN</label>'+
+              '<div class="np-desc-box" id="np-descBox">—</div>'+
+            '</div>'+
+            '<div class="np-row2">'+
+              '<div class="np-field">'+
+                '<label class="np-label">CANTIDAD</label>'+
+                '<input class="np-inp" id="np-inpCantidad" type="text" inputmode="numeric" placeholder="0" autocomplete="off" onkeydown="np_cantKeydown(event)" oninput="np_cantFormat(this)">'+
+              '</div>'+
+              '<div class="np-field">'+
+                '<label class="np-label">UNIDAD</label>'+
+                '<input class="np-inp np-inp-readonly" id="np-inpUnidad" readonly placeholder="—">'+
+              '</div>'+
+            '</div>'+
+            '<hr class="np-divider">'+
+            '<div class="np-field">'+
+              '<label class="np-label">PEDIDO</label>'+
+              '<input class="np-inp" id="np-inpPedido" placeholder="QSQ-65524" autocomplete="off" oninput="np_validarPedido()">'+ 
+            '</div>'+
+            '<div class="np-field">'+
+              '<label class="np-label">PARTIDA</label>'+
+              '<input class="np-inp" id="np-inpPartida" type="number" value="1" min="1" autocomplete="off" oninput="np_validarPedido()">'+ 
+            '</div>'+
+            '<div class="np-field">'+
+              '<label class="np-label">FECHA</label>'+
+              '<input class="np-inp" id="np-inpFecha" type="date">'+
+            '</div>'+
+          '</div>'+
+          '<div class="np-actions">'+
+            '<button class="np-btn np-btn-save" onclick="np_guardar()">💾 Guardar en Sheets</button>'+
+            '<button class="np-btn np-btn-new" onclick="np_nuevo()">➕ Nuevo</button>'+
+          '</div>'+
+        '</div>'+
+        // ── Columna lista ──
+        '<div class="np-list-col">'+
+          '<div class="np-list-header">'+
+            '<span>📋 Pedidos en cola <span id="np-listCount" style="color:#ffe082;">(0)</span></span>'+
+            '<button class="np-btn np-btn-save np-btn-sm" onclick="np_guardarTodos()">💾 Guardar Todo</button>'+
+          '</div>'+
+          '<div class="np-list-body" id="np-listBody">'+
+            '<div class="np-empty">Agrega pedidos con el botón ➕ Nuevo</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+
+      // ── Modal masivo ──
+      '<div class="np-mass-overlay" id="np-massOverlay">'+
+        '<div class="np-mass-box">'+
+          '<div class="np-mass-title">'+
+            '<span>📤 Importar Excel Masivo</span>'+
+            '<button style="background:none;border:none;color:#90a4ae;font-size:18px;cursor:pointer;" onclick="np_cerrarMasivo()">✖</button>'+
+          '</div>'+
+          '<div class="np-mass-body">'+
+            '<div class="np-mass-drop" id="np-dropZone" onclick="document.getElementById(\'np-fileInput\').click()">'+
+              '<div style="font-size:28px;">📂</div>'+
+              '<div style="margin-top:8px;font-weight:700;">Arrastra tu Excel aquí o haz clic para seleccionar</div>'+
+              '<div style="font-size:11px;margin-top:4px;">Columnas requeridas: PEDIDO, PARTIDA, FECHA, CODIGO, CANTIDAD</div>'+
+            '</div>'+
+            '<input type="file" id="np-fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="np_procesarArchivo(this)">'+
+            '<div id="np-prevBody"></div>'+
+          '</div>'+
+          '<div class="np-mass-foot">'+
+            '<button class="np-btn" style="background:#37474f;color:white;" onclick="np_cerrarMasivo()">Cancelar</button>'+
+            '<button class="np-btn np-btn-save" id="np-btnGuardarMasivo" style="display:none;" onclick="np_guardarMasivo()">💾 Guardar válidos</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  np_init();
+}
+window.loadNuevoPedido = loadNuevoPedido;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ESTADO DEL MÓDULO
+// ═══════════════════════════════════════════════════════════════════════════
+var np_pedidosEnCola   = [];   // pedidos agregados con ➕ Nuevo, aún no en Sheets
+var np_pedidosSheets   = [];   // pedidos existentes traídos de Sheets (solo PEDIDO+PARTIDA)
+var np_codigoActual    = null; // {desc, unidad} del código buscado
+var np_codeTimer       = null; // debounce búsqueda de código
+var np_pedTimer        = null; // debounce validación de pedido
+var np_catalogoRutas   = {};   // mapa codigo→{desc,unidad} cargado al iniciar (búsqueda local)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+function np_init(){
+  // Fecha por default
+  var hoy=new Date(), mm=String(hoy.getMonth()+1).padStart(2,'0'), dd=String(hoy.getDate()).padStart(2,'0');
+  var inp=document.getElementById('np-inpFecha');
+  if(inp) inp.value=hoy.getFullYear()+'-'+mm+'-'+dd;
+
+  np_pedidosEnCola=[];
+  np_codigoActual=null;
+
+  // Limpiar campos explícitamente para evitar autocompletado del navegador
+  setTimeout(function(){
+    var p=document.getElementById('np-inpPedido'); if(p) p.value='';
+    var r=document.getElementById('np-inpPartida'); if(r) r.value='1';
+    var inpPar=document.getElementById('np-inpPartida'); if(inpPar){ inpPar.style.borderColor=''; inpPar.classList.remove('np-error'); }
+    document.getElementById('np-inpCodigo').focus();
+  }, 100);
+
+  // Cargar pedidos existentes de Sheets para validar duplicados
+  np_cargarPedidosExistentes();
+  // Cargar catálogo de RUTAS en memoria para búsqueda local instantánea
+  np_cargarCatalogoRutas();
+}
+
+function np_verDebug(){
+  var d=document.getElementById('np-debug-box');
+  if(!d) return;
+  d.style.display = d.style.display==='none' ? 'block' : 'none';
+  if(d.style.display==='block'){
+    np_debug('=== ESTADO ACTUAL === Sheets:'+np_pedidosSheets.length+' | Cola:'+np_pedidosEnCola.length);
+    np_debug('Primeros 5 de Sheets: '+JSON.stringify(np_pedidosSheets.slice(0,5)));
+    var inpPed=document.getElementById('np-inpPedido');
+    var inpPar=document.getElementById('np-inpPartida');
+    if(inpPed&&inpPar) np_debug('Form actual: pedido='+inpPed.value+' partida='+inpPar.value);
+  }
+}
+window.np_verDebug=np_verDebug;
+
+function np_cargarPedidosExistentes(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      r=(typeof r==='string')?JSON.parse(r):r;
+      np_pedidosSheets=(r&&r.datos)||[];
+    })
+    .withFailureHandler(function(){np_pedidosSheets=[];})
+    .npObtenerPedidosExistentes();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VALIDAR DUPLICADO
+// ═══════════════════════════════════════════════════════════════════════════
+function np_normPar(p){ return String(Math.round(Number(p)||1)); }
+
+// Igual que np_esDuplicado pero ignora el item en posición 'exceptIdx' de la cola
+function np_esDuplicadoExcept(pedido, partida, exceptIdx){
+  var ped=np_normPed(pedido);
+  var par=np_normPar(partida);
+  if(!ped) return false;
+  var enSheets=np_pedidosSheets.some(function(x){
+    return np_normPed(x.pedido)===ped && np_normPar(x.partida)===par;
+  });
+  if(enSheets) return true;
+  var enCola=np_pedidosEnCola.some(function(x,idx){
+    if(idx===exceptIdx) return false; // ignorar a sí mismo
+    return np_normPed(x.pedido)===ped && np_normPar(x.partida)===par;
+  });
+  return enCola;
+}
+function np_normPed(p){ return String(p||'').trim().toUpperCase(); }
+
+function np_debug(msg){
+  var d=document.getElementById('np-debug-box');
+  if(d){ var t=new Date().toLocaleTimeString(); d.innerHTML='<b style="color:#ffe082;">'+t+'</b> '+msg+'<br>'+d.innerHTML; }
+  console.log('[NP]', msg);
+}
+
+function np_esDuplicado(pedido, partida){
+  var ped=np_normPed(pedido);
+  var par=np_normPar(partida);
+  if(!ped) return false;
+
+  var matchSheet=null;
+  var enSheets=np_pedidosSheets.some(function(x){
+    var xp=np_normPed(x.pedido), xr=np_normPar(x.partida);
+    if(xp===ped && xr===par){ matchSheet={pedido:x.pedido,partida:x.partida,tipo:'raw',xp:xp,xr:xr}; return true; }
+    return false;
+  });
+
+  var matchCola=null;
+  var enCola=np_pedidosEnCola.some(function(x){
+    var xp=np_normPed(x.pedido), xr=np_normPar(x.partida);
+    if(xp===ped && xr===par){ matchCola={pedido:x.pedido,partida:x.partida}; return true; }
+    return false;
+  });
+
+  var resultado=enSheets||enCola;
+  np_debug('esDuplicado('+ped+', par='+par+') → '+resultado+
+    ' | Sheets:'+np_pedidosSheets.length+' registros'+
+    (enSheets?' ✅MATCH sheets raw='+JSON.stringify(matchSheet):'')+ 
+    (enCola?' ✅MATCH cola='+JSON.stringify(matchCola):''));
+  return resultado;
+}
+
+function np_validarPedido(){
+  clearTimeout(np_pedTimer);
+  np_pedTimer=setTimeout(function(){
+    var inpPed=document.getElementById('np-inpPedido');
+    var inpPar=document.getElementById('np-inpPartida');
+    if(!inpPed||!inpPar) return;
+    var ped=inpPed.value.trim();
+    var par=inpPar.value.trim();
+    // Limpiar estilos si campos vacíos
+    if(!ped||!par){
+      inpPar.style.borderColor='';
+      inpPar.classList.remove('np-error');
+      return;
+    }
+    if(np_esDuplicado(ped, par)){
+      // Rojo parpadeante en partida
+      inpPar.classList.remove('np-error');
+      void inpPar.offsetWidth; // force reflow para reiniciar animación
+      inpPar.classList.add('np-error');
+      inpPar.style.borderColor='#e53935';
+    } else {
+      // Verde: OK
+      inpPar.classList.remove('np-error');
+      inpPar.style.borderColor='#43a047';
+    }
+  }, 300);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARGAR CATÁLOGO DE RUTAS EN MEMORIA (una sola vez al iniciar)
+// ═══════════════════════════════════════════════════════════════════════════
+function np_cargarCatalogoRutas(){
+  np_catalogoRutas = {};
+  google.script.run
+    .withSuccessHandler(function(r){
+      r = (typeof r === 'string') ? JSON.parse(r) : r;
+      if(r && r.success && r.mapa){
+        np_catalogoRutas = r.mapa;
+      }
+    })
+    .withFailureHandler(function(e){
+      console.warn('np_cargarCatalogoRutas error:', e);
+    })
+    .npObtenerCatalogoRutas();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUSCAR CÓDIGO EN RUTAS (debounce 500ms)
+// ═══════════════════════════════════════════════════════════════════════════
+function np_buscarCodigo(){
+  np_codigoActual=null;
+  var inp=document.getElementById('np-inpCodigo'); if(!inp) return;
+  var raw=inp.value.trim();
+  var db=document.getElementById('np-descBox');
+  var iu=document.getElementById('np-inpUnidad');
+  if(!raw){ if(db) db.innerText='—'; if(iu) iu.value=''; return; }
+
+  // Normalizar: solo dígitos, 8 dígitos → agregar cero a la izquierda
+  var codNum = raw.replace(/[^0-9]/g,'');
+  if(codNum.length === 8) codNum = '0' + codNum;
+
+  // Búsqueda local instantánea en el catálogo precargado
+  if(Object.keys(np_catalogoRutas).length > 0){
+    var encontrado = np_catalogoRutas[codNum];
+    if(encontrado){
+      np_codigoActual = {desc: encontrado.desc, unidad: encontrado.unidad, codigo: codNum};
+      if(db) db.innerText = encontrado.desc;
+      if(iu) iu.value = encontrado.unidad;
+      document.getElementById('np-inpCodigo').value = codNum; // normalizar
+    } else {
+      np_codigoActual = null;
+      if(db) db.innerText = '⚠️ Código no encontrado en RUTAS';
+      if(iu) iu.value = '';
+    }
+    return;
+  }
+
+  // Fallback: catálogo aún no cargado → usar backend con debounce
+  clearTimeout(np_codeTimer);
+  np_codeTimer=setTimeout(function(){
+    var sp=document.getElementById('np-codSpinner'); if(sp) sp.style.display='inline';
+    google.script.run
+      .withSuccessHandler(function(r){
+        r=(typeof r==='string')?JSON.parse(r):r;
+        var sp=document.getElementById('np-codSpinner'); if(sp) sp.style.display='none';
+        if(r&&r.encontrado){
+          np_codigoActual={desc:r.desc, unidad:r.unidad, codigo:r.codigo};
+          var db=document.getElementById('np-descBox'); if(db) db.innerText=r.desc;
+          var iu=document.getElementById('np-inpUnidad'); if(iu) iu.value=r.unidad;
+          document.getElementById('np-inpCodigo').value=r.codigo;
+        } else {
+          np_codigoActual=null;
+          var db=document.getElementById('np-descBox'); if(db) db.innerText='⚠️ Código no encontrado en RUTAS';
+          var iu=document.getElementById('np-inpUnidad'); if(iu) iu.value='';
+        }
+      })
+      .withFailureHandler(function(e){
+        var sp=document.getElementById('np-codSpinner'); if(sp) sp.style.display='none';
+        var db=document.getElementById('np-descBox'); if(db) db.innerText='Error buscando código';
+      })
+      .npBuscarCodigo(raw);
+  }, 500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEER FORMULARIO
+// ═══════════════════════════════════════════════════════════════════════════
+function np_leerForm(){
+  return {
+    pedido:   (document.getElementById('np-inpPedido')||{}).value||'',
+    partida:  (document.getElementById('np-inpPartida')||{}).value||'1',
+    fecha:    (document.getElementById('np-inpFecha')||{}).value||'',
+    codigo:   np_codigoActual?(np_codigoActual.codigo||''):'',
+    desc:     np_codigoActual?(np_codigoActual.desc||''):'',
+    unidad:   np_codigoActual?(np_codigoActual.unidad||''):'',
+    cantidad: String(np_cantVal()),
+  };
+}
+
+function np_validarForm(d){
+  if(!d.pedido.trim())    return 'Ingresa el número de PEDIDO.';
+  if(!d.partida.trim())   return 'Ingresa la PARTIDA.';
+  if(!d.fecha.trim())     return 'Ingresa la FECHA.';
+  if(!np_codigoActual)    return 'Busca un CÓDIGO válido antes de guardar.';
+  if(!d.cantidad||isNaN(Number(d.cantidad))||Number(d.cantidad)<=0) return 'Ingresa una CANTIDAD válida.';
+  if(np_esDuplicado(d.pedido,d.partida)) return 'El PEDIDO + PARTIDA ya existe. Modifica la PARTIDA.';
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GUARDAR (un pedido directo a Sheets)
+// ═══════════════════════════════════════════════════════════════════════════
+function np_guardar(){
+  var d=np_leerForm();
+  var err=np_validarForm(d); if(err){ Swal.fire({icon:'warning',title:'Atención',text:err,background:'#0f1f33',color:'#eceff1'}); return; }
+  showLoader('Guardando pedido...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      hideLoader();
+      r=(typeof r==='string')?JSON.parse(r):r;
+      if(r&&r.success){
+        np_pedidosSheets.push({pedido:d.pedido.trim().toUpperCase(),partida:String(d.partida).trim()});
+        Swal.fire({icon:'success',title:'¡Guardado!',text:'Pedido '+d.pedido+' P'+d.partida+' guardado.',background:'#0f1f33',color:'#eceff1',timer:2000,showConfirmButton:false});
+        np_limpiarForm();
+      } else {
+        Swal.fire({icon:'error',title:'Error',text:(r&&r.msg)||'Error al guardar.',background:'#0f1f33',color:'#eceff1'});
+      }
+    })
+    .withFailureHandler(function(e){ hideLoader(); Swal.fire({icon:'error',title:'Error',text:String(e),background:'#0f1f33',color:'#eceff1'}); })
+    .npGuardarPedido(d);
+}
+window.np_guardar=np_guardar;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NUEVO (agregar a cola y preparar siguiente)
+// ═══════════════════════════════════════════════════════════════════════════
+function np_nuevo(){
+  var d=np_leerForm();
+  var err=np_validarForm(d); if(err){ Swal.fire({icon:'warning',title:'Atención',text:err,background:'#0f1f33',color:'#eceff1'}); return; }
+  // Agregar a cola
+  np_pedidosEnCola.push(JSON.parse(JSON.stringify(d)));
+  np_renderLista();
+  // Preparar siguiente: incrementar consecutivo de pedido
+  var siguiente=np_incrementarPedido(d.pedido);
+  document.getElementById('np-inpPedido').value=siguiente;
+  // Resetear partida a 1
+  document.getElementById('np-inpPartida').value='1';
+  // Mantener fecha
+  // Limpiar código y desc
+  document.getElementById('np-inpCodigo').value='';
+  document.getElementById('np-descBox').innerText='—';
+  document.getElementById('np-inpUnidad').value='';
+  document.getElementById('np-inpCantidad').value=''; 
+  np_codigoActual=null;
+  // Validar el nuevo consecutivo por si ya existe
+  np_validarPedido();
+  document.getElementById('np-inpCodigo').focus();
+}
+window.np_nuevo=np_nuevo;
+
+function np_incrementarPedido(ped){
+  // Formatos: QSQ-65524 → QSQ-65525 | ZEQ-11848 → ZEQ-11849 | INT-0001 → INT-0002
+  var m=ped.trim().match(/^([A-Za-z\-]+)(\d+)$/);
+  if(m){
+    var num=parseInt(m[2])+1;
+    var pad=String(m[2]).replace(/[0-9]/g,'0').length;
+    return m[1]+String(num).padStart(pad,'0');
+  }
+  return ped;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER LISTA
+// ═══════════════════════════════════════════════════════════════════════════
+function np_renderLista(){
+  var cnt=document.getElementById('np-listCount'); if(cnt) cnt.innerText='('+np_pedidosEnCola.length+')';
+  var lb=document.getElementById('np-listBody'); if(!lb) return;
+  if(!np_pedidosEnCola.length){ lb.innerHTML='<div class="np-empty">Agrega pedidos con el botón ➕ Nuevo</div>'; return; }
+  var html='';
+  np_pedidosEnCola.forEach(function(p,i){
+    var dup=np_esDuplicadoExcept(p.pedido,p.partida,i);
+    html+='<div class="np-card'+(dup?' np-card-dup':'')+'">'+
+      '<div class="np-card-num">#'+(i+1)+'</div>'+
+      '<div class="np-card-title">'+p.pedido+' — P'+p.partida+'</div>'+
+      '<div class="np-card-sub">'+p.codigo+' · '+p.desc+'</div>'+
+      '<div class="np-card-sub">Cant: <b style="color:#ffe082;">'+Number(p.cantidad).toLocaleString()+'</b> '+p.unidad+' · '+p.fecha+'</div>'+
+      (dup?'<span class="np-card-badge dup">⚠ DUPLICADO</span>':'<span class="np-card-badge">PENDIENTE</span>')+
+      '<button style="position:absolute;top:8px;right:28px;background:#c62828;color:white;border:none;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;" onclick="np_eliminarDeCola('+i+')">✖</button>'+
+    '</div>';
+  });
+  lb.innerHTML=html;
+}
+
+function np_eliminarDeCola(i){
+  np_pedidosEnCola.splice(i,1);
+  np_renderLista();
+}
+window.np_eliminarDeCola=np_eliminarDeCola;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GUARDAR TODOS (cola → Sheets)
+// ═══════════════════════════════════════════════════════════════════════════
+function np_guardarTodos(){
+  var validos=np_pedidosEnCola.filter(function(p,i){ return !np_esDuplicadoExcept(p.pedido,p.partida,i); });
+  var dups=np_pedidosEnCola.filter(function(p,i){ return np_esDuplicadoExcept(p.pedido,p.partida,i); });
+  if(!validos.length){ Swal.fire({icon:'warning',title:'Sin pedidos válidos',text:'Todos los pedidos en cola están duplicados.',background:'#0f1f33',color:'#eceff1'}); return; }
+  var msg='Se guardarán '+validos.length+' pedido(s).';
+  if(dups.length) msg+=' Se omitirán '+dups.length+' duplicado(s).';
+  Swal.fire({icon:'question',title:'¿Guardar todo?',text:msg,background:'#0f1f33',color:'#eceff1',showCancelButton:true,confirmButtonText:'Sí, guardar'}).then(function(res){
+    if(!res.isConfirmed) return;
+    showLoader('Guardando '+validos.length+' pedidos...');
+    google.script.run
+      .withSuccessHandler(function(r){
+        hideLoader();
+        r=(typeof r==='string')?JSON.parse(r):r;
+        if(r&&r.success){
+          // Actualizar lista local de Sheets
+          validos.forEach(function(p){ np_pedidosSheets.push({pedido:p.pedido.trim().toUpperCase(),partida:String(p.partida).trim()}); });
+          np_pedidosEnCola=dups; // dejar solo los que no se guardaron
+          np_renderLista();
+          Swal.fire({icon:'success',title:'¡Listo!',text:'Se guardaron '+r.guardados+' pedido(s).',background:'#0f1f33',color:'#eceff1',timer:2500,showConfirmButton:false});
+        } else {
+          Swal.fire({icon:'error',title:'Error',text:(r&&r.msg)||'Error al guardar.',background:'#0f1f33',color:'#eceff1'});
+        }
+      })
+      .withFailureHandler(function(e){ hideLoader(); Swal.fire({icon:'error',title:'Error',text:String(e),background:'#0f1f33',color:'#eceff1'}); })
+      .npGuardarPedidosMasivos(validos);
+  });
+}
+window.np_guardarTodos=np_guardarTodos;
+
+function np_cantFormat(inp){
+  var raw=inp.value.replace(/[^0-9]/g,'');
+  if(raw==='') { inp.value=''; return; }
+  inp.value=Number(raw).toLocaleString('en-US');
+}
+function np_cantKeydown(e){
+  // Solo permitir dígitos, backspace, delete, tab, flechas
+  if(e.key==='Tab'){ e.preventDefault(); document.getElementById('np-inpPedido').focus(); return; }
+  if(['Backspace','Delete','ArrowLeft','ArrowRight','Home','End','Tab'].indexOf(e.key)>-1) return;
+  if(!/^[0-9]$/.test(e.key)) e.preventDefault();
+}
+function np_cantVal(){
+  var v=(document.getElementById('np-inpCantidad')||{}).value||'';
+  return Number(v.replace(/,/g,''))||0;
+}
+function np_limpiarForm(){
+  document.getElementById('np-inpPedido').value='';
+  document.getElementById('np-inpPartida').value='1';
+  document.getElementById('np-inpCodigo').value='';
+  document.getElementById('np-descBox').innerText='—';
+  document.getElementById('np-inpUnidad').value='';
+  document.getElementById('np-inpCantidad').value=''; 
+  np_codigoActual=null;
+  document.getElementById('np-inpPedido').focus();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORTACIÓN MASIVA EXCEL
+// ═══════════════════════════════════════════════════════════════════════════
+function np_abrirMasivo(){
+  document.getElementById('np-massOverlay').classList.add('open');
+  document.getElementById('np-prevBody').innerHTML='';
+  document.getElementById('np-btnGuardarMasivo').style.display='none';
+  document.getElementById('np-fileInput').value='';
+  // Drag & drop
+  var dz=document.getElementById('np-dropZone');
+  dz.ondragover=function(e){e.preventDefault();dz.classList.add('drag-over');};
+  dz.ondragleave=function(){dz.classList.remove('drag-over');};
+  dz.ondrop=function(e){e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0]) np_procesarArchivoObj(e.dataTransfer.files[0]);};
+}
+window.np_abrirMasivo=np_abrirMasivo;
+
+function np_cerrarMasivo(){ document.getElementById('np-massOverlay').classList.remove('open'); }
+window.np_cerrarMasivo=np_cerrarMasivo;
+
+function np_procesarArchivo(inp){ if(inp.files[0]) np_procesarArchivoObj(inp.files[0]); }
+window.np_procesarArchivo=np_procesarArchivo;
+
+var np_massData=[]; // filas parseadas del excel
+
+function np_procesarArchivoObj(file){
+  var pb=document.getElementById('np-prevBody');
+  pb.innerHTML='<div style="color:#90caf9;padding:12px;"><span class="np-spinner"></span> Procesando archivo...</div>';
+  document.getElementById('np-btnGuardarMasivo').style.display='none';
+
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var wb=XLSX.read(ev.target.result,{type:'array', cellDates:true});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      // Leer por posición de celda: datos desde fila 5 (índice 4)
+      // Columnas: B=1, C=2, D=3, I=8, N=13, O=14  (base 0)
+      var ref=XLSX.utils.decode_range(ws['!ref']||'A1:A1');
+      var filas=[];
+      for(var r=4; r<=ref.e.r; r++){  // fila 5 en adelante (índice 4)
+        var getC=function(col){
+          var cell=ws[XLSX.utils.encode_cell({r:r,c:col})];
+          if(!cell||cell.v===undefined||cell.v===null) return '';
+          if(cell.t==='d') return cell.v; // fecha como Date object
+          return String(cell.v).trim();
+        };
+        var pedRaw  = getC(2);   // C: PEDIDO
+        var fechaRaw= getC(3);   // D: FECHA
+        var codRaw  = getC(8);   // I: CODIGO
+        var parRaw  = getC(13);  // N: PARTIDA
+        var cantRaw = getC(14);  // O: CANTIDAD
+        // Saltar filas completamente vacías
+        if(!pedRaw && !codRaw) continue;
+        filas.push({pedRaw:pedRaw, fechaRaw:fechaRaw, codRaw:codRaw, parRaw:parRaw, cantRaw:cantRaw});
+      }
+      np_massData=np_normalizarFilas(filas);
+      np_renderPrevMasivo();
+    } catch(e){
+      pb.innerHTML='<div style="color:#ef9a9a;padding:12px;">Error procesando archivo: '+e+'</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function np_normalizarFilas(filas){
+  return filas.map(function(f){
+    var pedido  = np_normPedido(String(f.pedRaw||'').trim());
+    var fecha   = np_normFecha(f.fechaRaw);
+    var codigo  = np_normCodigo(String(f.codRaw||'').trim());
+    var partida = String(Math.round(Number(String(f.parRaw||'1').replace(/[^0-9.]/g,''))||1));
+    var cantidad= String(Math.round(Number(String(f.cantRaw||'0').replace(/[^0-9.]/g,''))||0));
+    return {pedido:pedido, partida:partida, fecha:fecha, codigo:codigo, cantidad:cantidad,
+            _desc:'', _unidad:'', _ok:false, _dup:false, _err:''};
+  }).filter(function(r){ return r.pedido||r.codigo; });
+}
+
+function np_normPedido(p){
+  p=String(p).trim().toUpperCase().replace(/\s+/g,'');
+  if(!p) return '';
+  // Q-XXXXX → QSQ-XXXXX  (ej: Q-55200)
+  if(/^Q-\d/.test(p)) return 'QSQ-'+p.substring(2);
+  // Z-XXXXX → ZEQ-XXXXX  (ej: Z-12542)
+  if(/^Z-\d/.test(p)) return 'ZEQ-'+p.substring(2);
+  return p;
+}
+
+function np_normCodigo(c){
+  c=String(c).trim().replace(/[^0-9]/g,''); // solo dígitos
+  if(c.length===8) c='0'+c;
+  return c;
+}
+
+function np_normFecha(f){
+  if(!f) return '';
+  // Intentar parsear varios formatos
+  var d=new Date(f);
+  if(!isNaN(d.getTime())){
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  // dd/mm/yyyy
+  var m=f.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return f;
+}
+
+function np_parseCSV(text){
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+  if(!lines.length) return [];
+  var headers=lines[0].split(',').map(function(h){return h.trim();});
+  return lines.slice(1).map(function(l){
+    var vals=l.split(',');
+    var obj={};
+    headers.forEach(function(h,i){ obj[h]=String(vals[i]||'').trim(); });
+    return obj;
+  });
+}
+
+function np_renderPrevMasivo(){
+  var pb=document.getElementById('np-prevBody');
+  if(!np_massData.length){ pb.innerHTML='<div style="color:#90a4ae;padding:12px;">Sin datos encontrados en el archivo.</div>'; return; }
+
+  // Buscar códigos en GAS para obtener desc y unidad
+  var codigos=np_massData.map(function(r){return r.codigo;}).filter(function(c){return c;});
+  var unicos=[...new Set(codigos)];
+  pb.innerHTML='<div style="color:#90caf9;padding:12px;"><span class="np-spinner"></span> Validando códigos...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      res=(typeof res==='string')?JSON.parse(res):res;
+      var mapa=res.mapa||{};
+      // Enriquecer filas
+      np_massData.forEach(function(r){
+        var info=mapa[r.codigo];
+        if(info){ r._desc=info.desc; r._unidad=info.unidad; r._ok=true; r._err=''; }
+        else { r._ok=false; r._err='Código no encontrado'; }
+        r._dup=np_esDuplicado(r.pedido,r.partida);
+      });
+      np_renderTablaPrev();
+    })
+    .withFailureHandler(function(e){
+      pb.innerHTML='<div style="color:#ef9a9a;">Error validando códigos: '+e+'</div>';
+    })
+    .npValidarCodigosMultiples(unicos);
+}
+
+function np_renderTablaPrev(){
+  var pb=document.getElementById('np-prevBody');
+  var validos=np_massData.filter(function(r){return !r._dup && r._ok;}).length;
+  var html='<div style="margin-bottom:10px;font-size:12px;color:#90caf9;">'+
+    '<b style="color:#a5d6a7;">'+validos+' válidos</b> · '+
+    '<b style="color:#ef9a9a;">'+(np_massData.length-validos)+' omitidos</b> (duplicados o sin código)'+
+  '</div>'+
+  '<table class="np-prev-table">'+
+    '<thead><tr>'+
+      '<th>#</th><th>PEDIDO</th><th>PARTIDA</th><th>FECHA</th>'+
+      '<th>CÓDIGO</th><th>DESCRIPCIÓN</th><th>CANT</th><th>UNIDAD</th><th>ESTADO</th>'+
+    '</tr></thead><tbody>';
+
+  np_massData.forEach(function(r,i){
+    var isDup=r._dup, isErr=!r._ok;
+    var cls=(isDup||isErr)?'dup-row':'';
+    var estLabel=isDup?'<span style="color:#ef9a9a;font-weight:900;">⚠ DUPLICADO</span>':
+                  isErr?'<span style="color:#ef9a9a;">'+r._err+'</span>':
+                  '<span style="color:#a5d6a7;">✔ OK</span>';
+    html+='<tr class="'+cls+'">'+
+      '<td>'+( i+1)+'</td>'+
+      '<td><input class="np-prev-inp'+(isDup?' dup':'')+'" value="'+np_esc(r.pedido)+'" onchange="np_massEdit('+i+',\'pedido\',this.value)"></td>'+
+      '<td><input class="np-prev-inp'+(isDup?' dup':'')+'" value="'+np_esc(r.partida)+'" style="width:50px;" onchange="np_massEdit('+i+',\'partida\',this.value)"></td>'+
+      '<td><input class="np-prev-inp" type="date" value="'+np_esc(r.fecha)+'" onchange="np_massEdit('+i+',\'fecha\',this.value)"></td>'+
+      '<td><input class="np-prev-inp" value="'+np_esc(r.codigo)+'" style="width:105px;" onchange="np_massEditCodigo('+i+',this.value)" onblur="np_massEditCodigo('+i+',this.value)"></td>'+
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+np_esc(r._desc)+'">'+np_esc(r._desc||r._err)+'</td>'+
+      '<td><input class="np-prev-inp" type="number" value="'+np_esc(r.cantidad)+'" style="width:70px;" onchange="np_massEdit('+i+',\'cantidad\',this.value)"></td>'+
+      '<td>'+np_esc(r._unidad)+'</td>'+
+      '<td>'+estLabel+'</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  pb.innerHTML=html;
+  document.getElementById('np-btnGuardarMasivo').style.display='';
+}
+
+function np_massEdit(i, campo, valor){
+  if(!np_massData[i]) return;
+  valor=String(valor).trim();
+  if(campo==='pedido') valor=np_normPedido(valor);
+  if(campo==='partida') valor=String(Math.round(Number(valor)||1));
+  if(campo==='cantidad') valor=String(Math.round(Number(valor)||0));
+  np_massData[i][campo]=valor;
+  // Re-evaluar duplicidad en TODAS las filas (un cambio puede liberar otra fila)
+  np_massData.forEach(function(r){
+    r._dup=np_esDuplicado(r.pedido, r.partida);
+  });
+  np_renderTablaPrev();
+}
+window.np_massEdit=np_massEdit;
+
+function np_massEditCodigo(i, valor){
+  if(!np_massData[i]) return;
+  var codigo = np_normCodigo(String(valor).trim());
+  np_massData[i].codigo = codigo;
+  np_massData[i]._ok = false;
+  np_massData[i]._desc = '';
+  np_massData[i]._unidad = '';
+  np_massData[i]._err = 'Validando...';
+  np_renderTablaPrev();
+
+  if(!codigo){
+    np_massData[i]._err = 'Código vacío';
+    np_renderTablaPrev();
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      res=(typeof res==='string')?JSON.parse(res):res;
+      var info=(res.mapa||{})[codigo];
+      if(info){
+        np_massData[i]._desc=info.desc;
+        np_massData[i]._unidad=info.unidad;
+        np_massData[i]._ok=true;
+        np_massData[i]._err='';
+      } else {
+        np_massData[i]._ok=false;
+        np_massData[i]._err='Código no encontrado';
+      }
+      np_massData[i]._dup=np_esDuplicado(np_massData[i].pedido, np_massData[i].partida);
+      np_renderTablaPrev();
+    })
+    .withFailureHandler(function(e){
+      np_massData[i]._err='Error: '+e;
+      np_renderTablaPrev();
+    })
+    .npValidarCodigosMultiples([codigo]);
+}
+window.np_massEditCodigo=np_massEditCodigo;
+
+function np_esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function np_guardarMasivo(){
+  var validos=np_massData.filter(function(r){return !r._dup && r._ok && r.cantidad && Number(r.cantidad)>0;});
+  if(!validos.length){ Swal.fire({icon:'warning',title:'Sin datos válidos',text:'No hay filas válidas para guardar.',background:'#0f1f33',color:'#eceff1'}); return; }
+  Swal.fire({icon:'question',title:'¿Guardar '+validos.length+' pedido(s)?',text:'Se omitirán los duplicados y los que tienen errores.',background:'#0f1f33',color:'#eceff1',showCancelButton:true,confirmButtonText:'Sí, guardar'}).then(function(res){
+    if(!res.isConfirmed) return;
+    showLoader('Guardando '+validos.length+' pedidos...');
+    google.script.run
+      .withSuccessHandler(function(r){
+        hideLoader();
+        r=(typeof r==='string')?JSON.parse(r):r;
+        if(r&&r.success){
+          validos.forEach(function(p){ np_pedidosSheets.push({pedido:p.pedido.trim().toUpperCase(),partida:String(p.partida).trim()}); });
+          var noGuardados = r.errores || [];
+          var omitidos = np_massData.filter(function(row){ return row._dup || !row._ok || !row.cantidad || Number(row.cantidad)<=0; });
+          var htmlDetalle = '<div style="text-align:left;font-size:13px;">';
+          htmlDetalle += '<p>✅ Guardados: <b>'+r.guardados+'</b></p>';
+          if(noGuardados.length){
+            htmlDetalle += '<p style="color:#ef9a9a;">❌ Fallidos al guardar: <b>'+noGuardados.length+'</b></p><ul style="margin:4px 0;padding-left:18px;">';
+            noGuardados.forEach(function(e){ htmlDetalle+='<li>'+np_esc(e.pedido)+' P'+np_esc(e.partida)+': '+np_esc(e.razon)+'</li>'; });
+            htmlDetalle += '</ul>';
+          }
+          if(omitidos.length){
+            htmlDetalle += '<p style="color:#ffe082;">⚠ Omitidos antes de guardar: <b>'+omitidos.length+'</b></p><ul style="margin:4px 0;padding-left:18px;">';
+            omitidos.forEach(function(row){
+              var razon = row._dup?'Duplicado': !row._ok?row._err: 'Cantidad inválida';
+              htmlDetalle+='<li>'+np_esc(row.pedido)+' P'+np_esc(row.partida)+' ('+np_esc(row.codigo)+'): '+razon+'</li>';
+            });
+            htmlDetalle += '</ul>';
+          }
+          htmlDetalle += '</div>';
+          np_cerrarMasivo();
+          Swal.fire({
+            icon: noGuardados.length ? 'warning' : 'success',
+            title: noGuardados.length ? 'Guardado con advertencias' : '¡Listo!',
+            html: htmlDetalle,
+            background:'#0f1f33', color:'#eceff1',
+            confirmButtonText:'Aceptar'
+          });
+        } else {
+          Swal.fire({icon:'error',title:'Error',text:(r&&r.msg)||'Error.',background:'#0f1f33',color:'#eceff1'});
+        }
+      })
+      .withFailureHandler(function(e){ hideLoader(); Swal.fire({icon:'error',title:'Error',text:String(e),background:'#0f1f33',color:'#eceff1'}); })
+      .npGuardarPedidosMasivos(validos.map(function(p){
+        return {pedido:p.pedido,partida:p.partida,fecha:p.fecha,codigo:p.codigo,desc:p._desc,unidad:p._unidad,cantidad:p.cantidad};
+      }));
+  });
+}
+window.np_guardarMasivo=np_guardarMasivo;
+
+window.np_cantFormat=np_cantFormat;
+window.np_cantKeydown=np_cantKeydown;
+window.np_validarPedido=np_validarPedido;
+window.np_buscarCodigo=np_buscarCodigo;
+

@@ -1,0 +1,194 @@
+function loadGestionDocs() {
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+
+  if (!document.getElementById('gdoc-style')) {
+    var s = document.createElement('style');
+    s.id = 'gdoc-style';
+    s.textContent = [
+      '#gdoc-panel { font-family:Roboto,sans-serif; background:#eceff1; min-height:calc(100vh - 48px); }',
+      '#gdoc-panel * { box-sizing:border-box; }',
+      '#gdoc-loader { position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);z-index:9999;display:none;flex-direction:column;justify-content:center;align-items:center; }',
+      '#gdoc-loader .gdoc-load-txt { font-weight:900;font-size:18px;color:#37474f; }',
+      '#gdoc-loader .gdoc-load-sub { font-size:12px;color:#78909c;margin-top:5px;font-weight:bold; }',
+      '#gdoc-loader .gdoc-prog-wrap { width:300px;height:10px;background:#cfd8dc;border-radius:5px;overflow:hidden;margin-top:15px; }',
+      '#gdoc-loader .gdoc-prog-bar { width:0%;height:100%;background:#00e676;transition:width .3s; }',
+      '#gdoc-panel .gdoc-container { max-width:900px;margin:0 auto;padding:20px;display:flex;flex-direction:column; }',
+      '#gdoc-panel .gdoc-card { background:white;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,.1);padding:20px;margin-bottom:20px; }',
+      '#gdoc-panel .gdoc-card-title { font-size:16px;font-weight:900;color:#37474f;margin-bottom:15px;border-bottom:2px solid #eee;padding-bottom:10px;display:flex;justify-content:space-between;align-items:center; }',
+      '#gdoc-panel .gdoc-search-box { display:flex;gap:10px; }',
+      '#gdoc-panel .gdoc-main-input { flex:1;padding:12px;border:2px solid #cfd8dc;border-radius:4px;font-size:16px;font-weight:bold; }',
+      '#gdoc-panel .gdoc-main-input:focus { border-color:#1976d2;outline:none; }',
+      '#gdoc-panel .gdoc-results-area { overflow-y:auto;margin-top:20px; }',
+      '#gdoc-panel .gdoc-doc-group { margin-bottom:15px; }',
+      '#gdoc-panel .gdoc-doc-header { background:#cfd8dc;padding:8px 12px;font-weight:900;font-size:12px;border-radius:4px;color:#455a64;margin-bottom:5px; }',
+      '#gdoc-panel .gdoc-doc-row { display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid #eee;padding:10px;margin-bottom:5px;border-radius:4px;transition:background .2s; }',
+      '#gdoc-panel .gdoc-doc-row:hover { background:#f5f5f5; }',
+      '#gdoc-panel .gdoc-doc-name { font-weight:bold;font-size:13px;color:#333; }',
+      '#gdoc-panel .gdoc-doc-actions { display:flex;gap:10px; }',
+      '#gdoc-panel .gdoc-drop-zone { border:2px dashed #90a4ae;border-radius:6px;background:#fafafa;padding:30px;text-align:center;cursor:pointer;transition:background .2s; }',
+      '#gdoc-panel .gdoc-drop-zone:hover { background:#e3f2fd;border-color:#2196f3; }',
+      '#gdoc-panel .gdoc-drop-txt { font-size:14px;color:#78909c;font-weight:bold; }',
+      '#gdoc-panel .gdoc-file-list { margin-top:15px;max-height:150px;overflow-y:auto; }',
+      '#gdoc-panel .gdoc-file-item { display:flex;justify-content:space-between;align-items:center;background:#fff3e0;padding:8px;margin-bottom:5px;border-radius:4px;border:1px solid #ffe0b2; }',
+      '#gdoc-panel .gdoc-file-name { font-size:12px;font-weight:bold;color:#ef6c00; }',
+      '#gdoc-panel .gdoc-btn { border:none;padding:10px 20px;border-radius:4px;font-weight:900;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:5px; }',
+      '#gdoc-panel .gdoc-btn-blue { background:#1976d2;color:white; }',
+      '#gdoc-panel .gdoc-btn-green { background:#2e7d32;color:white;width:100%;justify-content:center;margin-top:10px; }',
+      '#gdoc-panel .gdoc-btn-red { background:#c62828;color:white;padding:5px 10px;font-size:11px;border:none;border-radius:4px;font-weight:900;cursor:pointer; }',
+      '#gdoc-panel .gdoc-btn-view { background:#eceff1;color:#333;padding:5px 10px;font-size:11px;text-decoration:none;border-radius:4px;font-weight:bold;display:inline-flex;align-items:center; }',
+      '#gdoc-panel .gdoc-btn-icon { background:none;border:none;font-size:16px;cursor:pointer;padding:0;color:#d32f2f; }'
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  gdoc_archivosParaSubir = [];
+  gdoc_codigoActual = '';
+
+  ca.innerHTML = '<div id="gdoc-panel">'
+    + '<div id="gdoc-loader">'
+    + '<div class="gdoc-load-txt" id="gdoc-loadTitle">PROCESANDO...</div>'
+    + '<div class="gdoc-load-sub" id="gdoc-loadSub">Por favor espere</div>'
+    + '<div class="gdoc-prog-wrap"><div class="gdoc-prog-bar" id="gdoc-progBar"></div></div>'
+    + '</div>'
+    + '<div class="gdoc-container">'
+    + '<div style="margin-bottom:20px;"><h1 style="margin:0;color:#1565c0;">GESTIÓN DOCUMENTAL</h1>'
+    + '<p style="margin:5px 0 0 0;color:#78909c;font-size:12px;font-weight:bold;">ADMINISTRACIÓN DE FICHAS TÉCNICAS, PLANOS Y HOJAS DE INSPECCIÓN</p></div>'
+    + '<div class="gdoc-card" style="flex:1;display:flex;flex-direction:column;">'
+    + '<div class="gdoc-card-title">BUSCAR DOCUMENTOS ACTIVOS</div>'
+    + '<div class="gdoc-search-box">'
+    + '<input type="text" id="gdoc-txtCodigo" class="gdoc-main-input" placeholder="INGRESA CÓDIGO..." onkeyup="if(event.key===\'Enter\') gdoc_buscarDocs()">'
+    + '<button class="gdoc-btn gdoc-btn-blue" onclick="gdoc_buscarDocs()">🔍 BUSCAR</button>'
+    + '</div>'
+    + '<div id="gdoc-resultados" class="gdoc-results-area">'
+    + '<div style="text-align:center;color:#b0bec5;margin-top:40px;font-weight:bold;">Ingresa un código para ver sus documentos.</div>'
+    + '</div></div>'
+    + '<div class="gdoc-card">'
+    + '<div class="gdoc-card-title"><span>SUBIR NUEVOS ARCHIVOS</span>'
+    + '<span style="font-size:10px;color:#ef6c00;">⚠️ RECUERDA NOMBRARLOS: CODIGO_PROCESO_TIPO.pdf</span></div>'
+    + '<div class="gdoc-drop-zone" onclick="document.getElementById(\'gdoc-fileInput\').click()">'
+    + '<div style="font-size:30px;">📂</div>'
+    + '<div class="gdoc-drop-txt">CLIC AQUÍ PARA SELECCIONAR ARCHIVOS</div>'
+    + '<div style="font-size:11px;color:#b0bec5;">(PDFs Recomendados)</div></div>'
+    + '<input type="file" id="gdoc-fileInput" multiple style="display:none;" onchange="gdoc_procesarSeleccion()">'
+    + '<div id="gdoc-listaSubida" class="gdoc-file-list"></div>'
+    + '<button id="gdoc-btnSubir" class="gdoc-btn gdoc-btn-green" style="display:none;" onclick="gdoc_iniciarSubidaMasiva()">⬆ SUBIR ARCHIVOS SELECCIONADOS</button>'
+    + '</div></div></div>';
+}
+
+window.gdoc_buscarDocs = function() {
+  var codigo = document.getElementById('gdoc-txtCodigo').value.trim().toUpperCase();
+  if (!codigo) { alert('Ingresa un código'); return; }
+  gdoc_codigoActual = codigo;
+  gdoc_mostrarCarga(true, 'BUSCANDO DOCUMENTOS...', 'Consultando base de datos', 30);
+  google.script.run
+    .withSuccessHandler(function(res) { gdoc_renderizarResultados(res); gdoc_mostrarCarga(false); })
+    .withFailureHandler(function(e) { gdoc_mostrarCarga(false); alert('Error: ' + e); })
+    .obtenerDocsTecnicos(codigo);
+};
+
+function gdoc_renderizarResultados(res) {
+  var div = document.getElementById('gdoc-resultados');
+  if (!res.existe) {
+    div.innerHTML = '<div style="text-align:center;padding:20px;color:#ef5350;font-weight:bold;">🚫 No se encontraron documentos activos para ' + res.codigo + '</div>';
+    return;
+  }
+  var html = '';
+  for (var tipo in res.datos) {
+    html += '<div class="gdoc-doc-group"><div class="gdoc-doc-header">' + tipo + '</div>';
+    res.datos[tipo].forEach(function(doc) {
+      var urlSafe = doc.url.replace(/'/g, '&#39;');
+      var nomSafe = doc.nombre.replace(/'/g, '&#39;');
+      html += '<div class="gdoc-doc-row"><div><div class="gdoc-doc-name">📄 ' + doc.nombre + '</div>'
+            + '<div style="font-size:10px;color:#90a4ae;">' + (doc.proceso || 'Global') + '</div></div>'
+            + '<div class="gdoc-doc-actions">'
+            + '<a href="' + doc.url + '" target="_blank" class="gdoc-btn-view">VER</a>'
+            + '<button class="gdoc-btn-red" onclick="gdoc_confirmarObsolescencia(\'' + urlSafe + '\',\'' + nomSafe + '\')">DAR BAJA</button>'
+            + '</div></div>';
+    });
+    html += '</div>';
+  }
+  div.innerHTML = html;
+}
+
+window.gdoc_procesarSeleccion = function() {
+  var input = document.getElementById('gdoc-fileInput');
+  for (var i = 0; i < input.files.length; i++) { gdoc_archivosParaSubir.push(input.files[i]); }
+  input.value = '';
+  gdoc_renderizarListaSubida();
+};
+
+function gdoc_renderizarListaSubida() {
+  var div = document.getElementById('gdoc-listaSubida');
+  var btn = document.getElementById('gdoc-btnSubir');
+  div.innerHTML = '';
+  if (gdoc_archivosParaSubir.length === 0) { btn.style.display = 'none'; return; }
+  btn.style.display = 'flex';
+  btn.innerHTML = '⬆ SUBIR ' + gdoc_archivosParaSubir.length + ' ARCHIVOS AHORA';
+  gdoc_archivosParaSubir.forEach(function(file, index) {
+    div.innerHTML += '<div class="gdoc-file-item"><span class="gdoc-file-name">' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)</span>'
+      + '<button class="gdoc-btn-icon" onclick="gdoc_removerArchivo(' + index + ')">✖</button></div>';
+  });
+}
+
+window.gdoc_removerArchivo = function(index) {
+  gdoc_archivosParaSubir.splice(index, 1);
+  gdoc_renderizarListaSubida();
+};
+
+window.gdoc_iniciarSubidaMasiva = async function() {
+  if (gdoc_archivosParaSubir.length === 0) return;
+  var total = gdoc_archivosParaSubir.length;
+  gdoc_mostrarCarga(true, 'INICIANDO CARGA...', 'Preparando ' + total + ' archivos', 0);
+  for (var i = 0; i < total; i++) {
+    var file = gdoc_archivosParaSubir[i];
+    gdoc_mostrarCarga(true, 'SUBIENDO ARCHIVO ' + (i+1) + ' DE ' + total, file.name, Math.round((i/total)*100));
+    try { await gdoc_subirUnArchivo(file); } catch(e) { alert('Error al subir ' + file.name + ': ' + e); }
+  }
+  gdoc_mostrarCarga(true, 'FINALIZANDO...', 'Actualizando índice...', 95);
+  google.script.run
+    .withSuccessHandler(function() {
+      gdoc_archivosParaSubir = [];
+      gdoc_renderizarListaSubida();
+      gdoc_mostrarCarga(false);
+      alert('✅ Proceso terminado. Todos los archivos se subieron e indexaron.');
+      if (gdoc_codigoActual) gdoc_buscarDocs();
+    })
+    .withFailureHandler(function(e) { gdoc_mostrarCarga(false); alert('Error: ' + e); })
+    .ejecutarIndexadorRemoto();
+};
+
+function gdoc_subirUnArchivo(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      google.script.run
+        .withSuccessHandler(function(res) { res.success ? resolve() : reject(res.error); })
+        .withFailureHandler(function(err) { reject(err); })
+        .subirArchivoDrive(e.target.result, file.name, file.type);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+window.gdoc_confirmarObsolescencia = function(url, nombre) {
+  if (!confirm('¿Marcar como OBSOLETO?\n\n' + nombre + '\n\nSe ocultará de las listas.')) return;
+  gdoc_mostrarCarga(true, 'DANDO DE BAJA...', 'Renombrando archivo en Drive...', 50);
+  google.script.run
+    .withSuccessHandler(function(res) { gdoc_mostrarCarga(false); alert(res); gdoc_buscarDocs(); })
+    .withFailureHandler(function(e) { gdoc_mostrarCarga(false); alert('Error: ' + e); })
+    .marcarDocumentoObsoleto(url);
+};
+
+function gdoc_mostrarCarga(show, titulo, sub, pct) {
+  var el = document.getElementById('gdoc-loader');
+  if (!el) return;
+  if (show) {
+    el.style.display = 'flex';
+    if (titulo) document.getElementById('gdoc-loadTitle').innerText = titulo;
+    if (sub) document.getElementById('gdoc-loadSub').innerText = sub;
+    if (pct !== undefined) document.getElementById('gdoc-progBar').style.width = pct + '%';
+  } else {
+    el.style.display = 'none';
+  }
+}

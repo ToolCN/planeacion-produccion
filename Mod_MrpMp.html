@@ -1,0 +1,958 @@
+function loadMrpMp() {
+  if (!document.getElementById('mrpmp-style')) {
+    var st = document.createElement('style');
+    st.id = 'mrpmp-style';
+    st.innerHTML = [
+      '.mrpmp-tab{padding:8px 20px;border:none;border-bottom:3px solid transparent;background:none;',
+      'cursor:pointer;font-weight:700;font-size:.82rem;color:#64748b;transition:all .2s}',
+      '.mrpmp-tab.active{color:#0891b2;border-bottom-color:#0891b2}',
+      '.mrpmp-tab:hover{background:#f1f5f9;color:#0891b2}',
+      '.mrpmp-panel{display:none}.mrpmp-panel.active{display:block}',
+      '.mrpmp-tbl{width:100%;border-collapse:collapse;font-size:.8rem}',
+      '.mrpmp-tbl th{background:#0f172a;color:white;padding:9px 12px;text-align:left;font-size:.72rem;',
+      'text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0;z-index:2}',
+      '.mrpmp-tbl td{padding:8px 12px;border-bottom:1px solid #e2e8f0}',
+      '.mrpmp-tbl tr:nth-child(even) td{background:#f8fafc}',
+      '.mrpmp-tbl tr:hover td{background:#f0f9ff !important}',
+      '.mrpmp-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}',
+      '.mrpmp-badge-ok{background:#14532d;color:#bbf7d0}',
+      '.mrpmp-badge-bien{background:#dcfce7;color:#166534}',
+      '.mrpmp-badge-parcial{background:#fef9c3;color:#854d0e}',
+      '.mrpmp-badge-mal{background:#fee2e2;color:#991b1b}',
+      '.mrpmp-kpi{background:white;border-radius:12px;padding:1rem 1.2rem;box-shadow:0 2px 8px rgba(0,0,0,.06);flex:1;min-width:140px}',
+      '.mrpmp-kpi-val{font-size:1.6rem;font-weight:900;color:#0f172a;line-height:1}',
+      '.mrpmp-kpi-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.06em;margin-top:4px}',
+      '.mrpmp-serie-btn{padding:7px 18px;border:2px solid #e2e8f0;border-radius:20px;background:white;',
+      'cursor:pointer;font-weight:700;font-size:.78rem;color:#475569;transition:all .2s}',
+      '.mrpmp-serie-btn:hover{border-color:#0891b2;color:#0891b2}',
+      '.mrpmp-serie-btn.active{background:#0891b2;border-color:#0891b2;color:white}',
+      '.mrpmp-ac-wrap{position:relative}',
+      '.mrpmp-ac-list{position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid #0891b2;',
+      'border-radius:0 0 8px 8px;z-index:300;max-height:200px;overflow-y:auto;display:none;',
+      'box-shadow:0 4px 12px rgba(0,0,0,.15)}',
+      '.mrpmp-ac-item{padding:8px 12px;cursor:pointer;font-size:.82rem;font-weight:600;color:#0f172a}',
+      '.mrpmp-ac-item:hover,.mrpmp-ac-item.selected{background:#e0f2fe;color:#0891b2}',
+      '.mrpmp-form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}',
+      '.mrpmp-form-row label{font-size:.75rem;font-weight:700;color:#374151;display:block;margin-bottom:3px}',
+      '.mrpmp-form-row input,.mrpmp-form-row select{padding:7px 10px;border:1.5px solid #e2e8f0;',
+      'border-radius:7px;font-size:.82rem;outline:none;transition:border .2s}',
+      '.mrpmp-form-row input:focus{border-color:#0891b2}',
+      '.mrpmp-btn{padding:8px 18px;border:none;border-radius:7px;font-weight:700;font-size:.8rem;cursor:pointer;transition:all .2s}',
+      '.mrpmp-btn-primary{background:#0891b2;color:white}.mrpmp-btn-primary:hover{background:#0e7490}',
+      '.mrpmp-btn-danger{background:#ef4444;color:white}.mrpmp-btn-danger:hover{background:#dc2626}',
+      '.mrpmp-btn-success{background:#10b981;color:white}.mrpmp-btn-success:hover{background:#059669}',
+      '.mrpmp-section-title{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;',
+      'color:#0891b2;border-bottom:2px solid #e0f2fe;padding-bottom:4px;margin-bottom:12px}',
+      // Cabecera combinada para MOVIMIENTOS KG
+      '.mrpmp-th-span{background:#1e3a5f;color:white;text-align:center;padding:6px 8px;font-size:.68rem;',
+      'text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #3b82f6}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+
+  var ca = document.getElementById('content-area');
+  ca.innerHTML = '<div id="mrpmp-panel" style="padding:1rem 1.5rem 2rem">'
+
+    // ── Encabezado ──
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">'
+    +   '<div style="display:flex;align-items:center;gap:14px">'
+    +     '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" '
+    +       'style="height:34px;object-fit:contain;opacity:.85" onerror="this.style.display=\'none\'">'
+    +     '<div><h5 style="font-weight:900;margin:0;color:#0f172a">🧵 MRP MATERIA PRIMA</h5>'
+    +     '<p style="font-size:.72rem;color:#64748b;margin:0">GESTIÓN DE EXISTENCIAS Y REQUERIMIENTOS</p></div>'
+    +   '</div>'
+    +   '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +     '<span style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase">SERIE:</span>'
+    +     '<button class="mrpmp-serie-btn active" id="mrpmp-s-TODAS" onclick="mrpmp_serie(\'TODAS\')">TODAS</button>'
+    +     '<button class="mrpmp-serie-btn" id="mrpmp-s-T" onclick="mrpmp_serie(\'T\')">T</button>'
+    +     '<button class="mrpmp-serie-btn" id="mrpmp-s-P" onclick="mrpmp_serie(\'P\')">P</button>'
+    +     '<button class="mrpmp-serie-btn" id="mrpmp-s-F" onclick="mrpmp_serie(\'F\')">F</button>'
+    +   '</div>'
+    + '</div>'
+
+    // ── Pestañas ──
+    + '<div style="border-bottom:1px solid #e2e8f0;margin-bottom:1rem;display:flex;gap:4px">'
+    +   '<button class="mrpmp-tab active" id="mrpmp-tab-0" onclick="mrpmp_tab(0)"><i class="fas fa-warehouse me-1"></i>EXISTENCIAS ALAMBRES</button>'
+    +   '<button class="mrpmp-tab" id="mrpmp-tab-1" onclick="mrpmp_tab(1)"><i class="fas fa-weight-hanging me-1"></i>REQ. ALAMBRÓN</button>'
+    +   '<button class="mrpmp-tab" id="mrpmp-tab-2" onclick="mrpmp_tab(2)"><i class="fas fa-ring me-1"></i>REQ. ALAMBRES</button>'
+    +   '<button class="mrpmp-tab" id="mrpmp-tab-3" onclick="mrpmp_tab(3)"><i class="fas fa-calendar-week me-1"></i>PLAN 1 SEMANA</button>'
+    + '</div>'
+
+    // ════════════════════════════════════════════════════
+    // PANEL 0: Existencias Alambres — con cabecera combinada
+    // ════════════════════════════════════════════════════
+    + '<div id="mrpmp-p0" class="mrpmp-panel active">'
+    +   '<div id="mrpmp-kpis-exist" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem"></div>'
+    +   '<div style="overflow-x:auto"><table class="mrpmp-tbl" id="mrpmp-tbl-exist">'
+    +     '<thead>'
+    // Primera fila: CÓDIGO, DESCRIPCIÓN, MOVIMIENTOS KG (combinado 4 cols), EXISTENCIA, REQUERIDO, HOY, MAÑANA, TOTAL, ESTADO
+    +       '<tr>'
+    +         '<th rowspan="2" onclick="mrpmp_abrirFiltroExist(\'codigo\')" style="cursor:pointer;vertical-align:middle;border-right:1px solid #374151" title="Filtrar"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>CÓDIGO</th>'
+    +         '<th rowspan="2" onclick="mrpmp_abrirFiltroExist(\'descripcion\')" style="cursor:pointer;vertical-align:middle;border-right:1px solid #374151" title="Filtrar"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>DESCRIPCIÓN</th>'
+    +         '<th colspan="3" style="text-align:center;background:#1e3a5f;border-left:1px solid #374151;border-right:1px solid #374151;padding:5px 8px">MOVIMIENTOS KG</th>'
+    +         '<th rowspan="2" style="text-align:right;vertical-align:middle;border-left:1px solid #374151">EXISTENCIA</th>'
+    +         '<th rowspan="2" style="text-align:right;vertical-align:middle">REQUERIDO</th>'
+    +         '<th rowspan="2" id="mrpmp-th-hoy" style="text-align:right;vertical-align:middle">HOY</th>'
+    +         '<th rowspan="2" id="mrpmp-th-man" style="text-align:right;vertical-align:middle">MAÑANA</th>'
+    +         '<th rowspan="2" id="mrpmp-th-tot5" style="text-align:right;vertical-align:middle">TOTAL SEM</th>'
+    +         '<th rowspan="2" onclick="mrpmp_abrirFiltroExist(\'estado\')" style="text-align:center;vertical-align:middle;cursor:pointer" title="Filtrar por estado"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>ESTADO</th>'
+    +       '</tr>'
+    // Segunda fila: sub-columnas de MOVIMIENTOS (solo 3: +REYES, +TREFILADO, -SALIDAS)
+    +       '<tr>'
+    +         '<th style="text-align:right;background:#1e3a5f;font-size:.68rem;padding:5px 10px;border-left:1px solid #374151">+ REYES</th>'
+    +         '<th style="text-align:right;background:#1e3a5f;font-size:.68rem;padding:5px 10px">+ TREFILADO</th>'
+    +         '<th style="text-align:right;background:#1e3a5f;font-size:.68rem;padding:5px 10px;border-right:1px solid #374151">− SALIDAS</th>'
+    +       '</tr>'
+    +     '</thead>'
+    +     '<tbody id="mrpmp-tbody-exist"><tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">'
+    +       '<i class="fas fa-spinner fa-spin me-2"></i>CARGANDO...</td></tr></tbody>'
+    +   '</table></div>'
+    + '</div>'
+
+    // ════════════════════════════════════════════════════
+    // PANEL 1: Req. Alambrón
+    // ════════════════════════════════════════════════════
+    + '<div id="mrpmp-p1" class="mrpmp-panel">'
+    +   '<div style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:10px 14px;font-size:.78rem;color:#92400e;margin-bottom:12px">'
+    +     '<i class="fas fa-info-circle me-1"></i>REQUERIMIENTO DE ALAMBRÓN PARA ÓRDENES VIVAS (PRIMER PROCESO).'
+    +   '</div>'
+    +   '<div id="mrpmp-kpis-alambron" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem"></div>'
+    +   '<div style="overflow-x:auto"><table class="mrpmp-tbl">'
+    +     '<thead><tr>'
+    +       '<th onclick="mrpmp_abrirFiltroAlb(\'material\')" style="cursor:pointer" title="Filtrar"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>ALAMBRÓN</th>'
+    +       '<th style="text-align:right">ÓRDENES</th>'
+    +       '<th style="text-align:right">KG REQUERIDOS</th>'
+    +       '<th id="mrpmp-th-alb-d0" style="text-align:right">HOY (KG)</th>'
+    +       '<th id="mrpmp-th-alb-d1" style="text-align:right">MAÑANA (KG)</th>'
+    +       '<th id="mrpmp-th-alb-d2" style="text-align:right">DÍA 3 (KG)</th>'
+    +       '<th id="mrpmp-th-alb-d3" style="text-align:right">DÍA 4 (KG)</th>'
+    +       '<th id="mrpmp-th-alb-d4" style="text-align:right">DÍA 5 (KG)</th>'
+    +       '<th style="text-align:right;background:#3730a3;color:white">TOTAL (KG)</th>'
+    +       '<th style="text-align:right;color:#ef4444">FALTANTE (KG)</th>'
+    +       '<th onclick="mrpmp_abrirFiltroAlb(\'estado\')" style="text-align:center;cursor:pointer" title="Filtrar por estado"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>ESTADO</th>'
+    +     '</tr></thead>'
+    +     '<tbody id="mrpmp-tbody-alambron"><tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">'
+    +       '<i class="fas fa-spinner fa-spin me-2"></i>CARGANDO...</td></tr></tbody>'
+    +   '</table></div>'
+    + '</div>'
+
+    // ════════════════════════════════════════════════════
+    // PANEL 2: Req. Alambres
+    // ════════════════════════════════════════════════════
+    + '<div id="mrpmp-p2" class="mrpmp-panel">'
+    +   '<div style="background:#f0f9ff;border:1.5px solid #0891b2;border-radius:8px;padding:10px 14px;font-size:.78rem;color:#0c4a6e;margin-bottom:12px">'
+    +     '<i class="fas fa-info-circle me-1"></i>ALAMBRES PROCESADOS NECESARIOS PARA ÓRDENES VIVAS VS EXISTENCIA ACTUAL.'
+    +   '</div>'
+    +   '<div style="overflow-x:auto"><table class="mrpmp-tbl">'
+    +     '<thead><tr>'
+    +       '<th onclick="mrpmp_abrirFiltroAlambre(\'codigo\')" style="cursor:pointer" title="Filtrar"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>CÓDIGO</th>'
+    +       '<th onclick="mrpmp_abrirFiltroAlambre(\'descripcion\')" style="cursor:pointer" title="Filtrar"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>DESCRIPCIÓN</th>'
+    +       '<th style="text-align:right">KG REQUERIDOS</th>'
+    +       '<th style="text-align:right">EXISTENCIA (KG)</th>'
+    +       '<th id="mrpmp-th-alambr-d0" style="text-align:right">HOY (KG)</th>'
+    +       '<th id="mrpmp-th-alambr-d1" style="text-align:right">MAÑANA (KG)</th>'
+    +       '<th id="mrpmp-th-alambr-d2" style="text-align:right">DÍA 3 (KG)</th>'
+    +       '<th id="mrpmp-th-alambr-d3" style="text-align:right">DÍA 4 (KG)</th>'
+    +       '<th id="mrpmp-th-alambr-d4" style="text-align:right">DÍA 5 (KG)</th>'
+    +       '<th style="text-align:right;background:#3730a3;color:white">TOTAL (KG)</th>'
+    +       '<th style="text-align:right;color:#ef4444">FALTANTE (KG)</th>'
+    +       '<th onclick="mrpmp_abrirFiltroAlambre(\'estado\')" style="text-align:center;cursor:pointer" title="Filtrar por estado"><i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>ESTADO</th>'
+    +     '</tr></thead>'
+    +     '<tbody id="mrpmp-tbody-alambres"><tr><td colspan="12" style="text-align:center;padding:2rem;color:#94a3b8">'
+    +       '<i class="fas fa-spinner fa-spin me-2"></i>CARGANDO...</td></tr></tbody>'
+    +   '</table></div>'
+    + '</div>'
+
+    // ── PANEL 3: Plan 5 días ──
+    + '<div id="mrpmp-p3" class="mrpmp-panel">'
+    +   '<div id="mrpmp-plan-resumen"></div>'
+    +   '<div id="mrpmp-plan-grid" style="overflow-x:auto;margin-top:.5rem"></div>'
+    + '</div>'
+
+    + '</div>'; // cierra mrpmp-panel
+
+  mrpmp_sincronizarSalidas(true); // al abrir: sincroniza silenciosamente y luego carga
+}
+
+// ── Cambiar serie ──
+window.mrpmp_serie = function(s) {
+  mrpmp_serieActual = s;
+  ['TODAS','T','P','F'].forEach(function(x) {
+    var btn = document.getElementById('mrpmp-s-' + x);
+    if (btn) btn.classList.toggle('active', x === s);
+  });
+  mrpmp_cargar();
+};
+
+// ── Cambiar pestaña ──
+window.mrpmp_tab = function(n) {
+  for (var i = 0; i < 4; i++) {
+    document.getElementById('mrpmp-tab-'+i).classList.toggle('active', i===n);
+    document.getElementById('mrpmp-p'+i).classList.toggle('active', i===n);
+  }
+};
+
+// ── Sincronizar salidas de producción → INV_ALAMBRES ──
+// silencioso=true: no muestra alerta de éxito, solo carga el módulo al terminar
+window.mrpmp_sincronizarSalidas = function(silencioso) {
+  showLoader('SINCRONIZANDO SALIDAS DE PRODUCCIÓN...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      var r;
+      try { r = JSON.parse(res); } catch(e) { r = { success: false, msg: String(e) }; }
+      if (!r.success) {
+        sAlert('Error al sincronizar salidas:\n' + (r.msg || 'Error desconocido'), 'error');
+        return;
+      }
+      if (!silencioso) {
+        var msg = '✅ Sincronización completada:\n'
+          + '• Renglones nuevos: ' + r.insertados + '\n'
+          + '• Renglones actualizados: ' + r.actualizados + '\n'
+          + '• Total procesados: ' + r.total;
+        sAlert(msg, 'success');
+      }
+      // Después de sincronizar, recargar los datos del módulo
+      mrpmp_cargar();
+    })
+    .withFailureHandler(function(e) {
+      hideLoader();
+      sAlert('Error de conexión al sincronizar: ' + e.message, 'error');
+    })
+    .mrpmpSincronizarSalidasProduccion();
+};
+
+// ── Cargar datos ──
+window.mrpmp_cargar = function() {
+  showLoader('CALCULANDO MRP...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      var datos;
+      try { datos = JSON.parse(res); } catch(e) { sAlert('ERROR AL PROCESAR DATOS: '+e.message,'error'); return; }
+      if (!datos.success) { sAlert(datos.msg || 'ERROR DESCONOCIDO','error'); return; }
+      mrpmp_datos = datos;
+      mrpmp_renderExistencias(datos.existencias, datos.reqAlambres, datos.resumenDias || []);
+      mrpmp_renderAlambron(datos.reqAlambron, datos.resumenDias || []);
+      mrpmp_renderAlambres(datos.reqAlambres, datos.existencias, datos.resumenDias || []);
+      mrpmp_renderPlan(datos.detalleMaq || [], datos.resumenDias || []);
+    })
+    .withFailureHandler(function(e) { hideLoader(); sAlert('ERROR DE CONEXIÓN: '+e.message,'error'); })
+    .mrpmpObtenerDatos(mrpmp_serieActual);
+};
+
+// ══════════════════════════════════════════════════════════════════════
+// PANEL 0: EXISTENCIAS ALAMBRES
+// Columnas: CÓDIGO | DESCRIPCIÓN | +REYES | +TREFILADO | -SALIDAS | EXIST |
+//           EXISTENCIA | REQUERIDO | HOY | MAÑANA | TOTAL 5D | ESTADO
+// ESTADO:
+//   OK     — exist >= total5d    → fondo verde oscuro  (#14532d) ✅
+//   BIEN   — exist >= hoy+mañana → fondo verde claro   (#dcfce7) 😊
+//   PARCIAL— exist >= hoy        → fondo amarillo      (#fef9c3) 😐
+//   MAL    — exist < hoy         → fondo rojo          (#fee2e2) 😢
+// ══════════════════════════════════════════════════════════════════════
+var _mrpmp_exist_data    = null;
+var _mrpmp_exist_req     = null;
+var _mrpmp_exist_dias    = null;
+var _mrpmp_exist_filtros = {};
+
+function mrpmp_renderExistencias(lista, reqAlambres, resumenDias) {
+  _mrpmp_exist_data = lista;
+  _mrpmp_exist_req  = reqAlambres;
+  _mrpmp_exist_dias = resumenDias;
+  _mrpmp_exist_filtros = {};
+  mrpmp_renderExistTabla();
+}
+
+function mrpmp_renderExistTabla() {
+  var lista       = _mrpmp_exist_data  || [];
+  var reqAlambres = _mrpmp_exist_req   || [];
+  var resumenDias = _mrpmp_exist_dias  || [];
+  var filtros     = _mrpmp_exist_filtros;
+
+  var tbody = document.getElementById('mrpmp-tbody-exist');
+  if (!tbody) return;
+
+  // Actualizar etiquetas dinámicas en cabecera
+  var lblHoy  = (resumenDias[0]||{}).label||'HOY';
+  var lblMan  = (resumenDias[1]||{}).label||'MAÑANA';
+  var thHoy   = document.getElementById('mrpmp-th-hoy');
+  var thMan   = document.getElementById('mrpmp-th-man');
+  var thTot   = document.getElementById('mrpmp-th-tot5');
+  if (thHoy) thHoy.innerText = lblHoy;
+  if (thMan) thMan.innerText = lblMan;
+  if (thTot) thTot.innerText = 'TOTAL SEM';
+
+  // Construir mapa de requerimientos
+  var mapaReq = {};
+  reqAlambres.forEach(function(r) {
+    var d = r.dias || [];
+    mapaReq[r.codigo] = {
+      kg:    r.kg || 0,
+      kgHoy: d[0] || 0,
+      kgMan: d[1] || 0,
+      kgTot: d.reduce(function(a,b){return a+b;},0)
+    };
+  });
+
+  // Aplicar filtros
+  var filtrada = lista.filter(function(r) {
+    for (var col in filtros) {
+      var vals = filtros[col];
+      if (vals && vals.length > 0 && vals.indexOf(mrpmp_getCelda(r, col, mapaReq)) < 0) return false;
+    }
+    return true;
+  });
+
+  if (filtrada.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">SIN RESULTADOS.</td></tr>';
+    return;
+  }
+
+  var totalExist=0, totalReqHoy=0, totalReqMan=0, totalReqSem=0, html='';
+  var cntOk=0, cntBien=0, cntParc=0, cntMal=0;
+
+  filtrada.forEach(function(r, idx) {
+    var exist  = r.exist || 0;
+    totalExist += exist;
+    var info   = mapaReq[r.codigo] || {};
+    var req    = info.kg    || 0;
+    var kgHoy  = info.kgHoy || 0;
+    var kgMan  = info.kgMan || 0;
+    var kgTot  = info.kgTot || 0;
+    totalReqHoy += kgHoy;
+    totalReqMan += kgMan;
+    totalReqSem += kgTot;
+
+    // Calcular estado
+    var estadoTxt, badgeCls, rowBg, emoji;
+    if (exist >= kgTot) {
+      estadoTxt='OK'; badgeCls='mrpmp-badge-ok'; rowBg=''; emoji='✅'; cntOk++;
+    } else if (exist >= (kgHoy + kgMan)) {
+      estadoTxt='BIEN'; badgeCls='mrpmp-badge-bien'; rowBg='background:#f0fff4'; emoji='😊'; cntBien++;
+    } else if (exist >= kgHoy) {
+      estadoTxt='PARCIAL'; badgeCls='mrpmp-badge-parcial'; rowBg='background:#fffde7'; emoji='😐'; cntParc++;
+    } else {
+      estadoTxt='MAL'; badgeCls='mrpmp-badge-mal'; rowBg='background:#fff5f5'; emoji='😢'; cntMal++;
+    }
+
+    html += '<tr style="'+rowBg+'">'
+      + '<td><b>'+r.codigo+'</b></td>'
+      + '<td style="font-size:.75rem;color:#374151">'+r.descripcion+'</td>'
+      + '<td style="text-align:right;color:#166534">'+mrpmp_fmt(r.entCompra)+'</td>'
+      + '<td style="text-align:right;color:#0891b2">'+mrpmp_fmt(r.entTransform)+'</td>'
+      + '<td style="text-align:right;color:#991b1b;border-right:2px solid #cbd5e1">'+mrpmp_fmt(r.salidas)+'</td>'
+      + '<td style="text-align:right;font-weight:700;color:#1e293b">'+mrpmp_fmt(exist)+'</td>'
+      + '<td style="text-align:right;color:#6366f1;font-weight:700">'+(req?mrpmp_fmt(req):'—')+'</td>'
+      + '<td style="text-align:right;font-weight:700;color:#92400e">'+(kgHoy?mrpmp_fmt(kgHoy):'—')+'</td>'
+      + '<td style="text-align:right;font-weight:700;color:#1e40af">'+(kgMan?mrpmp_fmt(kgMan):'—')+'</td>'
+      + '<td style="text-align:right;font-weight:900;color:#3730a3">'+(kgTot?mrpmp_fmt(kgTot):'—')+'</td>'
+      + '<td style="text-align:center"><span class="mrpmp-badge '+badgeCls+'">'+emoji+' '+estadoTxt+'</span></td>'
+      + '</tr>';
+  });
+
+  tbody.innerHTML = html;
+  mrpmp_renderKpis('mrpmp-kpis-exist', [
+    { val: mrpmp_fmt(totalExist)+' KG',  lbl: 'TOTAL EXIST.',    color: '#10b981' },
+    { val: mrpmp_fmt(totalReqHoy)+' KG', lbl: 'TOTAL REQ. '+lblHoy, color: '#92400e' },
+    { val: mrpmp_fmt(totalReqMan)+' KG', lbl: 'TOTAL REQ. '+lblMan, color: '#1e40af' },
+    { val: mrpmp_fmt(totalReqSem)+' KG', lbl: 'TOTAL REQ. SEM',  color: '#3730a3' }
+  ]);
+}
+
+function mrpmp_getCelda(r, col, mapaReq) {
+  if (col==='codigo') return r.codigo||'';
+  if (col==='descripcion') return r.descripcion||'';
+  if (col==='estado') {
+    var info = mapaReq[r.codigo]||{};
+    var ex=r.exist||0, kgHoy=info.kgHoy||0, kgMan=info.kgMan||0, kgTot=info.kgTot||0;
+    if (ex>=kgTot) return 'OK';
+    if (ex>=(kgHoy+kgMan)) return 'BIEN';
+    if (ex>=kgHoy) return 'PARCIAL';
+    return 'MAL';
+  }
+  return '';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PANEL 1: REQ. ALAMBRÓN
+// Columnas: ALAMBRÓN | ÓRDENES | KG REQUERIDOS | HOY | MAÑANA | D3 | D4 | D5 | TOTAL | FALTANTE
+// FALTANTE = EXISTENCIA (no disponible aquí) — dejamos TOTAL - KG_REQUERIDOS
+// Para Alambrón no hay existencia directa en el dato; FALTANTE = -(KG_REQUERIDOS)  (todo falta)
+// Si en el futuro se agrega existencia de alambrón al backend, se puede calcular real.
+// ══════════════════════════════════════════════════════════════════════
+var _mrpmp_alb_data = null, _mrpmp_alb_dias = null, _mrpmp_alb_fil = {};
+
+function mrpmp_renderAlambron(lista, resumenDias) {
+  _mrpmp_alb_data = lista; _mrpmp_alb_dias = resumenDias; _mrpmp_alb_fil = {};
+  mrpmp_renderAlbTabla();
+}
+
+function mrpmp_renderAlbTabla() {
+  var lista = _mrpmp_alb_data||[], resumenDias = _mrpmp_alb_dias||[], fil = _mrpmp_alb_fil;
+  var tbody = document.getElementById('mrpmp-tbody-alambron');
+  if (!tbody) return;
+
+  // Actualizar etiquetas de días
+  var labels = resumenDias.map(function(d,i){ return d.label||(i===0?'HOY':i===1?'MAÑANA':'DÍA '+(i+1)); });
+  ['d0','d1','d2','d3','d4'].forEach(function(id,i){
+    var th=document.getElementById('mrpmp-th-alb-'+id);
+    if(th && labels[i]) th.innerText = labels[i]+' (KG)';
+  });
+
+  if (!lista.length) {
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">SIN DATOS.</td></tr>';
+    return;
+  }
+
+  var filt = lista.filter(function(r){
+    for(var k in fil){ if(fil[k].length && fil[k].indexOf(_mrpmp_albVal(r,k))<0) return false; }
+    return true;
+  });
+
+  var totalKg=0, totalOrd=0, html='';
+  filt.forEach(function(r, idx){
+    totalKg  += r.kg    || 0;
+    totalOrd += r.ordenes || 0;
+    var dias  = r.dias  || [];
+    var kgTot = dias.reduce(function(a,b){return a+b;},0);
+    var falt  = -(r.kg||0); // sin existencia de alambrón, todo se asume faltante
+    var cebra = idx%2===0?'':'background:#f8fafc';
+    // ESTADO basado en si el kgTot semana cubre el kg requerido total
+    // Como no hay existencia: siempre MAL (todo requerido = sin stock)
+    var estadoTxt='MAL', badgeCls='mrpmp-badge-mal', emoji='😢';
+
+    html += '<tr style="'+cebra+'">'
+      + '<td><b style="color:#92400e">'+r.material+'</b></td>'
+      + '<td style="text-align:right">'+r.ordenes+'</td>'
+      + '<td style="text-align:right;font-weight:700">'+mrpmp_fmt(r.kg)+' KG</td>';
+    for(var di=0;di<5;di++){
+      var kg = dias[di]||0;
+      html += '<td style="text-align:right;color:#0891b2;font-weight:700">'+(kg?mrpmp_fmt(kg)+' KG':'—')+'</td>';
+    }
+    html += '<td style="text-align:right;font-weight:900;color:#3730a3;background:#eef2ff">'+(kgTot?mrpmp_fmt(kgTot)+' KG':'—')+'</td>'
+      + '<td style="text-align:right;font-weight:700;color:#ef4444">'+mrpmp_fmt(falt)+' KG</td>'
+      + '<td style="text-align:center"><span class="mrpmp-badge '+badgeCls+'">'+emoji+' '+estadoTxt+'</span></td>'
+      + '</tr>';
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="11" style="text-align:center;padding:1rem;color:#94a3b8">SIN RESULTADOS.</td></tr>';
+  mrpmp_renderKpis('mrpmp-kpis-alambron',[
+    {val:filt.length,                    lbl:'TIPOS DE ALAMBRÓN', color:'#f59e0b'},
+    {val:totalOrd,                       lbl:'ÓRDENES VIVAS',     color:'#6366f1'},
+    {val:mrpmp_fmt(totalKg)+' KG',       lbl:'TOTAL REQUERIDO',   color:'#ef4444'}
+  ]);
+}
+// _mrpmp_albVal ahora incluye 'estado' para el filtro combinado
+function _mrpmp_albVal(r,k){
+  if(k==='material') return r.material||'';
+  if(k==='estado') return 'MAL'; // sin existencia siempre MAL, igual permite filtrar
+  return '';
+}
+
+window.mrpmp_abrirFiltroAlb = function(col) {
+  mrpmp_abrirFiltroGenerico({
+    titulo:'FILTRAR ALAMBRÓN',
+    data: _mrpmp_alb_data||[],
+    filtros: _mrpmp_alb_fil,
+    col: col,
+    getVal: _mrpmp_albVal,
+    onAplicar: function(f){ _mrpmp_alb_fil=f; mrpmp_renderAlbTabla(); }
+  });
+};
+
+// ══════════════════════════════════════════════════════════════════════
+// PANEL 2: REQ. ALAMBRES
+// Columnas: CÓDIGO | DESCRIPCIÓN | KG REQUERIDOS | EXISTENCIA | HOY | MÑ | D3 | D4 | D5 | TOTAL | FALTANTE
+// FALTANTE = EXISTENCIA - TOTAL
+// ══════════════════════════════════════════════════════════════════════
+var _mrpmp_alambres_data=null, _mrpmp_alambres_exist=null, _mrpmp_alambres_dias=null, _mrpmp_alambres_fil={};
+
+function mrpmp_renderAlambres(lista, existencias, resumenDias) {
+  _mrpmp_alambres_data=lista; _mrpmp_alambres_exist=existencias; _mrpmp_alambres_dias=resumenDias; _mrpmp_alambres_fil={};
+  mrpmp_renderAlambreTabla();
+}
+
+function mrpmp_renderAlambreTabla() {
+  var lista=_mrpmp_alambres_data||[], exist=_mrpmp_alambres_exist||[], resumenDias=_mrpmp_alambres_dias||[], fil=_mrpmp_alambres_fil;
+  var tbody=document.getElementById('mrpmp-tbody-alambres');
+  if(!tbody) return;
+
+  // Actualizar etiquetas
+  var labels = resumenDias.map(function(d,i){ return d.label||(i===0?'HOY':i===1?'MAÑANA':'DÍA '+(i+1)); });
+  ['d0','d1','d2','d3','d4'].forEach(function(id,i){
+    var th=document.getElementById('mrpmp-th-alambr-'+id);
+    if(th && labels[i]) th.innerText = labels[i]+' (KG)';
+  });
+
+  var mapaExist={};
+  exist.forEach(function(e){ mapaExist[e.codigo]=e.exist||0; });
+
+  if(!lista.length){
+    tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:2rem;color:#94a3b8">SIN DATOS.</td></tr>';
+    return;
+  }
+
+  var filt=lista.filter(function(r){
+    for(var k in fil){ if(fil[k].length && fil[k].indexOf(_mrpmp_alambreVal(r,k,mapaExist))<0) return false; }
+    return true;
+  });
+
+  var html='';
+  filt.forEach(function(r,idx){
+    var ex    = mapaExist[r.codigo]||0;
+    var dias  = r.dias||[];
+    var kgHoy = dias[0]||0;
+    var kgMan = dias[1]||0;
+    var kgTot = dias.reduce(function(a,b){return a+b;},0);
+    var falt  = ex - kgTot;  // EXISTENCIA - TOTAL
+    var cebra = idx%2===0?'':'background:#f8fafc';
+
+    // ESTADO: misma lógica que Existencias
+    var estadoTxt, badgeCls, emoji, rowBg;
+    if (ex >= kgTot) {
+      estadoTxt='OK';      badgeCls='mrpmp-badge-ok';      emoji='✅'; rowBg='';
+    } else if (ex >= (kgHoy+kgMan)) {
+      estadoTxt='BIEN';    badgeCls='mrpmp-badge-bien';    emoji='😊'; rowBg='background:#f0fff4';
+    } else if (ex >= kgHoy) {
+      estadoTxt='PARCIAL'; badgeCls='mrpmp-badge-parcial'; emoji='😐'; rowBg='background:#fffde7';
+    } else {
+      estadoTxt='MAL';     badgeCls='mrpmp-badge-mal';     emoji='😢'; rowBg='background:#fff5f5';
+    }
+
+    var faltStyle = falt>=0 ? 'color:#166534;font-weight:700' : 'color:#ef4444;font-weight:700';
+    html+='<tr style="'+cebra+(rowBg?';'+rowBg.replace('background:','background-color:')+';':'')+'">'
+      +'<td><b>'+r.codigo+'</b></td>'
+      +'<td style="font-size:.75rem;color:#374151">'+r.descripcion+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+mrpmp_fmt(r.kg)+' KG</td>'
+      +'<td style="text-align:right;font-weight:700;color:#1e293b">'+mrpmp_fmt(ex)+' KG</td>';
+    for(var di=0;di<5;di++){
+      var kg=dias[di]||0;
+      html+='<td style="text-align:right;color:#0891b2;font-weight:700">'+(kg?mrpmp_fmt(kg)+' KG':'—')+'</td>';
+    }
+    html+='<td style="text-align:right;font-weight:900;color:#3730a3;background:#eef2ff">'+(kgTot?mrpmp_fmt(kgTot)+' KG':'—')+'</td>'
+      +'<td style="text-align:right;'+faltStyle+'">'+(falt>=0?'+':'')+mrpmp_fmt(falt)+' KG</td>'
+      +'<td style="text-align:center"><span class="mrpmp-badge '+badgeCls+'">'+emoji+' '+estadoTxt+'</span></td>'
+      +'</tr>';
+  });
+
+  tbody.innerHTML=html||'<tr><td colspan="12" style="text-align:center;padding:1rem;color:#94a3b8">SIN RESULTADOS.</td></tr>';
+}
+
+function _mrpmp_alambreVal(r,k,mapaExist){
+  if(k==='codigo') return r.codigo||'';
+  if(k==='descripcion') return r.descripcion||'';
+  if(k==='estado'){
+    var ex=mapaExist?mapaExist[r.codigo]||0:0;
+    var dias=r.dias||[];
+    var kgHoy=dias[0]||0, kgMan=dias[1]||0;
+    var kgTot=dias.reduce(function(a,b){return a+b;},0);
+    if(ex>=kgTot) return 'OK';
+    if(ex>=(kgHoy+kgMan)) return 'BIEN';
+    if(ex>=kgHoy) return 'PARCIAL';
+    return 'MAL';
+  }
+  return '';
+}
+
+window.mrpmp_abrirFiltroAlambre = function(col) {
+  // Necesitamos pasar el mapa de existencias al getVal para que el filtro de ESTADO funcione bien
+  var mapaExist={};
+  (_mrpmp_alambres_exist||[]).forEach(function(e){ mapaExist[e.codigo]=e.exist||0; });
+  mrpmp_abrirFiltroGenerico({
+    titulo:'FILTRAR ALAMBRES',
+    data: _mrpmp_alambres_data||[],
+    filtros: _mrpmp_alambres_fil,
+    col: col,
+    getVal: function(r,k){ return _mrpmp_alambreVal(r,k,mapaExist); },
+    onAplicar: function(f){ _mrpmp_alambres_fil=f; mrpmp_renderAlambreTabla(); }
+  });
+};
+
+// ── Render KPIs ──
+function mrpmp_renderKpis(containerId, items) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  if (!items || items.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = items.map(function(k) {
+    return '<div class="mrpmp-kpi" style="border-left:4px solid '+k.color+'">'
+      + '<div class="mrpmp-kpi-val" style="color:'+k.color+'">'+k.val+'</div>'
+      + '<div class="mrpmp-kpi-lbl">'+k.lbl+'</div></div>';
+  }).join('');
+}
+
+// ── Render Plan 5 días ──
+function mrpmp_renderPlan(detalleMaq, resumenDias) {
+  var elRes  = document.getElementById('mrpmp-plan-resumen');
+  var elGrid = document.getElementById('mrpmp-plan-grid');
+  if (!elRes || !elGrid) return;
+
+  if (!detalleMaq || detalleMaq.length === 0) {
+    elRes.innerHTML  = '';
+    elGrid.innerHTML = '<p style="color:#94a3b8;padding:2rem;text-align:center">SIN DATOS DE PLAN. VERIFICA QUE LAS ÓRDENES TENGAN MÁQUINA Y ESTÁNDAR ASIGNADOS.</p>';
+    return;
+  }
+
+  window._mrpmp_planData     = detalleMaq;
+  window._mrpmp_planDias     = resumenDias;
+  window._mrpmp_planFiltroMaq = null;
+
+  mrpmp_renderPlanTabla();
+}
+
+function mrpmp_renderPlanTabla() {
+  var detalleMaq  = window._mrpmp_planData || [];
+  var resumenDias = window._mrpmp_planDias || [];
+  var filtroMaq   = window._mrpmp_planFiltroMaq;
+
+  var elRes  = document.getElementById('mrpmp-plan-resumen');
+  var elGrid = document.getElementById('mrpmp-plan-grid');
+
+  var COLS = resumenDias.map(function(d){ return d.label; });
+  COLS.push('TOTAL');
+
+  var filasFiltradas = filtroMaq
+    ? detalleMaq.filter(function(f){ return filtroMaq.indexOf(f.maquina) >= 0; })
+    : detalleMaq;
+
+  // Totales por día
+  var totGen = resumenDias.map(function(){ return {}; });
+  filasFiltradas.forEach(function(fila) {
+    fila.dias.forEach(function(dObj, di) {
+      if (!totGen[di]) return;
+      dObj.forEach(function(item) {
+        totGen[di][item.mp] = (totGen[di][item.mp] || 0) + item.kg;
+      });
+    });
+  });
+  var totTot = {};
+  totGen.forEach(function(d){ Object.keys(d).forEach(function(mp){ totTot[mp]=(totTot[mp]||0)+d[mp]; }); });
+
+  // Tarjetas resumen
+  var COLORES = ['#92400e','#1e40af','#065f46','#6b21a8','#991b1b'];
+  var htmlRes = '<p style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:#0891b2;'
+    + 'border-bottom:2px solid #e0f2fe;padding-bottom:4px;margin-bottom:.8rem">TOTAL GENERAL DE MATERIA PRIMA</p>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem">';
+
+  totGen.forEach(function(d, i) {
+    var mps = Object.keys(d);
+    if (mps.length === 0) return;
+    var lbl = resumenDias[i] ? resumenDias[i].label : 'DÍA ' + (i+1);
+    htmlRes += '<div style="background:white;border-radius:10px;padding:.75rem 1rem;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.07);min-width:160px;'
+      + 'border-top:3px solid ' + (COLORES[i]||'#64748b') + '">'
+      + '<div style="font-size:.62rem;font-weight:800;color:#64748b;text-transform:uppercase;'
+      + 'letter-spacing:.06em;margin-bottom:5px">' + lbl + '</div>';
+    mps.sort().forEach(function(mp) {
+      htmlRes += '<div style="display:flex;justify-content:space-between;gap:12px;'
+        + 'font-size:.76rem;border-bottom:1px solid #f1f5f9;padding:2px 0">'
+        + '<span style="font-weight:700;color:#0f172a">' + mp + '</span>'
+        + '<span style="font-weight:900;color:#374151">' + mrpmp_fmt(d[mp]) + ' KG</span>'
+        + '</div>';
+    });
+    htmlRes += '</div>';
+  });
+
+  var totTotKeys = Object.keys(totTot).sort();
+  if (totTotKeys.length > 0) {
+    htmlRes += '<div style="background:#0f172a;border-radius:10px;padding:.75rem 1rem;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.15);min-width:160px;border-top:3px solid #6366f1">'
+      + '<div style="font-size:.62rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;'
+      + 'letter-spacing:.06em;margin-bottom:5px">TOTAL SEMANA</div>';
+    totTotKeys.forEach(function(mp) {
+      htmlRes += '<div style="display:flex;justify-content:space-between;gap:12px;'
+        + 'font-size:.76rem;border-bottom:1px solid rgba(255,255,255,.08);padding:2px 0">'
+        + '<span style="font-weight:700;color:#e2e8f0">' + mp + '</span>'
+        + '<span style="font-weight:900;color:white">' + mrpmp_fmt(totTot[mp]) + ' KG</span>'
+        + '</div>';
+    });
+    htmlRes += '</div>';
+  }
+  htmlRes += '</div>';
+  elRes.innerHTML = htmlRes;
+
+  // Cuadrícula máquinas × días
+  var todasMaqs = detalleMaq.map(function(f){ return f.maquina; });
+  var nFiltradas = filtroMaq ? filtroMaq.length : todasMaqs.length;
+  var lblFiltro = nFiltradas < todasMaqs.length
+    ? ' <span style="background:#ef4444;color:white;border-radius:10px;padding:1px 6px;font-size:.65rem">' + nFiltradas + '/' + todasMaqs.length + '</span>'
+    : '';
+
+  var htmlGrid = '<p style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:#0891b2;'
+    + 'border-bottom:2px solid #e0f2fe;padding-bottom:4px;margin-bottom:.8rem">DETALLE POR MÁQUINA</p>';
+  htmlGrid += '<table class="mrpmp-tbl" style="min-width:700px;border-collapse:collapse">';
+
+  htmlGrid += '<thead><tr>'
+    + '<th onclick="mrpmp_abrirFiltroMaq()" style="min-width:130px;border:1.5px solid #cbd5e1;'
+    + 'background:#1e293b;color:white;cursor:pointer;user-select:none" '
+    + 'title="Clic para filtrar máquinas">'
+    + '<i class="fas fa-filter" style="margin-right:4px;font-size:.7rem"></i>MÁQUINA' + lblFiltro + '</th>';
+  COLS.forEach(function(c, i) {
+    var isTotal = i === COLS.length - 1;
+    var isHoy   = i === 0;
+    var bg = isTotal ? '#3730a3' : isHoy ? '#92400e' : '#1e293b';
+    htmlGrid += '<th style="text-align:center;min-width:130px;border:1.5px solid #cbd5e1;'
+      + 'background:' + bg + ';color:white;white-space:nowrap;padding:6px 4px">' + c + '</th>';
+  });
+  htmlGrid += '</tr></thead><tbody>';
+
+  filasFiltradas.forEach(function(fila, filaIdx) {
+    var totalMps = {};
+    fila.dias.forEach(function(dObj) {
+      dObj.forEach(function(item) { totalMps[item.mp] = (totalMps[item.mp] || 0) + item.kg; });
+    });
+    var mpsTotales = Object.keys(totalMps);
+    var cebra = filaIdx % 2 === 0 ? '#ffffff' : '#f1f5f9';
+
+    htmlGrid += '<tr>'
+      + '<td style="font-weight:900;font-size:.82rem;vertical-align:middle;padding:7px 10px;'
+      + 'background:#f8fafc;border:1.5px solid #cbd5e1;white-space:nowrap">' + fila.maquina + '</td>';
+
+    fila.dias.forEach(function(dObj, di) {
+      var bgCelda  = di === 0 ? '#fffbeb' : cebra;
+      var borde    = di === 0 ? '1.5px solid #f59e0b' : '1.5px solid #cbd5e1';
+      var labelDia = resumenDias[di] ? resumenDias[di].label : 'DÍA '+(di+1);
+      var maqEsc   = fila.maquina.replace(/'/g,"\\'");
+      var lblEsc   = labelDia.replace(/'/g,"\\'");
+      if (dObj.length === 0) {
+        htmlGrid += '<td style="text-align:center;color:#94a3b8;background:' + bgCelda
+          + ';border:' + borde + ';font-size:.8rem">—</td>';
+      } else {
+        htmlGrid += '<td onclick="mrpmp_verDetalleDia(\'' + maqEsc + '\',' + di + ',\'' + lblEsc + '\')" '
+          + 'style="vertical-align:top;background:' + bgCelda + ';border:' + borde
+          + ';padding:5px 8px;cursor:pointer" title="Ver detalle órdenes">';
+        dObj.forEach(function(item) {
+          htmlGrid += '<div style="display:flex;justify-content:space-between;gap:10px;'
+            + 'font-size:.75rem;padding:2px 0;border-bottom:1px solid rgba(0,0,0,.07)">'
+            + '<span style="font-weight:700;color:#374151;white-space:nowrap">' + item.mp + '</span>'
+            + '<span style="font-weight:900;color:#0f172a;white-space:nowrap">' + mrpmp_fmt(item.kg) + ' KG</span>'
+            + '</div>';
+        });
+        htmlGrid += '<div style="text-align:right;font-size:.62rem;color:#94a3b8;margin-top:2px">'
+          + '<i class="fas fa-search" style="margin-right:2px"></i>ver detalle</div>';
+        htmlGrid += '</td>';
+      }
+    });
+
+    var bgTotal = cebra === '#ffffff' ? '#eef2ff' : '#e0e7ff';
+    htmlGrid += '<td style="vertical-align:top;background:' + bgTotal
+      + ';border:1.5px solid #6366f1;padding:5px 8px">';
+    if (mpsTotales.length === 0) {
+      htmlGrid += '<span style="color:#94a3b8;font-size:.8rem">—</span>';
+    } else {
+      mpsTotales.sort().forEach(function(mp) {
+        htmlGrid += '<div style="display:flex;justify-content:space-between;gap:10px;'
+          + 'font-size:.75rem;padding:2px 0;border-bottom:1px solid rgba(99,102,241,.15)">'
+          + '<span style="font-weight:700;color:#374151;white-space:nowrap">' + mp + '</span>'
+          + '<span style="font-weight:900;color:#4338ca;white-space:nowrap">' + mrpmp_fmt(totalMps[mp]) + ' KG</span>'
+          + '</div>';
+      });
+    }
+    htmlGrid += '</td></tr>';
+  });
+
+  htmlGrid += '</tbody></table>';
+  elGrid.innerHTML = htmlGrid;
+}
+
+// ── Filtro Máquinas en Plan ──
+window.mrpmp_abrirFiltroMaq = function() {
+  var detalleMaq = window._mrpmp_planData || [];
+  mrpmp_abrirFiltroGenerico({
+    titulo: 'FILTRAR MÁQUINAS',
+    data:   detalleMaq,
+    filtros: { maquina: window._mrpmp_planFiltroMaq || [] },
+    col:    'maquina',
+    getVal: function(r, k) { return k==='maquina' ? r.maquina : ''; },
+    onAplicar: function(f) {
+      var sel = f['maquina'] || [];
+      window._mrpmp_planFiltroMaq = sel.length ? sel : null;
+      mrpmp_renderPlanTabla();
+    }
+  });
+};
+
+// Filtro Existencias
+window.mrpmp_abrirFiltroExist = function(col) {
+  // Construir mapa una sola vez para que el filtro de estado sea consistente
+  var mapaReq={};
+  (_mrpmp_exist_req||[]).forEach(function(rx){
+    var d=rx.dias||[];
+    mapaReq[rx.codigo]={kg:rx.kg||0,kgHoy:d[0]||0,kgMan:d[1]||0,kgTot:d.reduce(function(a,b){return a+b;},0)};
+  });
+  mrpmp_abrirFiltroGenerico({
+    titulo: 'FILTRAR EXISTENCIAS',
+    data:   _mrpmp_exist_data || [],
+    filtros: _mrpmp_exist_filtros,
+    col: col,
+    getVal: function(r,k){ return mrpmp_getCelda(r,k,mapaReq); },
+    onAplicar: function(f){ _mrpmp_exist_filtros=f; mrpmp_renderExistTabla(); }
+  });
+};
+
+// ══════════════════════════════════════════════════════
+// FILTRO GENÉRICO COMBINADO (con buscador)
+// ══════════════════════════════════════════════════════
+function mrpmp_abrirFiltroGenerico(opts) {
+  var data       = opts.data || [];
+  var filtros    = opts.filtros || {};
+  var col        = opts.col;
+  var getVal     = opts.getVal;
+  var onAplicar  = opts.onAplicar;
+  var titulo     = opts.titulo || 'FILTRAR';
+
+  var otrosFiltros = {};
+  for (var k in filtros) { if (k !== col) otrosFiltros[k] = filtros[k]; }
+  var visibles = data.filter(function(r){
+    for (var k in otrosFiltros){ if(otrosFiltros[k].length && otrosFiltros[k].indexOf(getVal(r,k))<0) return false; }
+    return true;
+  });
+  var valSet = {}, valList = [];
+  visibles.forEach(function(r){ var v=getVal(r,col); if(v && !valSet[v]){valSet[v]=true; valList.push(v);} });
+  valList.sort();
+
+  var activos = filtros[col] || [];
+  var idPref  = 'mrpmpfk_' + col + '_';
+
+  function buildChecks(busq) {
+    var filtrados = busq ? valList.filter(function(v){ return v.toLowerCase().indexOf(busq.toLowerCase())>=0; }) : valList;
+    if (!filtrados.length) return '<p style="color:#94a3b8;font-size:.8rem;text-align:center;padding:8px">Sin resultados</p>';
+    return filtrados.map(function(v){
+      var chk = !activos.length || activos.indexOf(v)>=0;
+      return '<label style="display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:.82rem">'
+        +'<input type="checkbox" id="'+idPref+btoa(unescape(encodeURIComponent(v))).replace(/=/g,'')
+        +'" data-val="'+v.replace(/"/g,'&quot;')+'" '+(chk?'checked':'')
+        +' style="width:15px;height:15px;accent-color:#6366f1">'
+        +'<span style="font-weight:600;color:#0f172a">'+v+'</span></label>';
+    }).join('');
+  }
+
+  Swal.fire({
+    title: '<span style="font-size:.9rem;font-weight:800">'+titulo+'</span>',
+    html: '<div style="text-align:left">'
+      +'<input id="mrpmp-fil-busq" type="text" placeholder="🔍 Buscar..." '
+      +'style="width:100%;padding:6px 10px;border:1.5px solid #cbd5e1;border-radius:8px;'
+      +'font-size:.82rem;margin-bottom:8px;box-sizing:border-box;outline:none">'
+      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+      +'<button onclick="mrpmp_filSelAll(true)" style="flex:1;padding:3px 6px;background:#0891b2;color:white;border:none;border-radius:6px;cursor:pointer;font-size:.72rem;font-weight:700">TODAS</button>'
+      +'<button onclick="mrpmp_filSelAll(false)" style="flex:1;padding:3px 6px;background:#64748b;color:white;border:none;border-radius:6px;cursor:pointer;font-size:.72rem;font-weight:700">NINGUNA</button>'
+      +'</div>'
+      +'<div id="mrpmp-fil-lista" style="max-height:260px;overflow-y:auto;padding:0 2px">'+buildChecks('')+'</div>'
+      +'</div>',
+    showCancelButton: true,
+    confirmButtonText: 'APLICAR',
+    cancelButtonText: 'CANCELAR',
+    confirmButtonColor: '#6366f1',
+    cancelButtonColor: '#94a3b8',
+    width: 340,
+    didOpen: function() {
+      document.querySelector('.swal2-container').style.zIndex = '99999';
+      var inp = document.getElementById('mrpmp-fil-busq');
+      if (inp) inp.addEventListener('input', function(){
+        var lista = document.getElementById('mrpmp-fil-lista');
+        if (lista) lista.innerHTML = buildChecks(this.value);
+      });
+      if (inp) setTimeout(function(){ inp.focus(); }, 80);
+    },
+    preConfirm: function() {
+      var sel = [];
+      document.querySelectorAll('#mrpmp-fil-lista input[type=checkbox]').forEach(function(el){
+        if (el.checked) sel.push(el.getAttribute('data-val'));
+      });
+      return sel;
+    }
+  }).then(function(res) {
+    if (!res.isConfirmed) return;
+    var sel = res.value || [];
+    var nuevos = Object.assign({}, filtros);
+    nuevos[col] = (sel.length === valList.length) ? [] : sel;
+    onAplicar(nuevos);
+  });
+}
+
+window.mrpmp_filSelAll = function(val) {
+  document.querySelectorAll('#mrpmp-fil-lista input[type=checkbox]').forEach(function(el){ el.checked = val; });
+};
+
+// ── Detalle lazy por día ──
+window.mrpmp_verDetalleDia = function(maquina, diaIdx, labelDia) {
+  var serie = window._mrpmp_currentSerie || 'TODAS';
+
+  Swal.fire({
+    title: '<span style="font-size:.88rem;font-weight:800;color:#1e293b">'+maquina+' — '+labelDia+'</span>',
+    html: '<div style="padding:1.5rem;text-align:center">'
+      +'<div style="display:inline-block;width:32px;height:32px;border:3px solid #e2e8f0;'
+      +'border-top-color:#6366f1;border-radius:50%;animation:spin 0.7s linear infinite"></div>'
+      +'<p style="margin-top:10px;color:#64748b;font-size:.82rem">Cargando detalle...</p></div>',
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: 700,
+    didOpen: function() {
+      document.querySelector('.swal2-container').style.zIndex = '99999';
+      google.script.run
+        .withSuccessHandler(function(json) {
+          var d = JSON.parse(json);
+          if (!d.success) {
+            Swal.update({ html: '<p style="color:#ef4444;padding:1rem">'+d.msg+'</p>', showConfirmButton:true, confirmButtonText:'Cerrar' });
+            return;
+          }
+          var grupos = d.grupos || {};
+          var mps = Object.keys(grupos).sort();
+          if (!mps.length) {
+            Swal.update({ html: '<p style="color:#94a3b8;padding:1rem;text-align:center">Sin producción este día.</p>', showConfirmButton:true, confirmButtonText:'Cerrar' });
+            return;
+          }
+          var html = '<div style="max-height:65vh;overflow-y:auto;text-align:left">';
+          mps.forEach(function(mp) {
+            html += '<div style="background:#f8fafc;border-radius:8px;margin-bottom:10px;overflow:hidden">'
+              +'<div style="background:#0f172a;color:white;padding:7px 12px;font-size:.8rem;font-weight:800;'
+              +'letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center">'
+              +'<span>'+mp+'</span>'
+              +'<span style="background:#6366f1;border-radius:10px;padding:2px 8px;font-size:.7rem">'
+              +grupos[mp].reduce(function(a,o){return a+o.kg;},0).toLocaleString()+' KG</span></div>'
+              +'<table style="width:100%;border-collapse:collapse;font-size:.76rem">'
+              +'<thead><tr style="background:#1e293b;color:white">'
+              +'<th style="padding:5px 8px;text-align:left">ORDEN</th>'
+              +'<th style="padding:5px 8px;text-align:left">CÓDIGO</th>'
+              +'<th style="padding:5px 8px">TIPO</th>'
+              +'<th style="padding:5px 8px">DIÁM</th>'
+              +'<th style="padding:5px 8px">LONG</th>'
+              +'<th style="padding:5px 8px">CUERPO</th>'
+              +'<th style="padding:5px 8px">CUERDA</th>'
+              +'<th style="padding:5px 8px">ACERO</th>'
+              +'<th style="padding:5px 8px;text-align:right">KG DÍA</th>'
+              +'</tr></thead><tbody>';
+            grupos[mp].forEach(function(o, oi) {
+              var bg = oi%2===0 ? '#ffffff' : '#f1f5f9';
+              html += '<tr style="background:'+bg+'">'
+                +'<td style="padding:5px 8px;font-weight:700;color:#1e293b">'+o.orden+'</td>'
+                +'<td style="padding:5px 8px;color:#374151">'+o.codigo+'</td>'
+                +'<td style="padding:5px 8px;text-align:center">'+o.tipo+'</td>'
+                +'<td style="padding:5px 8px;text-align:center">'+o.diam+'</td>'
+                +'<td style="padding:5px 8px;text-align:center">'+o.long+'</td>'
+                +'<td style="padding:5px 8px;text-align:center">'+o.cuerpo+'</td>'
+                +'<td style="padding:5px 8px;text-align:center">'+o.cuerda+'</td>'
+                +'<td style="padding:5px 8px;text-align:center">'+o.acero+'</td>'
+                +'<td style="padding:5px 8px;text-align:right;font-weight:900;color:#0f172a">'+o.kg.toLocaleString()+'</td>'
+                +'</tr>';
+            });
+            html += '</tbody></table></div>';
+          });
+          html += '</div>';
+          Swal.update({ html: html, showConfirmButton: true, confirmButtonText: 'CERRAR', confirmButtonColor:'#6366f1' });
+        })
+        .withFailureHandler(function(err) {
+          Swal.update({ html: '<p style="color:#ef4444;padding:1rem">Error: '+err+'</p>', showConfirmButton:true, confirmButtonText:'Cerrar' });
+        })
+        .mrpmpObtenerDetalleDia({ maquina: maquina, diaIdx: diaIdx, serie: serie });
+    }
+  });
+};
+
+// ── Formato entero con comas ──
+function mrpmp_fmt(n) {
+  var v = Math.round(parseFloat(n) || 0);
+  return v.toLocaleString('es-MX', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+//  MÓDULO SALIDA ALAMBRES  —  prefijo: sal_

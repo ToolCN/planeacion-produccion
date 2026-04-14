@@ -1,0 +1,329 @@
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULO: WIP PISO  (prefijo wip- en IDs, wip_ en funciones JS)
+// ══════════════════════════════════════════════════════════════════════════════
+function loadWip() {
+  showLoader('CARGANDO WIP PISO...');
+
+  // ── CSS guard ────────────────────────────────────────────────────────────────
+  if (!document.getElementById('wip-style')) {
+    var st = document.createElement('style'); st.id = 'wip-style';
+    st.textContent = [
+      /* Pantalla filtros */
+      '#wip-panel { font-family: "Roboto", sans-serif; background: #e0e0e0; min-height: calc(100vh - 48px); overflow-x: hidden; }',
+      '#wip-screenFilter { padding: 20px; max-width: 800px; margin: 0 auto; }',
+      '#wip-panel .wip-filter-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 8px solid #1565c0; }',
+      '#wip-panel .wip-grid-fam { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; }',
+      '#wip-panel .wip-chk-fam { display: none; }',
+      '#wip-panel .wip-lbl-fam { display: block; padding: 15px; background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 8px; text-align: center; font-weight: 900; cursor: pointer; font-size: 13px; }',
+      '#wip-panel .wip-chk-fam:checked + .wip-lbl-fam { background: #e3f2fd; border-color: #1976d2; color: #1565c0; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }',
+      '#wip-panel .wip-btn-mini { padding: 8px 15px; font-size: 12px; background: #607d8b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }',
+      /* Dashboard */
+      '#wip-screenBoard { display: none; padding: 15px; padding-bottom: 100px; }',
+      '#wip-panel .wip-header-bar { background: #263238; color: white; padding: 15px 25px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }',
+      '#wip-panel .wip-total-global { font-size: 24px; font-weight: 900; color: #ffeb3b; }',
+      '#wip-panel .wip-search-wip { padding: 12px 20px; border-radius: 25px; border: none; width: 250px; font-weight: bold; outline: none; }',
+      '#wip-panel .wip-filters-panel { background: white; padding: 15px; border-bottom: 4px solid #1565c0; margin-bottom: 25px; border-radius: 8px; }',
+      '#wip-panel .wip-search-codes-input { width: 100%; padding: 10px 20px; border-radius: 30px; border: 2px solid #eee; font-weight: bold; margin-bottom: 5px; outline: none; }',
+      '#wip-panel .wip-codes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 10px; max-height: 180px; overflow-y: auto; padding: 12px; background: #f1f3f4; border-radius: 6px; border: 1px solid #dadce0; }',
+      '#wip-panel .wip-chk-code-wrapper { display: flex; align-items: center; gap: 10px; background: white; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; font-size: 11px; }',
+      '#wip-panel .wip-proc-header { background: white; padding: 10px 20px; border-left: 8px solid #1976d2; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.08); }',
+      '#wip-panel .wip-proc-title { font-weight: 900; font-size: 18px; color: #1565c0; text-transform: uppercase; }',
+      '#wip-panel .wip-proc-totals { display: flex; gap: 15px; font-weight: 900; font-size: 16px; }',
+      '#wip-panel .wip-tinas-grid { display: flex; gap: 20px; overflow-x: auto; padding: 15px 10px 5px 10px; }',
+      /* Tinas */
+      '#wip-panel .wip-tina-card { position: relative; width: 175px; height: fit-content; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding-bottom: 8px; margin-bottom: 5px; }',
+      '#wip-panel .wip-tina-normal { border: 2px solid #cfd8dc; }',
+      '#wip-panel .wip-tina-procesando { border: 3px solid #f44336 !important; background: #fff8f8; }',
+      '#wip-panel .wip-tina-remanente { border: 2px dashed #90a4ae !important; opacity: 0.65; }',
+      '#wip-panel .wip-badge-proceso { position: absolute; top: -15px; background: #f44336; color: white; font-size: 9px; padding: 2px 12px; border-radius: 20px; font-weight: 900; z-index: 50; box-shadow: 0 3px 6px rgba(244,67,54,0.4); border: 1px solid white; }',
+      '#wip-panel .wip-svg-tina { width: 100%; height: 125px; margin-top: -10px; margin-bottom: -5px; }',
+      '#wip-panel .wip-tina-data { text-align: center; margin-top: -105px; width: 100%; z-index: 5; pointer-events: none; }',
+      '#wip-panel .wip-tina-lote { font-size: 13px; font-weight: 900; color: #263238; text-shadow: 1px 1px 0 white; margin-bottom: 2px; }',
+      '#wip-panel .wip-tina-kg { font-size: 24px; font-weight: 900; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,1); margin: 0; line-height: 1; }',
+      '#wip-panel .wip-tina-ref { font-size: 10px; font-weight: 900; color: #fff; text-shadow: 1px 1px 3px black; margin-bottom: 8px; display: block; }',
+      '#wip-panel .wip-tina-prod { font-size: 11px; font-weight: 900; color: #000; background: #ffeb3b; border: 1.5px solid #000; padding: 1px 6px; border-radius: 4px; display: inline-block; margin-top: 12px; }',
+      '#wip-panel .wip-tina-desc { font-size: 9px; font-weight: 900; color: #000; background: #ffeb3b; border: 1.5px solid #000; padding: 1px 4px; margin-top: 3px; text-transform: uppercase; width: 90%; margin-left: auto; margin-right: auto; line-height: 1.1; }',
+      '#wip-panel .wip-action-row { margin-top: 5px; display: flex; align-items: center; gap: 8px; background: #e8f5e9; padding: 4px 12px; border-radius: 20px; border: 1px solid #c8e6c9; width: 85%; justify-content: center; }',
+      '#wip-panel .wip-chk-done { width: 18px; height: 18px; cursor: pointer; accent-color: #2e7d32; }',
+      '#wip-panel .wip-btn-main { padding: 18px; background: #2e7d32; color: white; border: none; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 18px; width: 100%; margin-top: 20px; box-shadow: 0 5px 0 #1b5e20; }',
+      '#wip-panel .wip-fab { position: fixed; bottom: 35px; right: 35px; background: #0088cc; color: white; width: 70px; height: 70px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 35px; box-shadow: 0 6px 20px rgba(0,0,0,0.3); border: none; z-index: 999; cursor: pointer; }',
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  // ── HTML ─────────────────────────────────────────────────────────────────────
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+  ca.innerHTML =
+    '<div id="wip-panel">' +
+      '<div id="wip-screenFilter">' +
+        '<div class="wip-filter-card">' +
+          '<h2 style="margin:0 0 20px 0; color:#1565c0; font-weight:900; text-align:center;">🔍 SELECCIÓN POR FAMILY</h2>' +
+          '<div class="wip-btn-toolbar" style="display:flex; gap:10px; margin-bottom:10px;">' +
+            '<button class="wip-btn-mini" onclick="wip_toggleAllFam(true)">Seleccionar Todo</button>' +
+            '<button class="wip-btn-mini" onclick="wip_toggleAllFam(false)">Ninguno</button>' +
+          '</div>' +
+          '<div id="wip-famContainer" class="wip-grid-fam"></div>' +
+          '<button class="wip-btn-main" onclick="wip_cargarWIP()">CARGAR DASHBOARD WIP</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="wip-screenBoard">' +
+        '<div class="wip-header-bar">' +
+          '<div style="display:flex; align-items:center; gap:20px;">' +
+            '<button style="background:#546e7a; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:900; cursor:pointer;" onclick="wip_goBack()">⬅ VOLVER</button>' +
+            '<span style="font-weight:900; font-size:22px; letter-spacing:1.5px;">WIP PISO</span>' +
+          '</div>' +
+          '<input type="text" class="wip-search-wip" placeholder="🔍 Lote o Producto..." onkeyup="wip_filtrarLotes(this.value)">' +
+          '<div class="wip-total-global" id="wip-grandTotal">0 Kg</div>' +
+        '</div>' +
+        '<div class="wip-filters-panel">' +
+          '<input type="text" class="wip-search-codes-input" placeholder="🔍 Filtrar materiales..." onkeyup="wip_filtrarChecksCodigos(this.value)">' +
+          '<div style="display:flex; gap:10px; margin-bottom:10px; padding:0 5px;">' +
+            '<button class="wip-btn-mini" onclick="wip_toggleAllCodes(true)">Seleccionar Todo</button>' +
+            '<button class="wip-btn-mini" onclick="wip_toggleAllCodes(false)">Ninguno</button>' +
+          '</div>' +
+          '<div id="wip-codesContainer" class="wip-codes-grid"></div>' +
+          '<button class="wip-btn-main" style="margin-top:10px; padding:10px; background:#1565c0;" onclick="wip_recalcularWIP()">REFRESCAR VISTA</button>' +
+        '</div>' +
+        '<div id="wip-wipContainer"></div>' +
+      '</div>' +
+      '<button class="wip-fab" onclick="wip_enviarReporte()">✈️</button>' +
+    '</div>';
+
+  // ── Estado y variables del módulo ───────────────────────────────────────────
+  wip_rawData = {};
+  wip_metaCodigos = {};
+  wip_codigosSeleccionados = new Set();
+
+  // ── Cargar datos iniciales (pantalla de filtros) ────────────────────────────
+  google.script.run
+    .withSuccessHandler(function(res) {
+      wip_renderFiltros(res);
+      hideLoader();
+    })
+    .withFailureHandler(function(e) {
+      hideLoader();
+      alert('Error al cargar WIP: ' + e);
+    })
+    .obtenerDatosWIP([]);
+}
+
+// ── Variables de estado del módulo WIP ────────────────────────────────────────
+var wip_rawData = {};
+var wip_metaCodigos = {};
+var wip_codigosSeleccionados = new Set();
+
+// ── Funciones del módulo WIP ──────────────────────────────────────────────────
+function wip_renderFiltros(res) {
+  var html = '';
+  res.familias.forEach(function(f) {
+    html += '<label><input type="checkbox" class="wip-chk-fam" value="' + f + '"><span class="wip-lbl-fam">' + f + '</span></label>';
+  });
+  var cont = document.getElementById('wip-famContainer');
+  if (cont) cont.innerHTML = html;
+}
+window.wip_renderFiltros = wip_renderFiltros;
+
+function wip_toggleAllFam(estado) {
+  document.querySelectorAll('#wip-panel .wip-chk-fam').forEach(function(c) { c.checked = estado; });
+}
+window.wip_toggleAllFam = wip_toggleAllFam;
+
+function wip_toggleAllCodes(estado) {
+  document.querySelectorAll('#wip-panel .wip-chk-code').forEach(function(c) { c.checked = estado; });
+}
+window.wip_toggleAllCodes = wip_toggleAllCodes;
+
+function wip_goBack() {
+  var sb = document.getElementById('wip-screenBoard');
+  var sf = document.getElementById('wip-screenFilter');
+  if (sb) sb.style.display = 'none';
+  if (sf) sf.style.display = 'block';
+}
+window.wip_goBack = wip_goBack;
+
+function wip_cargarWIP() {
+  var seleccion = [];
+  document.querySelectorAll('#wip-panel .wip-chk-fam:checked').forEach(function(c) { seleccion.push(c.value); });
+  if (seleccion.length === 0) { alert('Selecciona una familia.'); return; }
+  showLoader('CALCULANDO WIP...');
+  google.script.run
+    .withSuccessHandler(wip_inicializarDashboard)
+    .withFailureHandler(function(e) { hideLoader(); alert('Error: ' + e); })
+    .obtenerDatosWIP(seleccion);
+}
+window.wip_cargarWIP = wip_cargarWIP;
+
+function wip_inicializarDashboard(res) {
+  wip_rawData = res.wip;
+  wip_metaCodigos = res.metadatosCodigos;
+  var container = document.getElementById('wip-codesContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  var sortedCodes = Object.keys(wip_metaCodigos).sort();
+  wip_codigosSeleccionados = new Set();
+  sortedCodes.forEach(function(code) {
+    wip_codigosSeleccionados.add(code);
+    container.innerHTML += '<label class="wip-chk-code-wrapper" data-search="' + code + ' ' + wip_metaCodigos[code] + '">' +
+      '<input type="checkbox" class="wip-chk-code" value="' + code + '" checked>' +
+      '<div><span style="font-weight:900; color:#1565c0;">' + code + '</span>' +
+      '<div style="font-size:9px; color:#555;">' + wip_metaCodigos[code] + '</div></div></label>';
+  });
+  wip_dibujarWIP();
+  var sf = document.getElementById('wip-screenFilter');
+  var sb = document.getElementById('wip-screenBoard');
+  if (sf) sf.style.display = 'none';
+  if (sb) sb.style.display = 'block';
+  hideLoader();
+}
+window.wip_inicializarDashboard = wip_inicializarDashboard;
+
+function wip_recalcularWIP() {
+  wip_codigosSeleccionados = new Set();
+  document.querySelectorAll('#wip-panel .wip-chk-code:checked').forEach(function(c) { wip_codigosSeleccionados.add(c.value); });
+  showLoader('RECALCULANDO...');
+  setTimeout(function() { wip_dibujarWIP(); hideLoader(); }, 200);
+}
+window.wip_recalcularWIP = wip_recalcularWIP;
+
+function wip_dibujarWIP() {
+  var container = document.getElementById('wip-wipContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  var grandTotal = 0;
+  var procesosArr = Object.keys(wip_rawData).map(function(key) { return { nombre: key, info: wip_rawData[key] }; });
+  procesosArr.sort(function(a, b) { return a.info.sec - b.info.sec; });
+
+  procesosArr.forEach(function(item) {
+    var visibles = item.info.lotes.filter(function(l) { return wip_codigosSeleccionados.has(l.producto); });
+    if (visibles.length > 0) {
+      var tSec = 0, tLib = 0, tRech = 0;
+      var tinasHTML = visibles.map(function(l) {
+        tSec += l.kilos;
+        if (l.calidad === 'LIBERADO') tLib += l.kilos;
+        if (l.calidad === 'RECHAZADO') tRech += l.kilos;
+        return wip_generarSVG(l);
+      }).join('');
+      grandTotal += tSec;
+      container.innerHTML +=
+        '<div class="wip-proc-section">' +
+          '<div class="wip-proc-header">' +
+            '<div class="wip-proc-title">' + item.nombre + '</div>' +
+            '<div class="wip-proc-totals">' +
+              '<span style="color:#263238;">TOTAL: ' + Math.round(tSec).toLocaleString() + ' Kg</span>' +
+              '<span style="color:#2e7d32;">LIB: ' + Math.round(tLib).toLocaleString() + ' Kg</span>' +
+              '<span style="color:#d32f2f;">RECH: ' + Math.round(tRech).toLocaleString() + ' Kg</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="wip-tinas-grid">' + tinasHTML + '</div>' +
+        '</div>';
+    }
+  });
+  var gt = document.getElementById('wip-grandTotal');
+  if (gt) gt.innerText = Math.round(grandTotal).toLocaleString() + ' Kg';
+}
+window.wip_dibujarWIP = wip_dibujarWIP;
+
+function wip_generarSVG(l) {
+  var kgRnd = Math.round(l.kilos);
+  var refRnd = Math.round(l.kgTotalRef);
+  var cls = 'wip-tina-normal';
+  if (kgRnd !== refRnd && !l.isLast) {
+    if (l.tipo === 'PROCESANDO') cls = 'wip-tina-procesando';
+    else if (l.tipo === 'REMANENTE') cls = 'wip-tina-remanente';
+  }
+  var refText = refRnd > 0 ? '( de ' + refRnd.toLocaleString() + ' kg )' : '';
+  var fillCol = (l.calidad === 'LIBERADO') ? '#a5d6a7' : (l.calidad === 'RECHAZADO' ? '#ef9a9a' : '#90caf9');
+  var badgeHTML = (cls === 'wip-tina-procesando') ? '<div class="wip-badge-proceso">TINA EN PROCESO</div>' : '';
+  var actionHTML = l.isLast ?
+    '<div class="wip-action-row"><input type="checkbox" class="wip-chk-done" onchange="wip_toggleConcluido(this,\'' + l.lote + '\')"><span style="font-size:10px; font-weight:900; color:#2e7d32;">CONCLUIR</span></div>' : '';
+  return '<div class="wip-tina-card ' + cls + '" data-lote="' + l.lote + '" data-desc="' + l.producto + ' ' + l.descFull + '">' +
+    badgeHTML +
+    '<svg class="wip-svg-tina" viewBox="0 0 100 120" preserveAspectRatio="none">' +
+      '<rect x="5" y="100" width="10" height="15" fill="#546e7a" rx="2"/>' +
+      '<rect x="85" y="100" width="10" height="15" fill="#546e7a" rx="2"/>' +
+      '<path d="M5,10 L15,100 L85,100 L95,10 Z" fill="#cfd8dc" stroke="#546e7a" stroke-width="2" />' +
+      '<path d="M10,50 L14,95 L86,95 L90,50 Z" style="fill:' + fillCol + '; opacity:0.8;" />' +
+      '<path d="M0,0 L10,10 L90,10 L100,0 L95,15 L5,15 Z" fill="#b0bec5" stroke="#455a64" stroke-width="2" />' +
+    '</svg>' +
+    '<div class="wip-tina-data">' +
+      '<div class="wip-tina-lote">' + l.lote + '</div>' +
+      '<div class="wip-tina-kg">' + kgRnd.toLocaleString() + ' KG</div>' +
+      '<div class="wip-tina-ref">' + refText + '</div>' +
+      '<div class="wip-tina-prod">' + l.producto + '</div>' +
+      '<div class="wip-tina-desc">' + l.descFull + '</div>' +
+    '</div>' +
+    actionHTML +
+  '</div>';
+}
+window.wip_generarSVG = wip_generarSVG;
+
+function wip_toggleConcluido(chk, loteName) {
+  if (!confirm('¿Concluir lote ' + loteName + '?')) { chk.checked = false; return; }
+  chk.closest('.wip-tina-card').style.opacity = '0.2';
+  google.script.run
+    .withSuccessHandler(function(res) { if (res === 'OK') wip_recalcularWIP(); else alert(res); })
+    .withFailureHandler(function(e) { alert('Error: ' + e); })
+    .marcarLoteConcluido(loteName);
+}
+window.wip_toggleConcluido = wip_toggleConcluido;
+
+function wip_filtrarLotes(txt) {
+  var term = txt.toUpperCase();
+  document.querySelectorAll('#wip-panel .wip-tina-card').forEach(function(c) {
+    var searchable = (c.getAttribute('data-lote') || '') + ' ' + (c.getAttribute('data-desc') || '');
+    c.style.display = searchable.toUpperCase().includes(term) ? 'flex' : 'none';
+  });
+}
+window.wip_filtrarLotes = wip_filtrarLotes;
+
+function wip_filtrarChecksCodigos(txt) {
+  var term = txt.toUpperCase();
+  document.querySelectorAll('#wip-panel .wip-chk-code-wrapper').forEach(function(lbl) {
+    lbl.style.display = (lbl.getAttribute('data-search') || '').toUpperCase().includes(term) ? 'flex' : 'none';
+  });
+}
+window.wip_filtrarChecksCodigos = wip_filtrarChecksCodigos;
+
+function wip_enviarReporte() {
+  if (!confirm('¿Enviar imagen a Telegram?')) return;
+  // Ocultar elementos que no deben aparecer en la captura
+  var ocultar = ['#wip-panel .wip-fab', '#wip-panel .wip-header-bar', '#wip-panel .wip-filters-panel', '#wip-panel .wip-action-row'];
+  ocultar.forEach(function(sel) { document.querySelectorAll(sel).forEach(function(el) { el.style.display = 'none'; }); });
+  showLoader('GENERANDO REPORTE...');
+  // html2canvas está disponible como cdn importado dinámicamente
+  var script = document.getElementById('wip-html2canvas-script');
+  if (!script) {
+    script = document.createElement('script');
+    script.id = 'wip-html2canvas-script';
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = function() { wip_capturarYEnviar(ocultar); };
+    document.head.appendChild(script);
+  } else {
+    wip_capturarYEnviar(ocultar);
+  }
+}
+window.wip_enviarReporte = wip_enviarReporte;
+
+function wip_capturarYEnviar(ocultar) {
+  var board = document.getElementById('wip-screenBoard');
+  html2canvas(board, { backgroundColor: '#e0e0e0' }).then(function(canvas) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoader();
+        alert(res);
+        ocultar.forEach(function(sel) { document.querySelectorAll(sel).forEach(function(el) { el.style.display = ''; }); });
+      })
+      .withFailureHandler(function(e) {
+        hideLoader();
+        alert('Error al enviar: ' + e);
+        ocultar.forEach(function(sel) { document.querySelectorAll(sel).forEach(function(el) { el.style.display = ''; }); });
+      })
+      .enviarImagenTelegram(canvas.toDataURL('image/png'), '📊 Reporte WIP TOOL CN');
+  });
+}
+window.wip_capturarYEnviar = wip_capturarYEnviar;
+// ══ FIN MÓDULO WIP ══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULO: NUEVA CAPTURA  (prefijo cap- en IDs, cap en funciones)
+// ══════════════════════════════════════════════════════════════════════════════

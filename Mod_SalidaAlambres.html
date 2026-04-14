@@ -1,0 +1,210 @@
+// ══════════════════════════════════════════════════════════════════════════════
+var sal_codigos  = [];   // Lista completa de códigos disponibles
+var sal_acIdx    = -1;   // Índice seleccionado en autocomplete
+
+function loadSalidaAlambres() {
+  if (!document.getElementById('sal-style')) {
+    var st = document.createElement('style');
+    st.id = 'sal-style';
+    st.innerHTML = [
+      '.sal-ac-wrap{position:relative}',
+      '.sal-ac-list{position:absolute;top:100%;left:0;right:0;background:white;',
+      'border:1.5px solid #0891b2;border-radius:0 0 8px 8px;z-index:300;max-height:220px;',
+      'overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15)}',
+      '.sal-ac-item{padding:9px 14px;cursor:pointer;font-size:.82rem;font-weight:600;color:#0f172a}',
+      '.sal-ac-item:hover,.sal-ac-item.sal-ac-sel{background:#e0f2fe;color:#0891b2}',
+      '.sal-form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}',
+      '.sal-form-row label{font-size:.75rem;font-weight:700;color:#374151;display:block;margin-bottom:3px}',
+      '.sal-form-row input{padding:8px 11px;border:1.5px solid #e2e8f0;border-radius:7px;',
+      'font-size:.83rem;outline:none;transition:border .2s;width:100%}',
+      '.sal-form-row input:focus{border-color:#0891b2}',
+      '.sal-btn{padding:9px 20px;border:none;border-radius:7px;font-weight:700;font-size:.82rem;cursor:pointer}',
+      '.sal-btn-success{background:#10b981;color:white}.sal-btn-success:hover{background:#059669}',
+      '.sal-tbl{width:100%;border-collapse:collapse;font-size:.8rem}',
+      '.sal-tbl th{background:#0f172a;color:white;padding:9px 12px;text-align:left;',
+      'font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;position:sticky;top:0}',
+      '.sal-tbl td{padding:8px 12px;border-bottom:1px solid #e2e8f0}',
+      '.sal-tbl tr:hover td{background:#f0f9ff}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+
+  var ca = document.getElementById('content-area');
+  ca.innerHTML = '<div style="padding:1rem 1.5rem 2rem">'
+    + '<div style="margin-bottom:1.2rem">'
+    +   '<h5 style="font-weight:900;margin:0;color:#0f172a">📤 SALIDA DE ALAMBRES</h5>'
+    +   '<p style="font-size:.75rem;color:#64748b;margin:0">REGISTRO DE CONSUMO Y SALIDAS DE MATERIA PRIMA</p>'
+    + '</div>'
+
+    // Formulario
+    + '<div style="background:white;border-radius:12px;padding:1.4rem;box-shadow:0 2px 8px rgba(0,0,0,.06);max-width:620px;margin-bottom:1.5rem">'
+    +   '<p style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:#0891b2;border-bottom:2px solid #e0f2fe;padding-bottom:4px;margin-bottom:14px">NUEVA SALIDA</p>'
+    +   '<div class="sal-form-row">'
+    +     '<div style="flex:1;min-width:160px"><label>FECHA</label>'
+    +       '<input type="date" id="sal-fecha"></div>'
+    +     '<div style="flex:2;min-width:240px"><label>CÓDIGO ALAMBRE</label>'
+    +       '<div class="sal-ac-wrap">'
+    +         '<input type="text" id="sal-codigo-txt" placeholder="ESCRIBE PARA BUSCAR..." autocomplete="off" '
+    +           'oninput="sal_filtrar()" onkeydown="sal_keydown(event)" onblur="setTimeout(sal_cerrar,180)">'
+    +         '<input type="hidden" id="sal-codigo-val">'
+    +         '<div class="sal-ac-list" id="sal-ac-list"></div>'
+    +       '</div>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div class="sal-form-row">'
+    +     '<div style="flex:1;min-width:140px"><label>CANTIDAD (KG)</label>'
+    +       '<input type="number" id="sal-kg" min="0" step="1" placeholder="0"></div>'
+    +     '<div style="flex:2;min-width:220px"><label>MOTIVO / REFERENCIA</label>'
+    +       '<input type="text" id="sal-ref" placeholder="EJ: CONSUMO O.000123"></div>'
+    +   '</div>'
+    +   '<button class="sal-btn sal-btn-success" onclick="sal_guardar()">'
+    +     '<i class="fas fa-save me-1"></i>REGISTRAR SALIDA</button>'
+    + '</div>'
+
+    // Tabla últimas salidas
+    + '<p style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:#0891b2;'
+    +   'border-bottom:2px solid #e0f2fe;padding-bottom:4px;margin-bottom:12px">ÚLTIMAS SALIDAS REGISTRADAS</p>'
+    + '<div style="overflow-x:auto"><table class="sal-tbl">'
+    +   '<thead><tr>'
+    +     '<th>FECHA</th><th>CÓDIGO</th>'
+    +     '<th style="text-align:right">KG</th><th>REFERENCIA</th>'
+    +   '</tr></thead>'
+    +   '<tbody id="sal-tbody"><tr><td colspan="4" style="text-align:center;padding:1.5rem;color:#94a3b8">'
+    +     'CARGANDO...</td></tr></tbody>'
+    + '</table></div>'
+    + '</div>';
+
+  // Fecha de hoy
+  var hoy = new Date();
+  document.getElementById('sal-fecha').value =
+    hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
+
+  // Cargar códigos para autocomplete y salidas recientes
+  sal_cargarDatos();
+}
+
+// ── Cargar códigos y salidas ──
+function sal_cargarDatos() {
+  showLoader('CARGANDO...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      var r; try { r = JSON.parse(res); } catch(e){ r={success:false}; }
+      if (r.success) sal_codigos = r.codigos || [];
+      // Ahora carga las salidas recientes
+      google.script.run
+        .withSuccessHandler(function(res2) {
+          hideLoader();
+          var d; try { d = JSON.parse(res2); } catch(e){ d={success:false}; }
+          if (d.success) sal_renderSalidas(d.salidas || []);
+        })
+        .withFailureHandler(function(){ hideLoader(); })
+        .mrpmpObtenerDatos('TODAS');
+    })
+    .withFailureHandler(function(){ hideLoader(); })
+    .mrpmpObtenerCodigosAlambre();
+}
+
+// ── Autocomplete: filtrar ──
+window.sal_filtrar = function() {
+  var txt = (document.getElementById('sal-codigo-txt').value || '').toUpperCase().trim();
+  document.getElementById('sal-codigo-val').value = '';
+  sal_acIdx = -1;
+  var lista = document.getElementById('sal-ac-list');
+  if (!txt) { lista.style.display = 'none'; return; }
+  var filtrados = sal_codigos.filter(function(c){ return c.indexOf(txt) >= 0; }).slice(0, 12);
+  if (!filtrados.length) { lista.style.display = 'none'; return; }
+  lista.innerHTML = filtrados.map(function(c, i) {
+    return '<div class="sal-ac-item" data-val="'+c+'" data-idx="'+i+'" '
+      + 'onmousedown="sal_seleccionar(\''+c+'\')">' + c + '</div>';
+  }).join('');
+  lista.style.display = 'block';
+};
+
+// ── Autocomplete: seleccionar ──
+window.sal_seleccionar = function(cod) {
+  document.getElementById('sal-codigo-txt').value = cod;
+  document.getElementById('sal-codigo-val').value = cod;
+  document.getElementById('sal-ac-list').style.display = 'none';
+  sal_acIdx = -1;
+};
+
+// ── Autocomplete: cerrar ──
+window.sal_cerrar = function() {
+  var lista = document.getElementById('sal-ac-list');
+  if (lista) lista.style.display = 'none';
+};
+
+// ── Autocomplete: navegación con teclado ──
+window.sal_keydown = function(e) {
+  var lista = document.getElementById('sal-ac-list');
+  if (!lista || lista.style.display === 'none') return;
+  var items = lista.querySelectorAll('.sal-ac-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    sal_acIdx = Math.min(sal_acIdx + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    sal_acIdx = Math.max(sal_acIdx - 1, 0);
+  } else if (e.key === 'Enter' && sal_acIdx >= 0) {
+    sal_seleccionar(items[sal_acIdx].getAttribute('data-val'));
+    e.preventDefault(); return;
+  } else { return; }
+  items.forEach(function(el, i){ el.classList.toggle('sal-ac-sel', i === sal_acIdx); });
+  e.preventDefault();
+};
+
+// ── Render tabla salidas ──
+function sal_renderSalidas(lista) {
+  var tbody = document.getElementById('sal-tbody');
+  if (!tbody) return;
+  if (!lista || lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:#94a3b8">SIN SALIDAS REGISTRADAS.</td></tr>';
+    return;
+  }
+  var recientes = lista.slice(-20).reverse();
+  tbody.innerHTML = recientes.map(function(s) {
+    return '<tr>'
+      + '<td>'+s.fecha+'</td>'
+      + '<td><b>'+s.codigo+'</b></td>'
+      + '<td style="text-align:right">'+Math.round(s.kg).toLocaleString('es-MX')+' KG</td>'
+      + '<td style="color:#64748b">'+s.ref+'</td>'
+      + '</tr>';
+  }).join('');
+}
+
+// ── Guardar salida ──
+window.sal_guardar = function() {
+  var fecha  = document.getElementById('sal-fecha').value;
+  var codigo = document.getElementById('sal-codigo-val').value ||
+               document.getElementById('sal-codigo-txt').value.trim().toUpperCase();
+  var kg     = parseFloat(document.getElementById('sal-kg').value) || 0;
+  var ref    = document.getElementById('sal-ref').value.trim().toUpperCase();
+
+  if (!fecha || !codigo || kg <= 0) {
+    sAlert('COMPLETA TODOS LOS CAMPOS: FECHA, CÓDIGO Y CANTIDAD MAYOR A 0.', 'warning'); return;
+  }
+
+  showLoader('GUARDANDO SALIDA...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      var r; try { r = JSON.parse(res); } catch(e){ r={success:false,msg:e.message}; }
+      if (!r.success) { sAlert(r.msg||'ERROR AL GUARDAR','error'); return; }
+      sAlert('SALIDA REGISTRADA CORRECTAMENTE.','success');
+      document.getElementById('sal-kg').value  = '';
+      document.getElementById('sal-ref').value = '';
+      document.getElementById('sal-codigo-txt').value = '';
+      document.getElementById('sal-codigo-val').value = '';
+      sal_cargarDatos();
+    })
+    .withFailureHandler(function(e){ hideLoader(); sAlert('ERROR: '+e.message,'error'); })
+    .mrpmpGuardarSalida({ fecha: fecha, codigo: codigo, kg: kg, ref: ref });
+};
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+// (window.onload del Tracking eliminado — ya existe en MainApp)
+
+// ══════════════════════════════════════════════════════
+// MÓDULO: MIS REGISTROS DE PRODUCCIÓN  (prefijo mr-)
+// ══════════════════════════════════════════════════════

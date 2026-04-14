@@ -1,0 +1,497 @@
+// ══════════════════════════════════════════════════════
+// MÓDULO: EDITOR RUTAS  (prefijo er_)
+// ══════════════════════════════════════════════════════
+var er_datosRuta = [];
+var er_catalogo = {};
+var er_serieOrden = '';
+var er_consecutivoOrden = '';
+var er_indiceEditandoMaquinas = -1;
+var er_maquinasSeleccionadas = [];
+var er_progressTimer1, er_progressTimer2, er_progressTimer3;
+
+function loadEditorRutas(idOrden) {
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+
+  if (!document.getElementById('er-style')) {
+    var st = document.createElement('style');
+    st.id = 'er-style';
+    st.textContent = `
+      #er-panel { font-family:'Roboto',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); touch-action:pan-y; }
+      #er-panel .er-header-card { background:white; padding:20px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-top:5px solid #212121; }
+      #er-panel .er-title { font-size:24px; font-weight:900; color:#1565c0; margin-bottom:5px; }
+      #er-panel .er-subtitle { font-size:12px; color:#666; font-weight:bold; }
+      #er-panel .er-desc-input { width:100%; padding:8px; font-size:14px; border:1px solid #ddd; border-radius:4px; margin-top:5px; font-weight:bold; color:#333; }
+      #er-panel .er-btn { padding:10px 15px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
+      #er-panel .er-btn-primary { background:#1976d2; color:white; width:100%; padding:12px; margin-top:10px; }
+      #er-panel .er-btn-action { background:#212121; color:white; }
+      #er-panel .er-btn-icon { width:35px; height:35px; padding:0; font-size:16px; }
+      #er-panel .er-btn-danger { background:#d32f2f; color:white; }
+      #er-panel .er-btn-config { background:#ff9800; color:white; }
+      #er-panel .er-view-section { display:none; }
+      #er-panel .er-active { display:block; }
+      #er-panel .er-route-card { background:white; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); border-left:5px solid #1976d2; }
+      #er-panel .er-step-header { font-weight:900; font-size:16px; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px; color:#333; }
+      #er-panel .er-grid-fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+      #er-panel .er-field-group { display:flex; flex-direction:column; }
+      #er-panel .er-field-label { font-size:10px; color:#999; margin-bottom:2px; font-weight:bold; text-transform:uppercase; }
+      #er-panel .er-field-input { padding:8px; border:1px solid #ddd; border-radius:4px; font-size:13px; width:100%; background:#fafafa; }
+      #er-panel .er-field-input:focus { border-color:#1976d2; background:#fff; outline:none; }
+      #er-panel .er-sortable-item { background:white; border-radius:6px; padding:10px; margin-bottom:8px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+      #er-panel .er-handle { font-size:20px; color:#bbb; cursor:grab; }
+      #er-panel .er-step-badge { background:#333; color:white; width:25px; height:25px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:12px; font-weight:bold; }
+      #er-panel .er-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:2000; }
+      #er-panel .er-modal-content { background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; }
+      #er-panel .er-checkbox-item { padding:12px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:15px; cursor:pointer; transition:background 0.2s; }
+      #er-panel .er-checkbox-item:hover { background:#f9f9f9; }
+      #er-panel .er-machine-check { width:24px; height:24px; border:2px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; background:white; }
+      #er-panel .er-machine-check.selected { background:#1976d2; border-color:#1976d2; }
+      #er-panel .er-loading { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; justify-content:center; align-items:center; z-index:999; }
+      .er-modal-progress-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:3000; display:none; justify-content:center; align-items:center; }
+      .er-progress-box { background:white; padding:30px; border-radius:8px; width:80%; max-width:400px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3); }
+      .er-prog-track-lg { width:100%; height:20px; background:#eee; border-radius:10px; margin:20px 0; overflow:hidden; border:1px solid #ccc; }
+      .er-prog-fill-lg { height:100%; background:#2e7d32; width:0%; transition:width 0.5s ease; }
+      .er-prog-text { font-weight:900; font-size:16px; color:#1565c0; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function er_initUI() {
+    er_datosRuta = []; er_catalogo = {}; er_serieOrden = ''; er_consecutivoOrden = '';
+    er_indiceEditandoMaquinas = -1; er_maquinasSeleccionadas = [];
+    if (idOrden) {
+      er_mostrarPanelEditor(idOrden);
+    } else {
+      er_mostrarPantallaBusqueda();
+    }
+  }
+
+  window.er_mostrarPantallaBusqueda = function() {
+    var ca = document.getElementById('content-area');
+    ca.innerHTML = `
+<div id="er-panel">
+  <div style="padding:30px; max-width:520px; margin:0 auto;">
+    <div class="er-header-card" style="text-align:center;">
+      <div class="er-title">✏️ EDITOR DE RUTAS</div>
+      <div class="er-subtitle" style="margin-bottom:8px;">Escribe la orden para cargar su ruta</div>
+      <div style="background:#e3f2fd; border-radius:6px; padding:10px 14px; margin-bottom:16px; text-align:left; font-size:11px; color:#1565c0; font-weight:bold;">
+        📌 Formato: <b>SERIE.CONSECUTIVO</b> &nbsp;|&nbsp; Ejemplos: <b>F.8848</b> &nbsp;·&nbsp; <b>P.0025</b> &nbsp;·&nbsp; <b>GEN.0100</b>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:5px;">
+        <input type="text" id="er-txtBuscarOrden" class="er-desc-input"
+               placeholder="Ej: F.8848, P.0025, GEN.0100"
+               style="flex:1; font-size:15px; padding:10px; text-transform:uppercase;"
+               onkeydown="if(event.key==='Enter') er_buscarOrden()"
+               oninput="this.value=this.value.toUpperCase()">
+        <button class="er-btn er-btn-action" style="padding:10px 20px;" onclick="er_buscarOrden()">
+          🔍 CARGAR
+        </button>
+      </div>
+      <div id="er-msgBusqueda" style="margin-top:12px; font-size:12px; font-weight:bold;"></div>
+    </div>
+  </div>
+</div>`;
+    setTimeout(function(){
+      var inp = document.getElementById('er-txtBuscarOrden');
+      if (inp) inp.focus();
+    }, 100);
+  };
+
+  window.er_mostrarPanelEditor = function(ordenId) {
+    var ca = document.getElementById('content-area');
+    ca.innerHTML = `
+<div id="er-panel">
+  <div id="er-loading" class="er-loading">
+    <div style="text-align:center;">
+      <div style="border:5px solid #f3f3f3;border-top:5px solid #1976d2;border-radius:50%;width:40px;height:40px;animation:erSpin 1s linear infinite;margin:0 auto 10px;"></div>
+      <h3 style="color:#1565c0;">Cargando...</h3>
+    </div>
+  </div>
+  <style>@keyframes erSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
+
+  <div class="er-header-card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div class="er-title" id="er-lblOrden">Cargando...</div>
+        <div class="er-subtitle" id="er-lblCodigo">...</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="er-btn" style="background:#607d8b;color:white;font-size:12px;padding:8px 12px;" onclick="er_volverBusqueda()">← OTRA ORDEN</button>
+        <button class="er-btn er-btn-action" onclick="er_toggleMode()" id="er-btn-mode">⚙️ ESTRUCTURA</button>
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <label class="er-field-label">DESCRIPCIÓN GLOBAL</label>
+      <input type="text" class="er-desc-input" id="er-globalDesc" oninput="er_syncDescripcion(this.value)">
+    </div>
+  </div>
+
+  <div id="er-view-fields" class="er-view-section er-active">
+    <div id="er-container-fields"></div>
+    <button class="er-btn er-btn-primary" onclick="er_guardarTodo()">💾 GUARDAR CAMBIOS</button>
+  </div>
+
+  <div id="er-view-structure" class="er-view-section">
+    <div id="er-container-structure"></div>
+    <div style="text-align:center; margin:20px;">
+      <button class="er-btn er-btn-action" style="width:100%;" onclick="er_abrirModalAgregar()">(+) AGREGAR PROCESO</button>
+    </div>
+    <button class="er-btn er-btn-primary" onclick="er_guardarTodo()">💾 GUARDAR ESTRUCTURA</button>
+  </div>
+
+  <!-- MODAL AGREGAR -->
+  <div id="er-modalAdd" class="er-modal-overlay">
+    <div class="er-modal-content">
+      <h3>Agregar Proceso</h3>
+      <label class="er-field-label">PROCESO</label>
+      <select id="er-newProc" class="er-field-input" onchange="er_cargarMaquinasModalAdd()"></select>
+      <br><br>
+      <label class="er-field-label">MÁQUINA</label>
+      <select id="er-newMaq" class="er-field-input"></select>
+      <br><br>
+      <div style="display:flex; gap:10px;">
+        <button class="er-btn" style="background:#eee;color:#333;flex:1;" onclick="document.getElementById('er-modalAdd').style.display='none'">Cancelar</button>
+        <button class="er-btn er-btn-primary" style="margin-top:0;flex:1;" onclick="er_confirmarAgregar()">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MAQUINAS -->
+  <div id="er-modalMaquinas" class="er-modal-overlay">
+    <div class="er-modal-content">
+      <h3 id="er-lblTituloMaquinas">Gestión de Máquinas</h3>
+      <div id="er-listaCheckMaquinas" style="max-height:300px;overflow-y:auto;margin-bottom:15px;border:1px solid #eee;"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="er-btn" style="background:#eee;color:#333;flex:1;" onclick="document.getElementById('er-modalMaquinas').style.display='none'">Cancelar</button>
+        <button class="er-btn er-btn-primary" style="margin-top:0;flex:1;" onclick="er_guardarSeleccionMaquinas()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PROGRESO GUARDADO -->
+  <div id="er-modalProgress" class="er-modal-progress-overlay">
+    <div class="er-progress-box">
+      <h3 style="margin:0;color:#333;">GUARDANDO</h3>
+      <div class="er-prog-track-lg"><div id="er-progBar" class="er-prog-fill-lg"></div></div>
+      <div id="er-progMsg" class="er-prog-text">Iniciando...</div>
+    </div>
+  </div>
+</div>`;
+
+  // Nota: er_mostrarPanelEditor solo construye el HTML. La carga de datos
+  // se hace desde er_buscarOrden (manual) o desde er_initUI (desde Planificador).
+  };
+
+  // Cuando viene desde el Planificador con idOrden, hacemos la carga de datos aquí
+  if (idOrden) {
+    showLoader('Cargando Editor de Rutas...');
+    google.script.run
+      .withSuccessHandler(function(res) { hideLoader(); er_initApp(res); })
+      .withFailureHandler(function(err) { hideLoader(); alert('Error de conexión: ' + err); })
+      .obtenerDatosEditor(idOrden);
+  }
+
+  if (typeof Sortable === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js';
+    s.onload = er_initUI;
+    document.head.appendChild(s);
+  } else {
+    er_initUI();
+  }
+}
+
+window.er_buscarOrden = function() {
+  var inp = document.getElementById('er-txtBuscarOrden');
+  if (!inp) return;
+  var rawVal = inp.value.trim().toUpperCase();
+  if (!rawVal) { Swal.fire({ icon: 'warning', text: 'Escribe el número de orden.' }); return; }
+
+  // Parsear formato SERIE.CONSECUTIVO (ej: F.8848, P.0025, GEN.0100)
+  // También acepta solo el número (ej: 8848) — se busca sin filtro de serie
+  var busqueda = { raw: rawVal, serie: '', consecutivo: '' };
+  var partes = rawVal.split('.');
+  if (partes.length >= 2) {
+    busqueda.serie = partes[0].trim();
+    busqueda.consecutivo = partes[1].trim();
+  } else {
+    // Solo número, se busca por consecutivo sin importar serie
+    busqueda.consecutivo = rawVal;
+  }
+
+  var msg = document.getElementById('er-msgBusqueda');
+  if (msg) { msg.style.color = '#1565c0'; msg.innerText = 'Buscando ' + rawVal + '...'; }
+  showLoader('Cargando Editor de Rutas...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      if (res.error) {
+        if (msg) { msg.style.color = 'red'; msg.innerText = '⛔ ' + res.error; }
+        return;
+      }
+      er_mostrarPanelEditor(rawVal);
+      er_initApp(res);
+    })
+    .withFailureHandler(function(err) {
+      hideLoader();
+      if (msg) { msg.style.color = 'red'; msg.innerText = '⛔ Error: ' + err; }
+    })
+    .obtenerDatosEditor(busqueda);
+};
+
+window.er_volverBusqueda = function() {
+  er_datosRuta = []; er_catalogo = {}; er_serieOrden = ''; er_consecutivoOrden = '';
+  var ca = document.getElementById('content-area');
+  er_mostrarPantallaBusqueda();
+};
+
+window.er_initApp = function(res) {
+  if (res.error) {
+    er_volverBusqueda();
+    setTimeout(function(){
+      var msg = document.getElementById('er-msgBusqueda');
+      if (msg) { msg.style.color = 'red'; msg.innerText = '⛔ ' + res.error; }
+    }, 50);
+    return;
+  }
+  er_datosRuta = res.ruta;
+  er_catalogo = res.catalogo;
+  er_serieOrden = res.serie || 'GEN';
+  er_consecutivoOrden = res.consecutivo || '';
+  document.getElementById('er-lblOrden').innerText = 'Orden: ' + res.nombreDisplay;
+  document.getElementById('er-lblCodigo').innerText = 'Código: ' + res.codigo;
+  if (er_datosRuta.length > 0) {
+    document.getElementById('er-globalDesc').value = er_datosRuta[0].DESCRIPCION;
+  }
+  er_renderVistaCampos();
+  er_renderVistaEstructura();
+  var loading = document.getElementById('er-loading');
+  if (loading) loading.style.display = 'none';
+};
+
+window.er_toggleMode = function() {
+  var vF = document.getElementById('er-view-fields');
+  var vS = document.getElementById('er-view-structure');
+  var btn = document.getElementById('er-btn-mode');
+  if (vF.classList.contains('er-active')) {
+    vF.classList.remove('er-active'); vS.classList.add('er-active');
+    btn.innerText = '📝 EDITAR CAMPOS';
+  } else {
+    vS.classList.remove('er-active'); vF.classList.add('er-active');
+    btn.innerText = '⚙️ MODIFICAR ESTRUCTURA';
+    er_renderVistaCampos();
+  }
+};
+
+window.er_syncDescripcion = function(val) { er_datosRuta.forEach(function(s){ s.DESCRIPCION = val; }); };
+
+window.er_updateDato = function(idx, field, val) {
+  er_datosRuta[idx][field] = val;
+  if (idx === 0) {
+    var campos = ['PESO','ACERO','DIAMETRO','LONGITUD','CUERDA','CUERPO','TIPO'];
+    if (campos.includes(field)) {
+      for (var i = 1; i < er_datosRuta.length; i++) { er_datosRuta[i][field] = val; }
+      var inputs = document.querySelectorAll('#er-panel [data-field="' + field + '"]');
+      inputs.forEach(function(inp, i){ if(i > 0) inp.value = val; });
+    }
+  }
+};
+
+window.er_renderVistaCampos = function() {
+  var html = '';
+  er_datosRuta.forEach(function(step, idx) {
+    var procKey = Object.keys(er_catalogo).find(function(k){ return k.trim().toUpperCase() === String(step.PROCESO).trim().toUpperCase(); });
+    var maqOpts = er_catalogo[procKey] || [];
+    var maqList = maqOpts.map(function(m){ return '<option value="' + m + '"/>'; }).join('');
+    html += '<div class="er-route-card">'
+      + '<div class="er-step-header">Paso ' + (idx+1) + ': ' + step.PROCESO + '</div>'
+      + '<div class="er-grid-fields">'
+      + er_makeInput(idx,'PESO',step.PESO,'number')
+      + er_makeInput(idx,'ACERO',step.ACERO)
+      + er_makeInput(idx,'DIAMETRO',step.DIAMETRO)
+      + er_makeInput(idx,'LONGITUD',step.LONGITUD)
+      + er_makeInput(idx,'CUERDA',step.CUERDA)
+      + er_makeInput(idx,'CUERPO',step.CUERPO)
+      + er_makeInput(idx,'TIPO',step.TIPO)
+      + '<div class="er-field-group"><label class="er-field-label">MÁQUINA(S)</label>'
+      + '<input list="er-maqs-' + idx + '" class="er-field-input" value="' + (step.MAQUINA||'') + '" onchange="er_updateDato(' + idx + ',\'MAQUINA\',this.value)">'
+      + '<datalist id="er-maqs-' + idx + '">' + maqList + '</datalist></div>'
+      + '</div></div>';
+  });
+  var cont = document.getElementById('er-container-fields');
+  if (cont) cont.innerHTML = html;
+};
+
+function er_makeInput(idx, field, val, type) {
+  type = type || 'text';
+  return '<div class="er-field-group"><label class="er-field-label">' + field + '</label>'
+    + '<input type="' + type + '" class="er-field-input" value="' + (val||'') + '" data-field="' + field
+    + '" onchange="er_updateDato(' + idx + ',\'' + field + '\',this.value)"></div>';
+}
+
+window.er_renderVistaEstructura = function() {
+  var html = '';
+  er_datosRuta.forEach(function(step, idx) {
+    html += '<div class="er-sortable-item" data-idx="' + idx + '">'
+      + '<div class="er-handle">☰</div>'
+      + '<div class="er-step-badge">' + (idx+1) + '</div>'
+      + '<div style="flex:1"><div style="font-weight:bold;">' + step.PROCESO + '</div>'
+      + '<div style="font-size:11px;color:#666;">' + (step.MAQUINA||'') + '</div></div>'
+      + '<button class="er-btn er-btn-icon er-btn-config" onclick="er_abrirEditorMaquinas(' + idx + ')">⚙️</button>'
+      + '<button class="er-btn er-btn-icon er-btn-danger" onclick="er_eliminarPaso(' + idx + ')">🗑️</button>'
+      + '</div>';
+  });
+  var el = document.getElementById('er-container-structure');
+  if (!el) return;
+  el.innerHTML = html;
+  new Sortable(el, { handle: '.er-handle', animation: 150, onEnd: function(){ er_reordenarDatosDOM(); } });
+};
+
+window.er_reordenarDatosDOM = function() {
+  var newOrder = [];
+  document.querySelectorAll('#er-container-structure .er-sortable-item').forEach(function(c){ newOrder.push(er_datosRuta[c.getAttribute('data-idx')]); });
+  er_datosRuta = newOrder; er_enforceRules(); er_renderVistaEstructura();
+};
+
+window.er_abrirModalAgregar = function() {
+  var sel = document.getElementById('er-newProc'); sel.innerHTML = '';
+  Object.keys(er_catalogo).sort().forEach(function(p){ sel.innerHTML += '<option value="' + p + '">' + p + '</option>'; });
+  er_cargarMaquinasModalAdd();
+  document.getElementById('er-modalAdd').style.display = 'flex';
+};
+
+window.er_cargarMaquinasModalAdd = function() {
+  var proc = document.getElementById('er-newProc').value;
+  var maqs = er_catalogo[proc] || [];
+  var sel = document.getElementById('er-newMaq'); sel.innerHTML = '';
+  maqs.forEach(function(m){ sel.innerHTML += '<option value="' + m + '">' + m + '</option>'; });
+};
+
+window.er_confirmarAgregar = function() {
+  var proc = document.getElementById('er-newProc').value;
+  var maq = document.getElementById('er-newMaq').value;
+  var base = er_datosRuta.length > 0 ? JSON.parse(JSON.stringify(er_datosRuta[er_datosRuta.length-1])) : {};
+  base.PROCESO = proc; base.MAQUINA = maq; base.ID = ''; base.PT = 'NO'; base.VENTA = 'NO';
+  er_datosRuta.push(base); er_enforceRules(); er_renderVistaEstructura();
+  document.getElementById('er-modalAdd').style.display = 'none';
+};
+
+window.er_abrirEditorMaquinas = function(idx) {
+  er_indiceEditandoMaquinas = idx;
+  var paso = er_datosRuta[idx];
+  var procBuscado = String(paso.PROCESO).trim().toUpperCase();
+  var procKey = Object.keys(er_catalogo).find(function(k){ return k.trim().toUpperCase() === procBuscado; });
+  var maquinasPosibles = er_catalogo[procKey] || [];
+  er_maquinasSeleccionadas = [];
+  if (paso.MAQUINA) {
+    String(paso.MAQUINA).split(',').forEach(function(m){ var l=m.trim(); if(l) er_maquinasSeleccionadas.push(l); });
+  }
+  var html = '';
+  if (maquinasPosibles.length === 0) {
+    html = '<div style="padding:15px;color:red;text-align:center;">⚠️ No hay máquinas registradas para <b>' + paso.PROCESO + '</b></div>';
+  } else {
+    maquinasPosibles.forEach(function(maq) {
+      var idxSel = er_maquinasSeleccionadas.indexOf(maq);
+      var claseSel = (idxSel > -1) ? 'selected' : '';
+      var numDisplay = (idxSel > -1) ? (idxSel+1) : '';
+      html += '<div class="er-checkbox-item" onclick="er_toggleMaquina(this)" data-maq="' + maq + '">'
+        + '<div class="er-machine-check ' + claseSel + '">' + numDisplay + '</div>'
+        + '<span style="font-size:14px;color:#333;">' + maq + '</span></div>';
+    });
+  }
+  document.getElementById('er-lblTituloMaquinas').innerText = 'Máquinas: ' + paso.PROCESO;
+  document.getElementById('er-listaCheckMaquinas').innerHTML = html;
+  document.getElementById('er-modalMaquinas').style.display = 'flex';
+};
+
+window.er_toggleMaquina = function(elemento) {
+  var maq = elemento.getAttribute('data-maq');
+  var idx = er_maquinasSeleccionadas.indexOf(maq);
+  if (idx > -1) er_maquinasSeleccionadas.splice(idx,1); else er_maquinasSeleccionadas.push(maq);
+  er_refreshNumerosMaquinas();
+};
+
+window.er_refreshNumerosMaquinas = function() {
+  document.querySelectorAll('#er-panel .er-checkbox-item').forEach(function(div) {
+    var nombreMaq = div.getAttribute('data-maq');
+    var checkDiv = div.querySelector('.er-machine-check');
+    var idx = er_maquinasSeleccionadas.indexOf(nombreMaq);
+    if (idx > -1) { checkDiv.innerText = (idx+1); checkDiv.classList.add('selected'); }
+    else { checkDiv.innerText = ''; checkDiv.classList.remove('selected'); }
+  });
+};
+
+window.er_guardarSeleccionMaquinas = function() {
+  if (er_maquinasSeleccionadas.length === 0) {
+    Swal.fire({ icon: 'question', title: '¿Sin máquinas?', text: '¿Deseas dejar este proceso sin máquinas asignadas?', showCancelButton: true, confirmButtonText: 'Sí, continuar', cancelButtonText: 'Cancelar', confirmButtonColor: '#ff9800' })
+      .then(function(r) {
+        if (r.isConfirmed) {
+          er_datosRuta[er_indiceEditandoMaquinas].MAQUINA = '';
+          document.getElementById('er-modalMaquinas').style.display = 'none';
+          er_renderVistaEstructura();
+        }
+      });
+    return;
+  }
+  er_datosRuta[er_indiceEditandoMaquinas].MAQUINA = er_maquinasSeleccionadas.join(', ');
+  document.getElementById('er-modalMaquinas').style.display = 'none';
+  er_renderVistaEstructura();
+};
+
+window.er_eliminarPaso = function(idx) {
+  Swal.fire({ icon: 'question', title: '¿Eliminar paso?', text: 'Esta acción no se puede deshacer.', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#d32f2f' })
+    .then(function(r) { if (r.isConfirmed) { er_datosRuta.splice(idx,1); er_enforceRules(); er_renderVistaEstructura(); } });
+};
+
+window.er_enforceRules = function() {
+  er_datosRuta.forEach(function(step, i) {
+    step.SEC = i + 1;
+    var esUltimo = (i === er_datosRuta.length - 1);
+    step.PT = esUltimo ? 'SI' : 'NO'; step.VENTA = esUltimo ? 'SI' : 'NO';
+  });
+};
+
+window.er_startProgress = function() {
+  var modal = document.getElementById('er-modalProgress');
+  var bar = document.getElementById('er-progBar');
+  var msg = document.getElementById('er-progMsg');
+  if (!modal) return;
+  modal.style.display = 'flex'; bar.style.width = '0%';
+  msg.innerText = 'Guardando cambios en rutas...'; bar.style.width = '25%';
+  er_progressTimer1 = setTimeout(function(){ msg.innerText = 'Buscando órdenes asociadas...'; bar.style.width = '50%'; }, 3000);
+  er_progressTimer2 = setTimeout(function(){ msg.innerText = 'Ejecutando cambios...'; bar.style.width = '75%'; }, 6000);
+  er_progressTimer3 = setTimeout(function(){ msg.innerText = 'Casi listo...'; bar.style.width = '90%'; }, 9000);
+};
+
+window.er_finishProgress = function(callback) {
+  clearTimeout(er_progressTimer1); clearTimeout(er_progressTimer2); clearTimeout(er_progressTimer3);
+  var bar = document.getElementById('er-progBar');
+  var msg = document.getElementById('er-progMsg');
+  if (!bar) { if(callback) callback(); return; }
+  bar.style.width = '100%'; msg.innerText = '¡Completado!';
+  setTimeout(function(){
+    document.getElementById('er-modalProgress').style.display = 'none';
+    if (callback) callback();
+  }, 500);
+};
+
+window.er_guardarTodo = function() {
+  er_enforceRules();
+  if (er_datosRuta.length === 0) { Swal.fire({ icon: 'warning', text: 'La ruta no puede estar vacía.' }); return; }
+  var codigoRaw = document.getElementById('er-lblCodigo').innerText;
+  var codigo = codigoRaw.replace('Código: ', '');
+  var payload = { codigo: codigo, ruta: er_datosRuta, serie: er_serieOrden, consecutivo: er_consecutivoOrden };
+  er_startProgress();
+  google.script.run
+    .withSuccessHandler(function(res) { er_finishProgress(function(){ Swal.fire({ icon: 'success', title: '¡Guardado!', text: res, confirmButtonColor: '#1976d2' }); }); })
+    .withFailureHandler(function(err) {
+      var modal = document.getElementById('er-modalProgress');
+      if (modal) modal.style.display = 'none';
+      Swal.fire({ icon: 'error', title: 'Error al guardar', text: String(err) });
+    })
+    .guardarCambiosRuta(payload);
+};
+// ══════════════════════════════════════════════════════
+// MÓDULO: TABLERO SUPERVISOR
+// Prefijo: tsup-
+// ══════════════════════════════════════════════════════

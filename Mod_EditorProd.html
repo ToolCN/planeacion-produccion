@@ -1,0 +1,878 @@
+function loadEditorProd() {
+  var area = document.getElementById('content-area');
+  area.style.padding = '0';
+  area.innerHTML = `
+<div id="edp-panel">
+
+  <!-- PASO 1: SELECCIONAR PROCESOS -->
+  <div id="edp-step1" class="edp-step-container edp-step-active">
+     <div class="edp-header-ctrl">
+        <h2 style="margin:0; color:#1565c0; font-size:24px;">✏️ EDITOR DE PRODUCCIÓN</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+             <p style="margin:0; color:#666;">Selecciona el proceso para iniciar</p>
+             <div style="display:flex; gap:10px; align-items:center;">
+               <button class="edp-btn-small" id="edp-btnSelAll" onclick="edpToggleSelAll()">☑ Seleccionar Todo</button>
+               <button class="edp-btn edp-btn-next" onclick="edpGoToStep2()" style="margin:0;">SIGUIENTE ➡</button>
+             </div>
+        </div>
+     </div>
+     <div id="edp-gridProcesos" class="edp-grid-img" style="padding:20px;"></div>
+  </div>
+
+  <!-- PASO 2: MAQUINAS Y FECHAS -->
+  <div id="edp-step2" class="edp-step-container">
+     <div class="edp-header-bar">
+         <div class="edp-title">2. MÁQUINAS Y FECHAS</div>
+         <button class="edp-btn edp-btn-back" onclick="edpGoToStep(1)">⬅ ATRÁS</button>
+     </div>
+     <div class="edp-date-bar">
+       <div class="edp-input-group"><label class="edp-input-label">INICIO (AYER)</label><input type="date" id="edp-fechaIni" class="edp-input-date"></div>
+       <div class="edp-input-group"><label class="edp-input-label">FIN (HOY)</label><input type="date" id="edp-fechaFin" class="edp-input-date"></div>
+       <button class="edp-btn" style="background:#2e7d32; margin:0;" onclick="edpExportarExcel()">EXCEL 📊</button>
+       <button class="edp-btn edp-btn-next" onclick="edpGoToStep3()" style="margin:0;">BUSCAR PRODUCCIÓN 🔎</button>
+     </div>
+     <div id="edp-containerMaquinas" style="padding:15px;"></div>
+     <div style="padding:0 20px 20px 20px;text-align:right;">
+       <button class="edp-btn edp-btn-next" onclick="edpGoToStep3()">SIGUIENTE ➡</button>
+     </div>
+  </div>
+
+  <!-- PASO 3: TABLA DE EDICION -->
+  <div id="edp-step3" class="edp-step-container">
+     <div class="edp-header-bar">
+        <div class="edp-title">✏️ EDITOR DE PRODUCCIÓN</div>
+        <div>
+           <button class="edp-btn-toolbar" style="background:#546e7a" onclick="edpGoToStep(2)">⬅ Filtros</button>
+           <button class="edp-btn-toolbar" style="background:#607d8b" onclick="edpBorrarFiltros()">🌪️ Limpiar</button>
+           <button class="edp-btn-toolbar" style="background:#78909c" onclick="edpUndoAll()">↩️ Deshacer Todo</button>
+        </div>
+     </div>
+     <div class="edp-summary-bar">
+        <div class="edp-sum-item">Regs: <span class="edp-sum-val" id="edp-sumRegs">0</span></div>
+        <div class="edp-sum-item">Prod: <span class="edp-sum-val" id="edp-sumProd">0</span></div>
+        <div class="edp-sum-item">Prom: <span class="edp-sum-val" id="edp-avgProd">0</span></div>
+        <div class="edp-sum-item">Hrs: <span class="edp-sum-val" id="edp-sumHrs">0</span></div>
+        <div class="edp-sum-item" id="edp-infoOrden-wrap" style="display:none;margin-left:10px;padding-left:14px;border-left:2px solid #90caf9;"><span id="edp-infoOrden" style="font-size:13px;font-weight:900;color:#1565c0;letter-spacing:0.3px;"></span></div>
+     </div>
+     <div class="edp-table-container">
+        <table id="edp-tablaProd">
+           <thead>
+              <tr>
+                 <th onclick="edpAbrirModalFiltro('fecha')" id="edp-th-fecha">FECHA ▾</th>
+                 <th onclick="edpAbrirModalFiltro('turno')" id="edp-th-turno" style="width:50px;">TURNO ▾</th>
+                 <th onclick="edpAbrirModalFiltro('maquina')" id="edp-th-maquina" style="min-width:180px;">MÁQUINA ▾</th>
+                 <th onclick="edpAbrirModalFiltro('lote')" id="edp-th-lote" style="min-width:140px;">LOTE ▾</th>
+                 <th onclick="edpAbrirModalFiltro('operadorTxt')" id="edp-th-operadorTxt">OPERADOR ▾</th>
+                 <th onclick="edpAbrirModalFiltro('pesoI')" id="edp-th-pesoI">P. INI ▾</th>
+                 <th onclick="edpAbrirModalFiltro('pesoF')" id="edp-th-pesoF">P. FIN ▾</th>
+                 <th onclick="edpAbrirModalFiltro('pesoTina')" id="edp-th-pesoTina">TINA ▾</th>
+                 <th onclick="edpAbrirModalFiltro('producido')" id="edp-th-producido">PROD ▾</th>
+                 <th onclick="edpAbrirModalFiltro('horas')" id="edp-th-horas" style="width:50px;">HRS ▾</th>
+                 <th onclick="edpAbrirModalFiltro('sello')" id="edp-th-sello" style="width:80px;">SELLO ▾</th>
+                 <th onclick="edpAbrirModalFiltro('comentario')" id="edp-th-comentario" style="width:120px;">COM ▾</th>
+                 <th>ACCIONES</th>
+              </tr>
+           </thead>
+           <tbody id="edp-tbodyProd"></tbody>
+        </table>
+     </div>
+  </div>
+
+  <!-- TOAST CARGA LOTES (esquina inferior derecha) -->
+  <div id="edp-toast-lotes" style="display:none;position:fixed;bottom:24px;right:24px;
+    background:#37474f;color:white;padding:10px 18px;border-radius:8px;
+    font-size:12px;font-weight:700;z-index:9000;align-items:center;gap:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.45);">
+    <div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);
+      border-top-color:white;border-radius:50%;animation:edpSpin .7s linear infinite;"></div>
+    Cargando lotes...
+  </div>
+  <div id="edp-toast-maqs" style="display:none;position:fixed;bottom:64px;right:24px;
+    background:#1a3a5c;color:white;padding:10px 18px;border-radius:8px;
+    font-size:12px;font-weight:700;z-index:9000;align-items:center;gap:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.45);">
+    <div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);
+      border-top-color:#90caf9;border-radius:50%;animation:edpSpin .7s linear infinite;"></div>
+    Cargando máquinas...
+  </div>
+
+  <!-- BOTÓN FLOTANTE GUARDAR -->
+  <button id="edp-btnSaveAll" class="edp-fab-save-all" onclick="edpGuardarCambios()">💾 GUARDAR (<span id="edp-lblCount">0</span>)</button>
+
+  <!-- MODAL FILTRO -->
+  <div id="edp-filterPopup" class="edp-filter-modal">
+     <div class="edp-filter-box">
+        <div style="padding:10px; border-bottom:1px solid #eee; font-weight:bold; background:#f5f5f5; border-radius:8px 8px 0 0; display:flex; justify-content:space-between;">
+            <span>Filtrar <span id="edp-lblColumnaFiltro"></span></span>
+            <button onclick="edpCerrarFiltro()" style="border:none;background:none;font-weight:bold;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:5px; display:flex; gap:5px;">
+             <button class="edp-btn-toolbar" style="background:#78909c; padding:4px;" onclick="edpSortData('asc')">⬆ Asc</button>
+             <button class="edp-btn-toolbar" style="background:#78909c; padding:4px;" onclick="edpSortData('desc')">⬇ Desc</button>
+        </div>
+        <div style="padding:5px;"><input type="text" id="edp-txtBuscarFiltro" onkeyup="edpFiltrarOpciones(this.value)" style="width:100%; padding:5px; box-sizing:border-box;" placeholder="Buscar..."></div>
+        <div style="padding:5px; display:flex; gap:10px; justify-content:center;">
+            <button class="edp-btn-toolbar" style="background:#90a4ae; font-size:10px; padding:4px 8px; margin:0;" onclick="edpToggleOpciones(true)">Todas</button>
+            <button class="edp-btn-toolbar" style="background:#90a4ae; font-size:10px; padding:4px 8px; margin:0;" onclick="edpToggleOpciones(false)">Ninguna</button>
+        </div>
+        <div class="edp-filter-list" id="edp-listaOpcionesFiltro"></div>
+        <div style="padding:10px; text-align:right; background:#f5f5f5; border-radius:0 0 8px 8px;">
+           <button class="edp-btn-toolbar" style="background:#1976d2;" onclick="edpAplicarFiltro()">Aplicar</button>
+        </div>
+     </div>
+  </div>
+
+  <!-- MODAL TRANSFER -->
+  <div id="edp-modalTrans" class="edp-filter-modal" style="z-index:9999;">
+    <div class="edp-filter-box" style="width:480px; max-height:85vh; overflow-y:auto;">
+      <div style="padding:12px 15px; background:#ef6c00; color:white; font-weight:900; border-radius:8px 8px 0 0; font-size:16px;">
+        🔄 TRANSFERIR PRODUCCIÓN
+      </div>
+      <div style="padding:16px;">
+        <div id="edp-lblInfoTrans" style="background:#fff3e0; padding:10px; border-radius:6px; margin-bottom:14px; font-size:13px; color:#e65100; font-weight:700;"></div>
+        <div style="margin-bottom:14px;">
+          <label style="font-weight:900; font-size:13px; display:block; margin-bottom:6px;">MODO DE TRANSFERENCIA:</label>
+          <label style="display:block; margin-bottom:6px; cursor:pointer;">
+            <input type="radio" name="edp-modoTransEd" value="TOTAL" checked onchange="edpActualizarModoTrans()">
+            &nbsp;Transferir TODO el registro a otra orden
+          </label>
+          <label style="display:block; cursor:pointer;">
+            <input type="radio" name="edp-modoTransEd" value="PARCIAL" onchange="edpActualizarModoTrans()">
+            &nbsp;Transferir cantidad parcial (modifica actual + crea nuevo)
+          </label>
+        </div>
+        <div id="edp-divKgParcial" style="display:none; margin-bottom:14px;">
+          <label style="font-weight:900; font-size:13px;">KG A TRANSFERIR:</label>
+          <input type="number" id="edp-numKgTrans" step="0.01" min="0.01"
+            style="width:100%; padding:10px; border:2px solid #ef6c00; border-radius:6px; font-size:16px; font-weight:900; margin-top:4px;">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="font-weight:900; font-size:13px; display:block; margin-bottom:6px;">ORDEN DESTINO:</label>
+          <select id="edp-selDestino" style="width:100%; padding:10px; border:2px solid #ccc; border-radius:6px; font-size:13px; font-weight:700;">
+            <option>Cargando...</option>
+          </select>
+        </div>
+      </div>
+      <div style="padding:12px 15px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end;">
+        <button style="padding:10px 20px; background:#757575; color:white; border:none; border-radius:6px; font-weight:900; cursor:pointer;"
+          onclick="document.getElementById('edp-modalTrans').style.display='none'">✖ CANCELAR</button>
+        <button style="padding:10px 20px; background:#ef6c00; color:white; border:none; border-radius:6px; font-weight:900; cursor:pointer;"
+          onclick="edpConfirmarTraspaso()">✔ CONFIRMAR</button>
+      </div>
+    </div>
+  </div>
+
+</div>`;
+
+  // ── ESTADO DEL MÓDULO (variables locales) ──
+  var edpCatalogo = {};
+  var edpSeleccion = { procs: [], maqs: [] };
+  var edpProduccionData = [];
+  var edpOriginalData = [];
+  var edpCambiosPendientes = new Set();
+  var edpFiltrosActivos = {};
+  var edpColFiltroActual = '';
+  var edpDiccionarioLotes = {};
+  var edpIdRegActivo = '';
+  var edpMaxKgActivo = 0;
+  var edpFilaActivaId = null;
+
+  // ── UTILIDADES ──
+  function edpFmtNum(val) {
+    var n = parseFloat(val) || 0;
+    return n % 1 === 0 ? n.toLocaleString('en-US') : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function edpFmtSello(val) { return String(parseInt(val) || 0); }
+  function edpParseLimpio(val) { return parseFloat(String(val).replace(/,/g, '')) || 0; }
+
+  // Exponer al HTML inline (onclick=)
+  window.edpFmtNum = edpFmtNum;
+  window.edpParseLimpio = edpParseLimpio;
+
+  // ── NAVEGACIÓN ──
+  window.edpGoToStep = function(n) {
+    document.querySelectorAll('#edp-panel .edp-step-container').forEach(function(c) { c.classList.remove('edp-step-active'); });
+    var el = document.getElementById('edp-step' + n);
+    if (el) el.classList.add('edp-step-active');
+    edpUpdateGlobalBtn();
+  };
+
+  window.edpSelectAllProcs = function() {
+    edpSeleccion.procs = edpCatalogo.procesos.map(function(p) { return p.nombre; });
+    edpRenderProcesos();
+    var btn = document.getElementById('edp-btnSelAll');
+    if(btn){ btn.textContent = '☐ Deseleccionar Todo'; }
+  };
+  window.edpDeselAllProcs = function() {
+    edpSeleccion.procs = [];
+    edpRenderProcesos();
+    var btn = document.getElementById('edp-btnSelAll');
+    if(btn){ btn.textContent = '☑ Seleccionar Todo'; }
+  };
+  window.edpToggleSelAll = function() {
+    var btn = document.getElementById('edp-btnSelAll');
+    var todosSeleccionados = edpCatalogo.procesos.length > 0
+      && edpSeleccion.procs.length === edpCatalogo.procesos.length;
+    if(todosSeleccionados){ edpDeselAllProcs(); }
+    else { edpSelectAllProcs(); }
+  };
+  window.edpToggleProc = function(n, el) {
+    var i = edpSeleccion.procs.indexOf(n);
+    if (i > -1) edpSeleccion.procs.splice(i, 1); else edpSeleccion.procs.push(n);
+    el.classList.toggle('selected');
+    var btn = document.getElementById('edp-btnSelAll');
+    if(btn){
+      var todos = edpCatalogo.procesos.length > 0
+        && edpSeleccion.procs.length === edpCatalogo.procesos.length;
+      btn.textContent = todos ? '☐ Deseleccionar Todo' : '☑ Seleccionar Todo';
+    }
+  };
+  window.edpGoToStep2 = function() {
+    if (edpSeleccion.procs.length === 0) { sAlert('Selecciona al menos un proceso'); return; }
+    edpRenderMaquinas();
+    edpGoToStep(2);
+  };
+  window.edpToggleMaq = function(n, el) {
+    var i = edpSeleccion.maqs.indexOf(n);
+    if (i > -1) edpSeleccion.maqs.splice(i, 1); else edpSeleccion.maqs.push(n);
+    el.classList.toggle('selected');
+  };
+  window.edpSelectAllMaqs = function(p) {
+    (edpCatalogo.maquinas[p] || []).forEach(function(m) { if (!edpSeleccion.maqs.includes(m)) edpSeleccion.maqs.push(m); });
+    edpRenderMaquinas();
+  };
+  window.edpGoToStep3 = function() {
+    var validos = [];
+    edpSeleccion.procs.forEach(function(p) { (edpCatalogo.maquinas[p] || []).forEach(function(m) { if (edpSeleccion.maqs.includes(m)) validos.push(m); }); });
+    edpSeleccion.maqs = validos;
+    if (edpSeleccion.maqs.length === 0) { sAlert('Selecciona al menos una máquina'); return; }
+    edpLoadData();
+  };
+
+  // ── RENDER PASO 1 ──
+  function edpRenderProcesos() {
+    var nombres = (edpCatalogo.procesos || []).map(function(p){ return p.nombre; });
+    var g = document.getElementById('edp-gridProcesos');
+    if (!g) return;
+    if (!nombres.length) { g.innerHTML = '<p style="color:#999;padding:20px;">Sin procesos disponibles</p>'; return; }
+    g.innerHTML = renderProcGrid(nombres, function(nombre) {
+      var sel = edpSeleccion.procs.includes(nombre) ? 'selected' : '';
+      return '<div class="edp-card-proc '+sel+'" onclick="edpToggleProc(\''+nombre.replace(/'/g,"\\'")+'\', this)" style="cursor:pointer;">'
+        + getProcSVG(nombre)
+        + '<div class="edp-card-txt">'+nombre+'</div></div>';
+    });
+  }
+
+  // ── RENDER PASO 2 ──
+  function edpRenderMaquinas() {
+    var html = '';
+    edpSeleccion.procs.forEach(function(p) {
+      var maqs = edpCatalogo.maquinas[p] || [];
+      html += '<div class="edp-group-header">' + p
+        + '<button class="edp-btn-small" onclick="edpSelectAllMaqs(\'' + p + '\')">Todas</button></div>'
+        + '<div class="edp-grid-maq">';
+      maqs.forEach(function(m) {
+        var sel = edpSeleccion.maqs.includes(m) ? 'selected' : '';
+        html += '<div class="edp-btn-maq ' + sel + '" onclick="edpToggleMaq(\'' + m + '\', this)">' + m + '</div>';
+      });
+      html += '</div>';
+    });
+    var c = document.getElementById('edp-containerMaquinas');
+    if (c) c.innerHTML = html;
+  }
+
+  // ── CARGA DE DATOS ──
+  window.edpLoadData = function() {
+    showLoader('Cargando Editor de Producción...');
+    var filtros = {
+      maquinas: edpSeleccion.maqs,
+      fechaIni: document.getElementById('edp-fechaIni').value,
+      fechaFin: document.getElementById('edp-fechaFin').value
+    };
+    google.script.run
+      .withSuccessHandler(function(res) {
+        edpProduccionData = res.registros || [];
+        edpOriginalData = JSON.parse(JSON.stringify(edpProduccionData));
+        edpDiccionarioLotes = {}; // lotes se cargan lazy al hacer clic
+        edpFiltrosActivos = {};
+        edpCambiosPendientes.clear();
+        setTimeout(function() { edpRenderTabla(); hideLoader(); edpGoToStep(3); }, 50);
+      })
+      .withFailureHandler(function(e) { hideLoader(); sAlert('Error al buscar producción: ' + e); })
+      .buscarProduccionCompleta(filtros);
+  };
+
+  // ── RENDER TABLA (PASO 3) ──
+  window.edpRenderTabla = function() {
+    var tbody = document.getElementById('edp-tbodyProd');
+    if (!tbody) return;
+    var rowsHTML = [];
+
+    var datosVisibles = edpProduccionData.filter(function(row) {
+      for (var col in edpFiltrosActivos) {
+        if (edpFiltrosActivos[col].indexOf(String(row[col])) === -1) return false;
+      }
+      return true;
+    });
+
+    edpActualizarResumen(datosVisibles);
+    edpActualizarEstilosHeaders();
+
+    var optsOp = '<option value="">-</option>';
+    (edpCatalogo.operadores || []).forEach(function(op) {
+      optsOp += '<option value="' + op.id + '">' + op.nombre + '</option>';
+    });
+
+    datosVisibles.forEach(function(row) {
+      var modClass = row.borrar ? 'edp-deleted' : (edpCambiosPendientes.has(row.id) ? 'edp-modified' : '');
+
+      var selMaq = '<select class="edp-tbl-input"'
+        + ' data-orden="' + row.ordenRef + '" data-maq="' + row.maquina + '"'
+        + ' data-loaded="0"'
+        + ' onfocus="edpPrecargarMaquinas(this)"'
+        + ' onchange="edpEditRow(\'' + row.id + '\',\'maquina\',this.value)">'
+        + '<option>' + row.maquina + '</option>'
+        + '</select>';
+
+      var selOp = '<select class="edp-tbl-input" onchange="edpEditRow(\'' + row.id + '\',\'operadorId\',this.value,this)">'
+        + optsOp.replace('value="' + row.operadorId + '"', 'value="' + row.operadorId + '" selected') + '</select>';
+
+      // Lotes: arrancan con solo el lote actual; se cargan del servidor al hacer foco
+      var selLote = '<select class="edp-tbl-input"'
+        + ' data-id="' + row.id + '" data-orden="' + row.ordenRef + '" data-lote="' + row.lote + '"'
+        + ' data-loaded="0"'
+        + ' onfocus="edpPrecargarLotes(this)"'
+        + ' onchange="edpEditRow(\'' + row.id + '\',\'lote\',this.value)">'
+        + '<option>' + row.lote + '</option>'
+        + '</select>';
+
+      var actionBtns = '';
+      if (row.borrar) {
+        actionBtns = '<button class="edp-btn-icon" style="color:#2e7d32;" title="Restaurar" onclick="edpMarcarBorrar(\'' + row.id + '\',false)">↩️</button>';
+      } else {
+        actionBtns += '<button class="edp-btn-icon" style="color:#ef6c00;" title="Transferir" onclick="edpAbrirTransfer(\'' + row.id + '\',' + row.producido + ',\'' + row.ordenRef + '\')">⇄</button>';
+        if (modClass.includes('modified')) actionBtns += '<button class="edp-btn-icon" style="color:#546e7a;" title="Deshacer" onclick="edpUndo(\'' + row.id + '\')">↩️</button>';
+        actionBtns += '<button class="edp-btn-icon" style="color:#c62828;" title="Eliminar" onclick="edpMarcarBorrar(\'' + row.id + '\',true)">✕</button>';
+      }
+
+      rowsHTML.push('<tr class="' + modClass + '" id="edp-tr-' + row.id + '" onclick="edpActivarFila(\'' + row.id + '\')">'
+        + '<td><input type="date" class="edp-tbl-input" value="' + row.fecha + '" onchange="edpEditRow(\'' + row.id + '\',\'fecha\',this.value)"></td>'
+        + '<td><input type="number" class="edp-tbl-input" value="' + row.turno + '" onchange="edpEditRow(\'' + row.id + '\',\'turno\',this.value)" style="width:40px"></td>'
+        + '<td>' + selMaq + '</td>'
+        + '<td>' + selLote + '</td>'
+        + '<td>' + selOp + '</td>'
+        + '<td><input type="text" class="edp-tbl-input edp-num-input" value="' + edpFmtNum(row.pesoI) + '" id="edp-pi-' + row.id + '" onfocus="this.select()" onblur="this.value=edpFmtNum(edpParseLimpio(this.value))" onchange="edpEditRow(\'' + row.id + '\',\'pesoI\',edpParseLimpio(this.value))"></td>'
+        + '<td><input type="text" class="edp-tbl-input edp-num-input" value="' + edpFmtNum(row.pesoF) + '" id="edp-pf-' + row.id + '" onfocus="this.select()" onblur="this.value=edpFmtNum(edpParseLimpio(this.value))" onchange="edpEditRow(\'' + row.id + '\',\'pesoF\',edpParseLimpio(this.value))"></td>'
+        + '<td><input type="text" class="edp-tbl-input edp-num-input" value="' + edpFmtNum(row.pesoTina) + '" id="edp-pt-' + row.id + '" onfocus="this.select()" onblur="this.value=edpFmtNum(edpParseLimpio(this.value))" onchange="edpEditRow(\'' + row.id + '\',\'pesoTina\',edpParseLimpio(this.value))"></td>'
+        + '<td><input type="text" class="edp-tbl-input edp-num-input" value="' + edpFmtNum(row.producido) + '" id="edp-prod-' + row.id + '" onfocus="this.select()" onblur="this.value=edpFmtNum(edpParseLimpio(this.value))" onchange="edpEditRow(\'' + row.id + '\',\'producido\',edpParseLimpio(this.value))"></td>'
+        + '<td><input type="text" class="edp-tbl-input edp-num-input" value="' + edpFmtNum(row.horas) + '" onfocus="this.select()" onblur="this.value=edpFmtNum(edpParseLimpio(this.value))" onchange="edpEditRow(\'' + row.id + '\',\'horas\',edpParseLimpio(this.value))" style="width:55px"></td>'
+        + '<td><input type="text" class="edp-tbl-input" value="' + edpFmtSello(row.sello) + '" onfocus="this.select()" onchange="edpEditRow(\'' + row.id + '\',\'sello\',this.value)"></td>'
+        + '<td><input class="edp-tbl-input" value="' + (row.comentario || '') + '" onchange="edpEditRow(\'' + row.id + '\',\'comentario\',this.value)"></td>'
+        + '<td style="text-align:center; white-space:nowrap;">' + actionBtns + '</td>'
+        + '</tr>');
+    });
+
+    tbody.innerHTML = rowsHTML.length > 0
+      ? rowsHTML.join('')
+      : '<tr><td colspan="13" style="text-align:center;padding:20px;color:#999;">Sin resultados</td></tr>';
+    edpUpdateGlobalBtn();
+  };
+
+  // ── EDITAR CELDA ──
+  window.edpEditRow = function(id, f, val, sel) {
+    var row = edpProduccionData.find(function(r) { return r.id == id; });
+    if (!row) return;
+    row[f] = val;
+    if (f === 'operadorId' && sel) row.operadorTxt = sel.options[sel.selectedIndex].text;
+    if (['pesoI', 'pesoF', 'pesoTina'].includes(f)) {
+      var pi = edpParseLimpio((document.getElementById('edp-pi-' + id) || {}).value);
+      var pf = edpParseLimpio((document.getElementById('edp-pf-' + id) || {}).value);
+      var pt = edpParseLimpio((document.getElementById('edp-pt-' + id) || {}).value);
+      row.producido = pf - pi - pt;
+      var elProd = document.getElementById('edp-prod-' + id);
+      if (elProd) elProd.value = edpFmtNum(row.producido);
+    }
+    edpCheckChange(id);
+  };
+
+  function edpCheckChange(id) {
+    var row = edpProduccionData.find(function(r) { return r.id == id; });
+    var orig = edpOriginalData.find(function(r) { return r.id == id; });
+    if (row.borrar) { edpCambiosPendientes.add(id); }
+    else {
+      var cr = JSON.parse(JSON.stringify(row)); delete cr.borrar;
+      var co = JSON.parse(JSON.stringify(orig)); delete co.borrar;
+      if (JSON.stringify(cr) !== JSON.stringify(co)) edpCambiosPendientes.add(id);
+      else edpCambiosPendientes.delete(id);
+    }
+    edpUpdateGlobalBtn();
+  }
+
+  window.edpMarcarBorrar = function(id, estado) {
+    var row = edpProduccionData.find(function(r) { return r.id == id; });
+    if (row) { row.borrar = estado; if (estado) edpCambiosPendientes.add(id); else edpCheckChange(id); edpRenderTabla(); }
+  };
+  window.edpUndo = function(id) {
+    var orig = edpOriginalData.find(function(r) { return r.id == id; });
+    var idx = edpProduccionData.findIndex(function(r) { return r.id == id; });
+    if (orig && idx > -1) { edpProduccionData[idx] = JSON.parse(JSON.stringify(orig)); edpCambiosPendientes.delete(id); edpRenderTabla(); }
+  };
+  window.edpUndoAll = function() {
+    /* confirm: ¿Deshacer todos los cambios?... - use Swal in production */
+    edpProduccionData = JSON.parse(JSON.stringify(edpOriginalData));
+    edpCambiosPendientes.clear();
+    edpRenderTabla();
+  };
+
+  function edpUpdateGlobalBtn() {
+    var c = edpCambiosPendientes.size;
+    var btn = document.getElementById('edp-btnSaveAll');
+    if (!btn) return;
+    var step3 = document.getElementById('edp-step3');
+    var enStep3 = step3 && step3.classList.contains('edp-step-active');
+    if (c > 0 && enStep3) {
+      btn.style.display = 'block';
+      var lbl = document.getElementById('edp-lblCount');
+      if (lbl) lbl.innerText = c;
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  window.edpGuardarCambios = function() {
+    var lista = [];
+    edpCambiosPendientes.forEach(function(id) {
+      var item = edpProduccionData.find(function(r) { return r.id == id; });
+      if (item) lista.push(item);
+    });
+    if (lista.length === 0) return;
+    var numBorrados = lista.filter(function(r) { return r.borrar; }).length;
+    if (!window.confirm('¿Confirmar guardado?\nModificados: ' + (lista.length - numBorrados) + '\nEliminar: ' + numBorrados)) return;
+    showLoader('Guardando cambios de producción...');
+    google.script.run
+      .withSuccessHandler(function(res) { sAlert(res); edpLoadData(); })
+      .withFailureHandler(function(e) { hideLoader(); sAlert('Error al guardar: ' + e); })
+      .guardarCambiosProduccion(lista);
+  };
+
+  // ── RESUMEN Y HEADERS ──
+  function edpActualizarResumen(d) {
+    var p = 0, h = 0;
+    d.forEach(function(r) { if (!r.borrar) { p += Number(r.producido) || 0; h += Number(r.horas) || 0; } });
+    var s = function(id, v) { var el = document.getElementById(id); if (el) el.innerText = v; };
+    s('edp-sumRegs', new Intl.NumberFormat().format(d.length));
+    s('edp-sumProd', new Intl.NumberFormat().format(p));
+    s('edp-sumHrs', new Intl.NumberFormat().format(h));
+    s('edp-avgProd', d.length ? new Intl.NumberFormat({ maximumFractionDigits: 1 }).format(p / d.length) : 0);
+  }
+  function edpActualizarEstilosHeaders() {
+    document.querySelectorAll('#edp-panel th').forEach(function(th) { th.classList.remove('edp-active-filter'); });
+    for (var col in edpFiltrosActivos) { var th = document.getElementById('edp-th-' + col); if (th) th.classList.add('edp-active-filter'); }
+  }
+
+  // ── FILTROS ──
+  window.edpAbrirModalFiltro = function(col) {
+    edpColFiltroActual = col;
+    var lbl = document.getElementById('edp-lblColumnaFiltro'); if (lbl) lbl.innerText = col.toUpperCase();
+    var txt = document.getElementById('edp-txtBuscarFiltro'); if (txt) txt.value = '';
+    var candidatos = edpProduccionData.filter(function(row) {
+      for (var c in edpFiltrosActivos) { if (c !== col && edpFiltrosActivos[c].indexOf(String(row[c])) === -1) return false; }
+      return true;
+    });
+    var valoresUnicos = Array.from(new Set(candidatos.map(function(r) { return String(r[col]); }))).sort();
+    var seleccionados = edpFiltrosActivos[col] || valoresUnicos;
+    var html = valoresUnicos.map(function(v) {
+      return '<label class="edp-filter-item"><input type="checkbox" value="' + v + '" ' + (seleccionados.includes(v) ? 'checked' : '') + '> <span>' + v + '</span></label>';
+    }).join('');
+    var lista = document.getElementById('edp-listaOpcionesFiltro'); if (lista) lista.innerHTML = html;
+    var popup = document.getElementById('edp-filterPopup'); if (popup) popup.style.display = 'flex';
+  };
+  window.edpAplicarFiltro = function() {
+    var inputs = document.querySelectorAll('#edp-listaOpcionesFiltro input');
+    var permitidos = [];
+    inputs.forEach(function(inp) { if (inp.checked) permitidos.push(inp.value); });
+    if (permitidos.length === inputs.length) delete edpFiltrosActivos[edpColFiltroActual];
+    else edpFiltrosActivos[edpColFiltroActual] = permitidos;
+    edpRenderTabla();
+    var popup = document.getElementById('edp-filterPopup'); if (popup) popup.style.display = 'none';
+  };
+  window.edpSortData = function(dir) {
+    var col = edpColFiltroActual; if (!col) return;
+    var isNum = edpProduccionData.some(function(r) { return !isNaN(parseFloat(r[col])) && isFinite(r[col]); });
+    edpProduccionData.sort(function(a, b) {
+      var vA = a[col], vB = b[col];
+      if (isNum) { vA = parseFloat(vA) || 0; vB = parseFloat(vB) || 0; return dir === 'asc' ? vA - vB : vB - vA; }
+      vA = String(vA).toLowerCase(); vB = String(vB).toLowerCase();
+      return dir === 'asc' ? vA.localeCompare(vB) : vB.localeCompare(vA);
+    });
+    edpRenderTabla();
+    var popup = document.getElementById('edp-filterPopup'); if (popup) popup.style.display = 'none';
+  };
+  window.edpCerrarFiltro = function() { var p = document.getElementById('edp-filterPopup'); if (p) p.style.display = 'none'; };
+  window.edpBorrarFiltros = function() { edpFiltrosActivos = {}; edpRenderTabla(); };
+  window.edpToggleOpciones = function(todos) { document.querySelectorAll('#edp-listaOpcionesFiltro input').forEach(function(inp) { inp.checked = todos; }); };
+  window.edpFiltrarOpciones = function(t) { t = t.toLowerCase(); document.querySelectorAll('#edp-listaOpcionesFiltro .edp-filter-item').forEach(function(el) { el.style.display = el.innerText.toLowerCase().includes(t) ? 'flex' : 'none'; }); };
+
+  // ── TRANSFERENCIA ──
+  window.edpActualizarModoTrans = function() {
+    var modo = document.querySelector('input[name="edp-modoTransEd"]:checked');
+    var div = document.getElementById('edp-divKgParcial');
+    if (modo && div) div.style.display = modo.value === 'PARCIAL' ? 'block' : 'none';
+  };
+  window.edpAbrirTransfer = function(id, prod, ord) {
+    if (!ord || ord === 'undefined') { sAlert('Error: Registro sin Orden Referencia'); return; }
+    edpIdRegActivo = id; edpMaxKgActivo = prod;
+    var lbl = document.getElementById('edp-lblInfoTrans'); if (lbl) lbl.innerHTML = '<b>Disponible:</b> ' + prod + ' kg';
+    var r = document.querySelector('input[name="edp-modoTransEd"][value="TOTAL"]'); if (r) r.checked = true;
+    var div = document.getElementById('edp-divKgParcial'); if (div) div.style.display = 'none';
+    var num = document.getElementById('edp-numKgTrans'); if (num) num.value = prod;
+    var sel = document.getElementById('edp-selDestino'); if (sel) sel.innerHTML = '<option>Cargando...</option>';
+    var modal = document.getElementById('edp-modalTrans'); if (modal) modal.style.display = 'flex';
+    google.script.run
+      .withSuccessHandler(function(res) {
+        var s = document.getElementById('edp-selDestino'); if (!s) return;
+        // La función puede devolver objeto directo o JSON string
+        var data = (typeof res === 'string') ? JSON.parse(res) : res;
+        s.innerHTML = '';
+        if (data.error) { sAlert(data.error); return; }
+        var list = data.list || [];
+        if (list.length === 0) { s.innerHTML = '<option value="">Sin órdenes hermanas disponibles</option>'; return; }
+        list.forEach(function(o) {
+          var pend = (o.solicitado - o.producido).toFixed(0);
+          s.innerHTML += '<option value="' + o.id + '">' + o.nombre + ' | Sol:' + Number(o.solicitado).toFixed(0) + ' → Pend:' + pend + '</option>';
+        });
+      })
+      .withFailureHandler(function(e) { sAlert('Error al obtener candidatos: ' + e); })
+      .obtenerCandidatosTransferencia(ord);
+  };
+  window.edpConfirmarTraspaso = function() {
+    var modoEl = document.querySelector('input[name="edp-modoTransEd"]:checked');
+    var modo = modoEl ? modoEl.value : 'TOTAL';
+    var d = (document.getElementById('edp-selDestino') || {}).value;
+    var k = modo === 'TOTAL' ? edpMaxKgActivo : parseFloat((document.getElementById('edp-numKgTrans') || {}).value);
+    if (!d || !k || k <= 0 || k > edpMaxKgActivo) { sAlert('Datos inválidos. Verifica cantidad y orden destino.'); return; }
+    if (!window.confirm('¿Transferir ' + k.toFixed(2) + ' kg?')) return;
+    var modal = document.getElementById('edp-modalTrans'); if (modal) modal.style.display = 'none';
+    showLoader('Procesando transferencia...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        var r = (typeof res === 'string') ? JSON.parse(res) : res;
+        if (r && r.success) edpLoadData();
+        else { hideLoader(); sAlert('Error: ' + (r ? r.msg : 'Sin respuesta'), 'error'); }
+      })
+      .withFailureHandler(function(e) { hideLoader(); sAlert('Error: ' + e); })
+      .ejecutarTraspasoParcialOTotal(edpIdRegActivo, d, k);
+  };
+
+  // ── EXCEL ──
+  window.edpExportarExcel = function() {
+    if (edpSeleccion.procs.length === 0) { sAlert('Selecciona procesos en el paso 1'); return; }
+    showLoader('Generando Excel...');
+    var filtros = {
+      procesos: edpSeleccion.procs,
+      fechaIni: (document.getElementById('edp-fechaIni') || {}).value,
+      fechaFin: (document.getElementById('edp-fechaFin') || {}).value
+    };
+    google.script.run
+      .withSuccessHandler(function(data) {
+        hideLoader();
+        if (!data || data.length <= 1) { sAlert('Sin datos para exportar'); return; }
+        edpBuildExcel(data, filtros.fechaIni, filtros.fechaFin);
+      })
+      .withFailureHandler(function(err) { hideLoader(); sAlert('Error: ' + err); })
+      .generarReporteKioscoExcel(filtros);
+  };
+
+  function edpBuildExcel(data, fechaIni, fechaFin) {
+    // Columnas del reporte
+    var COL = { TURNO:6, HRS:10, MAQUINA:11, TIPO:14,
+                DIAMETRO:15, LONGITUD:16, PESO:20, PRODUCIDO:21, PZA:22 };
+
+    // Limpiar valores y convertir numéricos
+    var rows = data.map(function(row, ri) {
+      return row.map(function(v, ci) {
+        if (ri === 0) return String(v || '');
+        var s = String(v === null || v === undefined ? '' : v);
+        if (s.startsWith('="') && s.endsWith('"')) s = s.slice(2, -1);
+        if (ci===COL.PRODUCIDO||ci===COL.PZA||ci===COL.PESO||ci===COL.HRS) {
+          var n = parseFloat(s.replace(/,/g,''));
+          return isNaN(n) ? s : n;
+        }
+        return s;
+      });
+    });
+
+    // Crear hoja con XLSX (datos solamente)
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Anchos de columna — esto sí funciona en XLSX gratis
+    ws['!cols'] = [10,8,12,10,22,12,7,10,6,6,7,14,10,10,8,9,9,8,8,8,9,11,10]
+      .map(function(w){ return { wch: w }; });
+
+    // Congelar primera fila — esto también funciona
+    ws['!freeze'] = { xSplit:0, ySplit:1 };
+
+    // Formatos numéricos — ESTO sí funciona en XLSX gratis (z = format string)
+    var numCols = {};
+    numCols[COL.PRODUCIDO] = '#,##0';
+    numCols[COL.PZA]       = '#,##0';
+    numCols[COL.PESO]      = '#,##0.00';
+    numCols[COL.HRS]       = '#,##0.0';
+
+    for (var ri = 1; ri < rows.length; ri++) {
+      for (var ci in numCols) {
+        var addr = XLSX.utils.encode_cell({ r: ri, c: parseInt(ci) });
+        if (ws[addr] && typeof ws[addr].v === 'number') {
+          ws[addr].z = numCols[ci];
+        }
+      }
+    }
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Produccion');
+    XLSX.writeFile(wb, 'Produccion_' + fechaIni + '_al_' + fechaFin + '.xlsx');
+  }
+
+  // ── FILA ACTIVA + TECLADO ──
+  var edpCacheOrden = {};  // caché local: ordenRef → texto de info
+
+  window.edpActivarFila = function(idFila) {
+    if (edpFilaActivaId) { var ant = document.getElementById('edp-tr-' + edpFilaActivaId); if (ant) ant.classList.remove('edp-fila-activa'); }
+    edpFilaActivaId = idFila;
+    var tr = document.getElementById('edp-tr-' + idFila); if (tr) tr.classList.add('edp-fila-activa');
+    // Mostrar info de orden en la barra
+    var row = edpProduccionData.find(function(r){ return r.id == idFila; });
+    var wrap = document.getElementById('edp-infoOrden-wrap');
+    var span = document.getElementById('edp-infoOrden');
+    if (!row || !wrap || !span) return;
+    var ref = row.ordenRef;
+    if (!ref || ref === "undefined") return;
+    // Si ya está en caché, mostrar directo
+    if (edpCacheOrden[ref]) {
+      span.textContent = edpCacheOrden[ref];
+      wrap.style.display = "block";
+      return;
+    }
+    // No está en caché: consultar al servidor
+    span.textContent = "...";
+    wrap.style.display = "block";
+    google.script.run
+      .withSuccessHandler(function(info) {
+        var txt = [info.tipo, info.dia && info.long ? info.dia+" X "+info.long : "", info.cuerpo, info.cuerda, info.acero ? "<"+info.acero+">" : ""]
+          .filter(function(v){ return v && v.trim(); }).join("   ");
+        edpCacheOrden[ref] = txt || ref;
+        // Solo actualizar si la fila sigue activa
+        if (edpFilaActivaId == idFila) {
+          span.textContent = edpCacheOrden[ref];
+        }
+      })
+      .withFailureHandler(function(){ wrap.style.display = "none"; })
+      .obtenerInfoOrden(ref);
+  };
+
+  function edpKeyNav(e) {
+    if (!edpFilaActivaId) return;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      var tbody = document.getElementById('edp-tbodyProd'); if (!tbody) return;
+      var filas = Array.from(tbody.querySelectorAll('tr[id^="edp-tr-"]'));
+      var idx = filas.findIndex(function(tr) { return tr.id === 'edp-tr-' + edpFilaActivaId; });
+      var sig = e.key === 'ArrowDown' ? filas[idx + 1] : filas[idx - 1];
+      if (!sig) return;
+      var nuevoId = sig.id.replace('edp-tr-', '');
+      var trActual = document.getElementById('edp-tr-' + edpFilaActivaId);
+      var inputs = trActual ? Array.from(trActual.querySelectorAll('input,select')) : [];
+      var colIdx = inputs.indexOf(document.activeElement);
+      edpActivarFila(nuevoId);
+      sig.scrollIntoView({ block: 'nearest' });
+      if (colIdx >= 0) { var inpSig = Array.from(sig.querySelectorAll('input,select')); var dest = inpSig[colIdx] || inpSig[0]; if (dest) { dest.focus(); dest.select && dest.select(); } }
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      var trActivo = document.getElementById('edp-tr-' + edpFilaActivaId); if (!trActivo) return;
+      var celdas = Array.from(trActivo.querySelectorAll('input,select')); if (!celdas.length) return;
+      var fIdx = celdas.indexOf(document.activeElement);
+      if (fIdx === -1) { if (e.key === 'ArrowRight') { e.preventDefault(); celdas[0].focus(); celdas[0].select && celdas[0].select(); } return; }
+      e.preventDefault();
+      var dest2 = e.key === 'ArrowRight' ? celdas[fIdx + 1] : celdas[fIdx - 1];
+      if (dest2) { dest2.focus(); dest2.select && dest2.select(); }
+    }
+  }
+  // ── CARGA LAZY DE LOTES AL HACER FOCO EN EL SELECT ──
+  // Se ejecuta solo la primera vez que el usuario abre ese combo
+  // Muestra toast en esquina inferior derecha mientras carga
+  var edpLotesEnCarga = {}; // evita llamadas dobles simultáneas
+
+  window.edpPrecargarLotes = function(sel) {
+    if (sel.dataset.loaded === '1') return; // ya cargado, nada que hacer
+    var idOrden = sel.dataset.orden;
+    if (!idOrden || idOrden === 'undefined') return;
+
+    // Si ya hay una carga en curso para esta orden, esperar
+    if (edpLotesEnCarga[idOrden]) return;
+
+    // Si ya tenemos los lotes en el diccionario local, usarlos directo
+    if (edpDiccionarioLotes[idOrden]) {
+      edpPoblarSelectLotes(sel, idOrden);
+      return;
+    }
+
+    // Marcar como en carga y mostrar toast
+    edpLotesEnCarga[idOrden] = true;
+    var toast = document.getElementById('edp-toast-lotes');
+    if (toast) { toast.style.display = 'flex'; }
+
+    google.script.run
+      .withSuccessHandler(function(mapa) {
+        // Guardar en diccionario local para futuros combos de la misma orden
+        if (mapa && mapa[idOrden]) {
+          edpDiccionarioLotes[idOrden] = mapa[idOrden];
+        } else {
+          // Si no vino nada, al menos guardar el lote actual para no volver a pedir
+          edpDiccionarioLotes[idOrden] = [sel.dataset.lote];
+        }
+        edpPoblarSelectLotes(sel, idOrden);
+        edpLotesEnCarga[idOrden] = false;
+        // Ocultar toast si no hay más cargas activas
+        var hayActivas = Object.values(edpLotesEnCarga).some(function(v){ return v; });
+        if (!hayActivas) {
+          var t = document.getElementById('edp-toast-lotes');
+          if (t) t.style.display = 'none';
+        }
+      })
+      .withFailureHandler(function(e) {
+        edpLotesEnCarga[idOrden] = false;
+        var t = document.getElementById('edp-toast-lotes');
+        if (t) t.style.display = 'none';
+        // En caso de error, al menos dejar el lote actual
+        edpDiccionarioLotes[idOrden] = [sel.dataset.lote];
+        edpPoblarSelectLotes(sel, idOrden);
+      })
+      .obtenerLotesDeOrden(idOrden);  // función backend nueva (ver abajo)
+  };
+
+  function edpPoblarSelectLotes(sel, idOrden) {
+    var loteActual = sel.dataset.lote;
+    var lista = (edpDiccionarioLotes[idOrden] || [loteActual]).slice();
+    if (lista.indexOf(loteActual) < 0) lista.unshift(loteActual);
+    // Reconstruir opciones
+    sel.innerHTML = lista.map(function(l) {
+      return '<option' + (l === loteActual ? ' selected' : '') + '>' + l + '</option>';
+    }).join('');
+    sel.dataset.loaded = '1';
+  }
+
+  // Caché por PROCESO (no por orden) — una sola consulta por proceso por sesión
+  var edpCacheMaquinas  = {};  // key: proceso → [lista de máquinas]
+  var edpMaqEnCarga     = {};  // key: ordenRef → true/false
+  var edpMaqPendientes  = {};  // key: proceso  → [selects esperando]
+
+  window.edpPrecargarMaquinas = function(sel) {
+    if (sel.dataset.loaded === '1') return;
+    var ordenRef = sel.dataset.orden;
+    var maqActual = sel.dataset.maq;
+    if (!ordenRef || ordenRef === 'undefined') return;
+
+    // Si ya conocemos el proceso de esta orden, intentar caché directo
+    var proceso = sel.dataset.proceso || '';
+    if (proceso && edpCacheMaquinas[proceso]) {
+      edpPoblarSelectMaquinas(sel, proceso, maqActual);
+      return;
+    }
+
+    // Si hay carga en curso para este proceso, encolar
+    if (proceso && edpMaqEnCarga[proceso]) {
+      if (!edpMaqPendientes[proceso]) edpMaqPendientes[proceso] = [];
+      edpMaqPendientes[proceso].push(sel);
+      return;
+    }
+
+    // Si hay carga en curso para esta orden, encolar bajo ordenRef
+    if (edpMaqEnCarga[ordenRef]) {
+      if (!edpMaqPendientes[ordenRef]) edpMaqPendientes[ordenRef] = [];
+      edpMaqPendientes[ordenRef].push(sel);
+      return;
+    }
+
+    edpMaqEnCarga[ordenRef] = true;
+    var toast = document.getElementById('edp-toast-maqs');
+    if (toast) toast.style.display = 'flex';
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        res = (typeof res === 'string') ? JSON.parse(res) : res;
+        edpMaqEnCarga[ordenRef] = false;
+
+        var proc = (res.proceso || '').toUpperCase().trim();
+        var lista = (res.maquinas || []).slice();
+        if (maqActual && lista.indexOf(maqActual) < 0) lista.unshift(maqActual);
+
+        // Guardar en caché por proceso
+        if (proc) edpCacheMaquinas[proc] = lista;
+
+        // Poblar el select original
+        sel.dataset.proceso = proc;
+        edpPoblarSelectMaquinas(sel, proc, maqActual);
+
+        // Poblar selects pendientes (misma orden o mismo proceso)
+        var pendientes = (edpMaqPendientes[ordenRef] || []).concat(edpMaqPendientes[proc] || []);
+        pendientes.forEach(function(s) {
+          var ma = s.dataset.maq;
+          s.dataset.proceso = proc;
+          edpPoblarSelectMaquinas(s, proc, ma);
+        });
+        delete edpMaqPendientes[ordenRef];
+        delete edpMaqPendientes[proc];
+
+        var hayActivas = Object.keys(edpMaqEnCarga).some(function(k){ return edpMaqEnCarga[k]; });
+        if (!hayActivas) {
+          var t = document.getElementById('edp-toast-maqs');
+          if (t) t.style.display = 'none';
+        }
+      })
+      .withFailureHandler(function() {
+        edpMaqEnCarga[ordenRef] = false;
+        var t = document.getElementById('edp-toast-maqs');
+        if (t) t.style.display = 'none';
+        sel.dataset.loaded = '1';
+      })
+      .obtenerMaquinasDeOrden(ordenRef);
+  };
+
+  function edpPoblarSelectMaquinas(sel, proceso, maqActual) {
+    var lista = (edpCacheMaquinas[proceso] || [maqActual]).slice();
+    if (lista.indexOf(maqActual) < 0) lista.unshift(maqActual);
+    sel.innerHTML = lista.map(function(m) {
+      return '<option' + (m === maqActual ? ' selected' : '') + '>' + m + '</option>';
+    }).join('');
+    sel.dataset.loaded = '1';
+    sel.focus();
+    var evt = document.createEvent('MouseEvents');
+    evt.initMouseEvent('mousedown', true, true, window);
+    sel.dispatchEvent(evt);
+  }
+
+    document.addEventListener('keydown', edpKeyNav);
+
+  // ── INICIO: cargar catálogos ──
+  showLoader('Cargando Editor de Producción...');
+  var hoy = new Date(); var ayer = new Date(); ayer.setDate(hoy.getDate() - 1);
+  var fi = document.getElementById('edp-fechaIni'); if (fi) fi.value = ayer.toISOString().split('T')[0];
+  var ff = document.getElementById('edp-fechaFin'); if (ff) ff.value = hoy.toISOString().split('T')[0];
+  google.script.run
+    .withSuccessHandler(function(res) {
+      edpCatalogo = res;
+      edpRenderProcesos();
+      hideLoader();
+    })
+    .withFailureHandler(function(e) { hideLoader(); sAlert('Error al cargar catálogos: ' + e); })
+    .obtenerCatalogosProd();
+}
+// ══════════════════════════════════════════════════════
+// MÓDULO: NUEVA RUTA  (prefijo nr_)
+// ══════════════════════════════════════════════════════
+var nr_datosRuta = [];
+var nr_catalogo = {};
+var nr_maquinasSeleccionadas = [];
+var nr_indiceEditandoMaquinas = -1;
+var nr_codigoVerificado = "";
+

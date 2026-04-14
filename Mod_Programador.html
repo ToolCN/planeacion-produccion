@@ -1,0 +1,892 @@
+// ══ PROGRAMADOR MRP MODULE JS ══════════════════════════════════════
+function loadProgramador() {
+  showLoader('Cargando Programador MRP...');
+  var ca = document.getElementById('content-area');
+  ca.style.padding = '0';
+  ca.innerHTML = `
+<div id="mrp-panel" style="font-family:'Roboto',sans-serif;background:#eceff1;padding:15px;min-height:100%;font-size:11px;">
+
+  <!-- TOOLTIP FLOTANTE -->
+  <div id="mrp-tooltipConvert" style="position:fixed;background:rgba(33,33,33,0.95);color:#ffea00;padding:8px 15px;border-radius:6px;font-size:15px;font-weight:900;pointer-events:none;display:none;z-index:2147483647;box-shadow:0 4px 15px rgba(0,0,0,0.5);border:1px solid #ffd600;white-space:nowrap;font-family:'Roboto',sans-serif;"></div>
+
+  <!-- MODAL CANCELAR EX -->
+  <div id="mrp-cancelModal" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:2500;display:none;justify-content:center;align-items:center;background:rgba(0,0,0,0.5);">
+    <div style="background:white;border-radius:10px;width:650px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 15px 40px rgba(0,0,0,0.4);">
+      <div style="padding:12px 15px;background:#c62828;color:white;border-radius:10px 10px 0 0;font-weight:900;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
+        <span>⚠️ CANCELAR EXCEDENTE — <span id="mrp-cancelCodigo"></span></span>
+        <button onclick="mrpCloseCancelModal()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px;" id="mrp-cancelBody"></div>
+      <div style="padding:10px 15px;background:#f5f5f5;border-radius:0 0 10px 10px;display:flex;justify-content:flex-end;gap:10px;">
+        <button onclick="mrpCloseCancelModal()" style="background:#78909c;color:white;border:none;padding:8px 20px;border-radius:4px;font-weight:bold;cursor:pointer;">Cerrar</button>
+        <button onclick="mrpApplyCancelModal()" style="background:#c62828;color:white;border:none;padding:8px 20px;border-radius:4px;font-weight:bold;cursor:pointer;">Aplicar Selección</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL WIP PRODUCCION -->
+  <div id="mrp-wipModal" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:2500;display:none;justify-content:center;align-items:center;background:rgba(0,0,0,0.5);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:white;border-radius:10px;width:750px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 15px 40px rgba(0,0,0,0.4);">
+      <div style="padding:12px 15px;background:#e65100;color:white;border-radius:10px 10px 0 0;font-weight:900;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
+        <span>📊 PRODUCCIÓN DETALLADA — <span id="mrp-wipCodigo"></span></span>
+        <button onclick="document.getElementById('mrp-wipModal').style.display='none'" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px;font-size:11px;" id="mrp-wipBody"><p style="text-align:center;color:#999;">Cargando...</p></div>
+    </div>
+  </div>
+
+  <!-- FILTRO MODAL -->
+  <div id="mrp-filterPopup" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:2000;display:none;justify-content:center;align-items:center;background:rgba(0,0,0,0.4);">
+    <div style="background:white;border-radius:8px;width:280px;max-height:400px;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+      <div style="padding:10px;border-bottom:1px solid #eee;font-weight:bold;">Filtrar <span id="mrp-lblColumnaFiltro"></span></div>
+      <div style="padding:5px;display:flex;gap:5px;">
+        <button onclick="mrpSortData('asc')" style="padding:4px 8px;border-radius:4px;border:none;background:#78909c;color:white;font-weight:bold;cursor:pointer;">⬆ Asc</button>
+        <button onclick="mrpSortData('desc')" style="padding:4px 8px;border-radius:4px;border:none;background:#78909c;color:white;font-weight:bold;cursor:pointer;">⬇ Desc</button>
+      </div>
+      <div style="padding:5px;"><input type="text" id="mrp-txtBuscarFiltro" onkeyup="mrpFiltrarOpciones(this.value)" style="width:calc(100% - 12px);padding:5px;box-sizing:border-box;" placeholder="Buscar..."></div>
+      <div style="padding:5px;display:flex;gap:10px;justify-content:center;">
+        <button onclick="mrpToggleF(true)" style="background:#90a4ae;font-size:10px;padding:4px 8px;border:none;border-radius:4px;color:white;font-weight:bold;cursor:pointer;">Todas</button>
+        <button onclick="mrpToggleF(false)" style="background:#90a4ae;font-size:10px;padding:4px 8px;border:none;border-radius:4px;color:white;font-weight:bold;cursor:pointer;">Ninguna</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px;" id="mrp-listaOpcionesFiltro"></div>
+      <div style="padding:10px;text-align:right;background:#f5f5f5;">
+        <button onclick="mrpAplicarFiltro()" style="padding:8px 16px;border-radius:4px;border:none;background:#1976d2;color:white;font-weight:bold;cursor:pointer;">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 1: FAMILIAS -->
+  <div id="mrp-view1" style="display:block;">
+    <div style="background:white;padding:10px 15px;border-radius:8px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+      <div style="font-size:20px;font-weight:900;color:#37474f;">PROGRAMADOR MRP V143</div>
+      <div style="display:flex;gap:15px;align-items:center;">
+        <label style="font-weight:bold;font-size:12px;display:flex;align-items:center;cursor:pointer;color:#37474f;"><input type="checkbox" id="mrp-ignWip" style="width:16px;height:16px;margin-right:5px;accent-color:#d32f2f;"> Ignorar WIP</label>
+        <label style="font-weight:bold;font-size:12px;display:flex;align-items:center;cursor:pointer;color:#37474f;"><input type="checkbox" id="mrp-ignPiso" style="width:16px;height:16px;margin-right:5px;accent-color:#d32f2f;"> Ignorar En Piso</label>
+        <button onclick="mrpMostrarDatos(false)" style="padding:8px 16px;border-radius:4px;border:none;background:#1976d2;color:white;font-weight:bold;cursor:pointer;font-size:12px;">👁️ VER DATOS</button>
+        <button onclick="mrpSincronizar()" style="padding:8px 16px;border-radius:4px;border:none;background:#d32f2f;color:white;font-weight:bold;cursor:pointer;font-size:12px;">🔄 CORRER MRP</button>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;text-align:center;color:#555;">Seleccione familias:</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:15px;" id="mrp-gridFamilias"></div>
+    <div id="mrp-globalSummary" style="margin-top:30px;background:#263238;color:white;padding:20px;border-radius:8px;"></div>
+  </div>
+
+  <!-- VIEW 2: TABLA PLANIFICACION -->
+  <div id="mrp-view2" style="display:none;">
+    <div style="background:white;padding:10px 15px;border-radius:8px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+      <div style="font-size:20px;font-weight:900;color:#37474f;">PLANIFICACIÓN DETALLADA</div>
+      <div style="display:flex;align-items:center;">
+        <button onclick="mrpBorrarFiltros()" style="padding:8px 16px;font-size:12px;margin-right:8px;border-radius:4px;border:none;background:#607d8b;color:white;cursor:pointer;font-weight:bold;">🌪️ Filtros</button>
+        <div style="width:1px;height:25px;background:#ccc;margin:0 10px;"></div>
+        <button onclick="mrpSetAllStatus('ACEPTADO')" style="padding:8px 16px;font-size:12px;margin-right:8px;border-radius:4px;border:none;background:#66bb6a;color:#1b5e20;cursor:pointer;font-weight:bold;">✔ Aprobar</button>
+        <button onclick="mrpSetAllStatus('RECHAZADO')" style="padding:8px 16px;font-size:12px;margin-right:8px;border-radius:4px;border:none;background:#ef5350;color:#b71c1c;cursor:pointer;font-weight:bold;">✘ Rechazar</button>
+        <button onclick="mrpUndoAll()" style="padding:8px 16px;font-size:12px;margin-right:8px;border-radius:4px;border:none;background:#78909c;color:white;cursor:pointer;font-weight:bold;">↩️ Deshacer</button>
+        <button onclick="mrpAutoSelectAll()" style="padding:8px 16px;font-size:12px;margin-right:8px;border-radius:4px;border:none;background:#ff6f00;color:white;cursor:pointer;font-weight:bold;">⚡ Auto-Seleccionar</button>
+      </div>
+      <div>
+        <button onclick="mrpVolver()" style="padding:8px 16px;border-radius:4px;border:none;background:#546e7a;color:white;font-weight:bold;cursor:pointer;font-size:12px;margin-right:5px;">⬅ Atrás</button>
+        <button id="mrp-btnSave" style="display:none;padding:8px 16px;border-radius:4px;border:none;background:#2e7d32;color:white;font-weight:bold;cursor:pointer;font-size:12px;" onclick="mrpGuardarCambios()">💾 APLICAR (<span id="mrp-lblCount">0</span>)</button>
+      </div>
+    </div>
+    <div style="overflow:auto;height:82vh;background:white;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+      <table id="mrp-tblPlan" style="width:100%;border-collapse:separate;border-spacing:0;font-size:11px;white-space:nowrap;">
+        <thead>
+          <tr>
+            <th onclick="mrpOpenFilter('CODIGO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">CODIGO</th>
+            <th onclick="mrpOpenFilter('TIPO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">TIPO</th>
+            <th onclick="mrpOpenFilter('DIAMETRO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">DIA</th>
+            <th onclick="mrpOpenFilter('LONGITUD')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">LONG</th>
+            <th onclick="mrpOpenFilter('CUERDA')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">CUERDA</th>
+            <th onclick="mrpOpenFilter('CUERPO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">CUERPO</th>
+            <th onclick="mrpOpenFilter('ACERO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">ACERO</th>
+            <th onclick="mrpOpenFilter('MAXIMO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">MAX</th>
+            <th onclick="mrpOpenFilter('EXISTENCIA')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">EXIS</th>
+            <th onclick="mrpOpenFilter('RATIO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;width:70px;">%</th>
+            <th onclick="mrpOpenFilter('BACK_ALPHA')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">BACK</th>
+            <th onclick="mrpOpenFilter('BACK_PLANTA')" style="background:#263238;color:#ef5350;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">BACK 2</th>
+            <th onclick="mrpOpenFilter('A_FABRICAR')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:3px solid #b0bec5;font-weight:700;">A FABR</th>
+            <th onclick="mrpOpenFilter('MAT_PRIMA')" style="background:#263238;color:#a5d6a7;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;" title="Materia Prima (Col AD de ORDENES)">M.P.</th>
+            <th onclick="mrpOpenFilter('ID_ULTIMO_PEDIDO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">ULT. PED</th>
+            <th onclick="mrpOpenFilter('PEDIDOS_ACTIVOS')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">PED</th>
+            <th onclick="mrpOpenFilter('PROD_TERMINADO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">PT</th>
+            <th onclick="mrpOpenFilter('WIP')" style="background:#263238;color:orange;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">WIP</th>
+            <th onclick="mrpOpenFilter('ENVIADO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">ENVIADO</th>
+            <th onclick="mrpOpenFilter('STOCK_PISO')" style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">EN PISO</th>
+            <th onclick="mrpOpenFilter('ACCION_SUGERIDA')" style="background:#1565c0;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;width:160px;">ACCION</th>
+            <th style="background:#1565c0;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;border-right:1px solid #37474f;font-weight:700;width:80px;">CANTIDAD</th>
+            <th style="background:#1565c0;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;border-right:1px solid #37474f;font-weight:700;width:220px;">DETALLE</th>
+            <th onclick="mrpOpenFilter('ESTATUS_REVISION')" style="background:#1565c0;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;cursor:pointer;border-right:1px solid #37474f;font-weight:700;">OK</th>
+            <th style="background:#263238;color:white;padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10;font-weight:700;">↩️</th>
+          </tr>
+        </thead>
+        <tbody id="mrp-tbodyPlan"></tbody>
+        <tfoot id="mrp-tfootPlan">
+          <tr>
+            <td colspan="7" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">TOTALES:</td>
+            <td id="mrp-sum-MAXIMO" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-EXISTENCIA" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td style="position:sticky;bottom:0;background:#37474f;padding:8px;z-index:10;"></td>
+            <td id="mrp-sum-BACK_ALPHA" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-BACK_PLANTA" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-A_FABRICAR" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td style="position:sticky;bottom:0;background:#37474f;padding:8px;z-index:10;"></td>
+            <td id="mrp-sum-PEDIDOS_ACTIVOS" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-PROD_TERMINADO" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-WIP" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-ENVIADO" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td id="mrp-sum-STOCK_PISO" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td style="position:sticky;bottom:0;background:#37474f;padding:8px;z-index:10;"></td>
+            <td id="mrp-sum-CANTIDAD_ACCION" style="position:sticky;bottom:0;background:#37474f;color:#ffeb3b;font-weight:bold;text-align:right;padding:8px;z-index:10;">0</td>
+            <td colspan="3" style="position:sticky;bottom:0;background:#37474f;padding:8px;z-index:10;"></td>
+            <td style="position:sticky;bottom:0;background:#37474f;padding:8px;z-index:10;"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+</div>`;
+
+  // ── Inicializar variables del módulo ──
+  mrp_dataMaster = {};
+  mrp_familias = [];
+  mrp_seleccionadas = [];
+  mrp_datosPlan = [];
+  mrp_datosOriginal = [];
+  mrp_cambios = new Set();
+  mrp_filtrosActivos = {};
+  mrp_colFiltroActual = '';
+  mrp_visibleRows = [];
+  mrp_currentRowIndex = -1;
+  mrp_cancelModalData = { rowID: null, pedidos: [] };
+
+  // ── Listener del tooltip ──
+  document.getElementById('mrp-panel').addEventListener('mousemove', function(e) {
+    var tooltip = document.getElementById('mrp-tooltipConvert');
+    if (!tooltip) return;
+    var target = e.target;
+    var contentDiv = target.closest ? target.closest('[data-mrp-val]') : null;
+    if (!contentDiv) { tooltip.style.display = 'none'; return; }
+    var valor = parseFloat(contentDiv.getAttribute('data-mrp-val')) || 0;
+    var pesoU = parseFloat(contentDiv.getAttribute('data-mrp-peso')) || 0;
+    var tipoStr = String(contentDiv.getAttribute('data-mrp-tipo') || '').toUpperCase();
+    var esVarilla = tipoStr.includes('VARILLA');
+    var largoStr = String(contentDiv.getAttribute('data-mrp-largo') || '');
+    var match = largoStr.match(/[\d\.]+/);
+    var largo = match ? parseFloat(match[0]) : 0;
+    var tr = target.closest ? target.closest('tr') : null;
+    var codigoRow = tr ? tr.getAttribute('data-mrp-codigo') : '';
+    if (esVarilla && codigoRow && codigoRow.startsWith('7') && contentDiv.getAttribute('data-mrp-col') === 'CODIGO') {
+      var exisNegro = tr ? parseFloat(tr.getAttribute('data-mrp-negro')) : 0;
+      tooltip.innerHTML = '<div style="color:#64ffda;font-size:13px;font-weight:900;padding:5px;border:1px solid #64ffda;border-radius:4px;background:rgba(0,0,0,0.8);">Existencia Negro: ' + Math.round(exisNegro).toLocaleString('en-US') + ' PZA</div>';
+      tooltip.style.display = 'block';
+    } else if (valor > 0 && valor < 1000000 && pesoU > 0) {
+      var kilos = (esVarilla && largo > 0) ? (valor * pesoU * largo) : (valor * pesoU);
+      tooltip.innerHTML = '<div style="padding:5px;"><strong>' + Math.round(kilos).toLocaleString('en-US') + ' Kg</strong></div>';
+      tooltip.style.display = 'block';
+    } else {
+      tooltip.style.display = 'none';
+    }
+    if (tooltip.style.display === 'block') {
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+    }
+  });
+
+  // ── Keyboard navigation ──
+  document.addEventListener('keydown', mrpHandleKeyboard);
+
+  // ── Cargar familias ──
+  google.script.run.withSuccessHandler(mrpInit).obtenerFamiliasMRP();
+}
+
+// ── Variables globales del módulo MRP ──
+var mrp_dataMaster = {}, mrp_familias = [], mrp_seleccionadas = [];
+var mrp_datosPlan = [], mrp_datosOriginal = [], mrp_cambios = new Set();
+var mrp_filtrosActivos = {}, mrp_colFiltroActual = '';
+var mrp_visibleRows = [], mrp_currentRowIndex = -1;
+var mrp_cancelModalData = { rowID: null, pedidos: [] };
+
+function mrpFmtNum(num) {
+  if (num === undefined || num === null || num === '') return '';
+  var n = parseFloat(num);
+  return isNaN(n) ? '0' : n.toLocaleString('en-US');
+}
+
+function mrpGetColorPct(ratio) {
+  var pct = ratio * 100;
+  if (pct <= 25) return '#d32f2f'; if (pct <= 50) return '#fbc02d';
+  if (pct <= 75) return '#f57c00'; if (pct <= 90) return '#7cb342';
+  if (pct <= 100) return '#2e7d32'; return '#ec407a';
+}
+
+function mrpInit(res) {
+  mrp_dataMaster = res; mrp_familias = res.lista;
+  mrpRenderFamilias(); mrpRenderGlobalSummary();
+  hideLoader();
+}
+
+function mrpRenderFamilias() {
+  var html = '';
+  mrp_familias.forEach(function(f) {
+    var sel = mrp_seleccionadas.indexOf(f) > -1 ? 'border:2px solid #d32f2f;background:#fff8e1;' : 'border:2px solid transparent;';
+    var s = mrp_dataMaster.stats[f] || {};
+    var lastDate = s.lastUpdate ? new Date(s.lastUpdate).toLocaleString() : 'Sin Ejecución';
+    var ratioEx = (s.sumMax > 0) ? (s.sumExis / s.sumMax) : 0;
+    var colorBar = mrpGetColorPct(ratioEx);
+    var totalItems = s.good + s.bad;
+    var effect = (totalItems > 0) ? (s.good / totalItems) : 0;
+    var colorEffect = mrpGetColorPct(effect);
+    html += '<div style="background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,0.1);transition:transform 0.2s;cursor:pointer;' + sel + '" onclick="mrpToggleFam(\'' + f.replace(/'/g,"\\'") + '\', this)">'
+      + '<div style="background:' + (mrp_seleccionadas.indexOf(f) > -1 ? '#ffebee;color:#c62828' : '#fafafa;color:#455a64') + ';padding:10px;font-weight:900;font-size:14px;text-align:center;border-bottom:1px solid #eee;">' + f + '</div>'
+      + '<div style="padding:8px;font-size:10px;">'
+      + '<div style="background:#fff9c4;padding:5px;border-radius:4px;margin-bottom:5px;text-align:center;font-weight:bold;border:1px solid #fdd835;font-size:9px;">Ult: ' + lastDate + '</div>'
+      + '<div style="background:#e3f2fd;padding:5px;border-radius:4px;margin-bottom:5px;text-align:center;color:#1976d2;font-weight:bold;border:1px solid #bbdefb;">Códigos: ' + s.count + '</div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Pendientes:</span><span style="font-weight:900;color:#d32f2f;">' + s.pendientes + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Procesados:</span><span style="font-weight:900;color:#1b5e20;">' + s.procesados + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Máximos:</span><span style="font-weight:900;">' + mrpFmtNum(s.sumMax) + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Existencia:</span><span style="font-weight:900;color:#1565c0;">' + mrpFmtNum(s.sumExis) + '</span></div>'
+      + '<div style="height:12px;background:#e0e0e0;border-radius:6px;overflow:hidden;margin:5px 0;border:1px solid #ccc;position:relative;"><div style="height:100%;width:' + Math.min(ratioEx*100,100) + '%;background:' + colorBar + ';"></div><div style="position:absolute;width:100%;text-align:center;top:-1px;font-size:9px;color:#333;font-weight:900;text-shadow:0 0 2px white;">' + Math.round(ratioEx*100) + '%</div></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Backorder:</span><span style="font-weight:900;">' + mrpFmtNum(s.sumBack) + '</span></div>'
+      + '<div style="margin-top:5px;border-top:1px dashed #ccc;padding-top:2px;">'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Buenos:</span><span style="font-weight:900;color:#1b5e20;">' + s.good + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">Malos:</span><span style="font-weight:900;color:#d32f2f;">' + s.bad + '</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin:5px 0 3px;"><span style="color:#78909c;font-weight:bold;font-size:11px;">Efectividad:</span><span style="font-weight:900;font-size:14px;color:' + colorEffect + ';">' + Math.round(effect*100) + '%</span></div>'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#78909c;font-weight:bold;">PROGRAMA:</span><span style="font-weight:900;">' + mrpFmtNum(s.progKg) + ' Kg</span></div>'
+      + '</div></div></div>';
+  });
+  document.getElementById('mrp-gridFamilias').innerHTML = html;
+}
+
+function mrpRenderGlobalSummary() {
+  var g = mrp_dataMaster.global;
+  var ratio = (g.sumMax > 0) ? (g.sumExis / g.sumMax) : 0;
+  var effect = ((g.good+g.bad) > 0) ? (g.good / (g.good+g.bad)) : 0;
+  var colEff = mrpGetColorPct(effect);
+  document.getElementById('mrp-globalSummary').innerHTML =
+    '<div style="font-size:16px;font-weight:900;margin-bottom:15px;border-bottom:1px solid #546e7a;padding-bottom:5px;">RESUMEN GENERAL</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:15px;text-align:center;">'
+    + '<div><div style="font-size:18px;font-weight:900;color:#ffeb3b;">' + mrpFmtNum(g.count) + '</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">CÓDIGOS</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:#ef5350;">' + mrpFmtNum(g.pendientes) + '</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">PENDIENTES</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:#ffeb3b;">' + mrpFmtNum(g.sumMax) + '</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">MAXIMOS</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:#42a5f5;">' + mrpFmtNum(g.sumExis) + '</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">EXISTENCIA</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:#ffeb3b;">' + Math.round(ratio*100) + '%</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">COBERTURA</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:#ffeb3b;">' + mrpFmtNum(g.sumBack) + '</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">BACKORDER</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:' + colEff + ';">' + Math.round(effect*100) + '%</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">EFECTIVIDAD</div></div>'
+    + '<div><div style="font-size:18px;font-weight:900;color:#fff;">' + mrpFmtNum(g.progKg) + '</div><div style="font-size:10px;color:#b0bec5;text-transform:uppercase;margin-top:2px;">PROGRAMA (KG)</div></div>'
+    + '</div>';
+}
+
+function mrpToggleFam(f, el) {
+  var idx = mrp_seleccionadas.indexOf(f);
+  if (idx > -1) mrp_seleccionadas.splice(idx, 1); else mrp_seleccionadas.push(f);
+  mrpRenderFamilias();
+}
+
+function mrpSincronizar() {
+  if (mrp_seleccionadas.length === 0) {
+    Swal.fire({ icon:'warning', title:'Sin familia seleccionada', text:'Selecciona al menos una familia antes de continuar.', confirmButtonColor:'#1565c0' });
+    return;
+  }
+  var iW = document.getElementById('mrp-ignWip').checked;
+  var iP = document.getElementById('mrp-ignPiso').checked;
+  Swal.fire({
+    icon: 'question',
+    title: '¿Ejecutar MRP?',
+    html: '<div style="text-align:left;font-size:14px;line-height:2;">'
+      + '<span style="display:inline-block;width:130px;color:#546e7a;font-weight:700;">Ignorar WIP:</span> <b style="color:' + (iW?'#d32f2f':'#2e7d32') + '">' + (iW?'SÍ':'NO') + '</b><br>'
+      + '<span style="display:inline-block;width:130px;color:#546e7a;font-weight:700;">Ignorar Piso:</span> <b style="color:' + (iP?'#d32f2f':'#2e7d32') + '">' + (iP?'SÍ':'NO') + '</b>'
+      + '</div>',
+    showCancelButton: true,
+    confirmButtonText: '🔄 Ejecutar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#d32f2f',
+    cancelButtonColor: '#546e7a'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoader('Corriendo MRP...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoader();
+        // Parsear el resultado para mostrar con iconos
+        var lineas = String(res).split('\n');
+        var htmlLog = lineas.map(function(l) {
+          var color = l.startsWith('✅') ? '#2e7d32' : l.startsWith('❌') ? '#c62828' : '#333';
+          return '<div style="padding:3px 0;color:' + color + ';font-size:13px;">' + l + '</div>';
+        }).join('');
+        Swal.fire({
+          icon: 'success',
+          title: 'MRP Ejecutado',
+          html: '<div style="max-height:300px;overflow-y:auto;text-align:left;">' + htmlLog + '</div>',
+          confirmButtonColor: '#1565c0',
+          confirmButtonText: 'Entendido'
+        });
+        google.script.run.withSuccessHandler(mrpInit).obtenerFamiliasMRP();
+        mrpMostrarDatos(true);
+      })
+      .withFailureHandler(function(e) {
+        hideLoader();
+        Swal.fire({ icon:'error', title:'Error al ejecutar MRP', text: String(e), confirmButtonColor:'#d32f2f' });
+      })
+      .sincronizarMRP(mrp_seleccionadas, iW, iP);
+  });
+}
+
+function mrpMostrarDatos(sync) {
+  if (mrp_seleccionadas.length === 0) {
+    Swal.fire({ icon:'warning', title:'Sin familia seleccionada', text:'Selecciona al menos una familia antes de continuar.', confirmButtonColor:'#1565c0' });
+    return;
+  }
+  if (!sync) showLoader('Cargando datos...');
+  google.script.run
+    .withSuccessHandler(function(json) {
+      try {
+        var res = JSON.parse(json);
+        if (res.length > 0 && res[0].ERROR) {
+          hideLoader();
+          Swal.fire({ icon:'error', title:'Error al cargar datos', text: res[0].ERROR, confirmButtonColor:'#d32f2f' });
+          return;
+        }
+        mrp_datosPlan = res;
+        mrp_datosOriginal = JSON.parse(JSON.stringify(res));
+        mrp_filtrosActivos = {};
+        mrp_currentRowIndex = -1;
+        mrpRenderTabla();
+        document.getElementById('mrp-view1').style.display = 'none';
+        document.getElementById('mrp-view2').style.display = 'block';
+      } catch(e) {
+        Swal.fire({ icon:'error', title:'Error al procesar datos', text: String(e), confirmButtonColor:'#d32f2f' });
+      }
+      hideLoader();
+    })
+    .obtenerDatosProgramador(mrp_seleccionadas);
+}
+
+function mrpRenderTabla() {
+  var tbody = document.getElementById('mrp-tbodyPlan');
+  if (!tbody) return;
+  var html = '';
+  mrp_visibleRows = mrpGetDatosVisibles();
+  var sums = { MAXIMO:0, EXISTENCIA:0, BACK_ALPHA:0, BACK_PLANTA:0, A_FABRICAR:0, PEDIDOS_ACTIVOS:0, PROD_TERMINADO:0, ENVIADO:0, STOCK_PISO:0, WIP:0, CANTIDAD_ACCION:0 };
+  var familiasSinConversion = ['ACERO REDONDO','BARRA PULIDA','CLAVO CONCRETO','CLAVO MADERA','COLD ROLLED','COLD ROLLED CUA','COLD ROLLED HEX','COLD ROLLED CUD'];
+
+  mrp_visibleRows.forEach(function(r, index) {
+    var isNada = (r.ACCION_SUGERIDA === 'NADA');
+    var mod = mrp_cambios.has(r.ID) ? 'background-color:#fff9c4 !important;' : '';
+    var stFabr = (Number(r.A_FABRICAR) > 0) ? 'color:#d32f2f;font-weight:bold;' : '';
+    var estatusFinal = r.ESTATUS_REVISION;
+    if (isNada && estatusFinal === 'PENDIENTE') estatusFinal = 'RECHAZADO';
+    var rowBg = '';
+    if (r.ACCION_SUGERIDA === 'CANCELAR EX' && mrp_cambios.has(r.ID)) rowBg = 'background-color:#e1bee7 !important;';
+    else if (estatusFinal === 'ACEPTADO') rowBg = 'background-color:#dcedc8 !important;';
+    else if (estatusFinal === 'RECHAZADO') rowBg = 'background-color:#ffcdd2 !important;';
+    else if (mrp_cambios.has(r.ID)) rowBg = 'background-color:#fff9c4 !important;';
+    else rowBg = (index % 2 === 0) ? 'background-color:#ffffff;' : 'background-color:#e3f2fd;';
+
+    var stOk = (estatusFinal === 'ACEPTADO') ? 'opacity:1;transform:scale(1.3);color:#2e7d32;' : 'opacity:0.1;color:#2e7d32;';
+    var stNo = (estatusFinal === 'RECHAZADO') ? 'opacity:1;transform:scale(1.3);color:#c62828;' : 'opacity:0.1;color:#c62828;';
+
+    for (var k in sums) sums[k] += (Number(r[k]) || 0);
+    mrpCalcTextoDetalle(r);
+
+    var ultPedCell = '';
+    if (String(r.ID_ULTIMO_PEDIDO).startsWith('[')) {
+      try {
+        var arrPeds = JSON.parse(r.ID_ULTIMO_PEDIDO);
+        var selID = r.TEMP_SEL_PEDIDO || (arrPeds.length === 1 ? arrPeds[0].id : '');
+        var opts = '<option value="">--Selecc--</option>';
+        arrPeds.forEach(function(p) {
+          opts += '<option value="' + p.id + '" ' + (p.id == selID ? 'selected' : '') + '>' + p.id + ' (Sol:' + mrpFmtNum(p.q) + '|Hecho:' + mrpFmtNum(p.p) + ')</option>';
+        });
+        ultPedCell = '<select style="width:100%;border:1px solid #ddd;border-radius:3px;background:white;font-size:10px;padding:2px;" onchange="mrpSelectOrder(\'' + r.ID + '\', this.value)">' + opts + '</select>';
+      } catch(e) { ultPedCell = r.ID_ULTIMO_PEDIDO; }
+    } else { ultPedCell = r.ID_ULTIMO_PEDIDO || '-'; }
+
+    var pct = (r.MAXIMO > 0) ? (r.EXISTENCIA / r.MAXIMO) : 0;
+    var progHtml = '<div style="width:100%;height:18px;background:#e0e0e0;border-radius:8px;position:relative;border:1px solid #bdbdbd;overflow:hidden;"><div style="height:100%;width:' + Math.min(pct*100,100) + '%;background:' + mrpGetColorPct(pct) + ';border-radius:0 8px 8px 0;"></div><div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#333;">' + Math.round(pct*100) + '%</div></div>';
+
+    var attrTool = ''; 
+    var fam = (r.FAMILIA || '').toUpperCase().trim();
+    if (!familiasSinConversion.includes(fam)) {
+      var pesoU = parseFloat(r.PESO) || 0;
+      var mLong = String(r.LONGITUD || '').match(/[\d\.]+/);
+      var lVal = mLong ? parseFloat(mLong[0]) : 0;
+      attrTool = ' data-mrp-val="' + r.EXISTENCIA + '" data-mrp-peso="' + pesoU + '" data-mrp-tipo="' + (r.TIPO||'') + '" data-mrp-largo="' + lVal + '"';
+    }
+
+    var htmlOpts = ['NADA','NUEVO PEDIDO','CANT A MAS','CANT A MENOS','CANCELAR EX'].map(function(op) {
+      return '<option value="' + op + '" ' + (r.ACCION_SUGERIDA == op ? 'selected' : '') + '>' + op + '</option>';
+    }).join('');
+
+    var actColor = r.ACCION_SUGERIDA === 'CANCELAR EX' ? 'color:#e91e63;font-weight:900;' : '';
+    var detStyle = r.ACCION_SUGERIDA === 'CANCELAR EX' && !r.CANCEL_PEDIDOS ? 'cursor:pointer;color:#c62828;' : 'color:#555;';
+    var detClick = r.ACCION_SUGERIDA === 'CANCELAR EX' && !r.CANCEL_PEDIDOS ? 'onclick="mrpOpenCancelModal(\'' + r.ID + '\')"' : '';
+    var undoDisplay = mrp_cambios.has(r.ID) ? 'inline-flex' : 'none';
+
+    var tdStyle = 'border-bottom:1px solid #cfd8dc;padding:0;vertical-align:middle;height:32px;';
+    var tdRead = tdStyle + 'background:#fafafa;';
+
+    html += '<tr id="mrp-tr-' + index + '" data-mrp-id="' + r.ID + '" data-mrp-codigo="' + r.CODIGO + '" data-mrp-negro="' + (r.EXTRA_EXIS_NEGRO||0) + '" style="' + rowBg + '">'
+      + '<td style="' + tdRead + '"><div style="padding:4px;display:block;width:100%;height:100%;box-sizing:border-box;text-align:left;font-weight:bold;" data-mrp-col="CODIGO"' + attrTool + '>' + r.CODIGO + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:center;">' + (r.TIPO||'-') + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:center;">' + (r.DIAMETRO||'-') + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:center;">' + (r.LONGITUD||'-') + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:center;">' + (r.CUERDA||'-') + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:center;">' + (r.CUERPO||'-') + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:center;">' + (r.ACERO||'-') + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;"' + attrTool + ' data-mrp-val="' + r.MAXIMO + '">' + mrpFmtNum(r.MAXIMO) + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;color:#1565c0;font-weight:bold;"' + attrTool + ' data-mrp-val="' + r.EXISTENCIA + '">' + mrpFmtNum(r.EXISTENCIA) + '</div></td>'
+      + '<td style="' + tdRead + 'padding:2px 5px;">' + progHtml + '</td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;"' + attrTool + ' data-mrp-val="' + r.BACK_ALPHA + '">' + mrpFmtNum(r.BACK_ALPHA) + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;color:#880e4f;font-weight:bold;"' + attrTool + ' data-mrp-val="' + r.BACK_PLANTA + '">' + mrpFmtNum(r.BACK_PLANTA) + '</div></td>'
+      + '<td style="' + tdRead + 'border-right:3px solid #b0bec5;"><div style="padding:4px;text-align:right;font-weight:900;font-size:12px;' + stFabr + '"' + attrTool + ' data-mrp-val="' + r.A_FABRICAR + '">' + mrpFmtNum(r.A_FABRICAR) + '</div></td>'
+      + '<td style="' + tdRead + 'background:#e8f5e9;"><div style="padding:4px;text-align:center;font-weight:700;font-size:10px;color:#2e7d32;">' + (r.MAT_PRIMA||'-') + '</div></td>'
+      + '<td style="' + tdRead + 'background:#f3e5f5;"><div style="padding:4px;text-align:center;">' + ultPedCell + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;color:#7b1fa2;font-weight:bold;">' + mrpFmtNum(r.PEDIDOS_ACTIVOS) + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;"' + attrTool + ' data-mrp-val="' + r.PROD_TERMINADO + '">' + mrpFmtNum(r.PROD_TERMINADO) + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;color:orange;font-weight:bold;cursor:pointer;text-decoration:underline;" data-mrp-val="' + r.WIP + '" data-mrp-wip-codigo="' + r.CODIGO + '" data-mrp-wip-desc="' + String(r.DESCRIPCION||'').replace(/"/g,'') + '" onclick="mrpOpenWipModal(this)">' + mrpFmtNum(r.WIP) + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;color:#1b5e20;font-weight:bold;"' + attrTool + ' data-mrp-val="' + r.ENVIADO + '">' + mrpFmtNum(r.ENVIADO) + '</div></td>'
+      + '<td style="' + tdRead + '"><div style="padding:4px;text-align:right;color:#689f38;font-weight:bold;"' + attrTool + ' data-mrp-val="' + r.STOCK_PISO + '">' + mrpFmtNum(r.STOCK_PISO) + '</div></td>'
+      + '<td style="' + tdStyle + 'border-left:2px solid #cfd8dc;"><select style="width:100%;border:none;background:transparent;text-align:right;font-weight:bold;font-size:11px;padding:0 4px;outline:none;' + actColor + '" onchange="mrpOnAccionChange(\'' + r.ID + '\', this.value)">' + htmlOpts + '</select></td>'
+      + '<td style="' + tdStyle + '"><div style="padding:4px;text-align:right;"' + attrTool + ' data-mrp-val="' + r.CANTIDAD_ACCION + '"><input style="width:100%;border:none;background:transparent;text-align:center;font-weight:bold;font-size:11px;padding:0 4px;outline:none;color:#d32f2f;" type="text" value="' + mrpFmtNum(r.CANTIDAD_ACCION) + '" onchange="mrpEdit(\'' + r.ID + '\',\'CANTIDAD_ACCION\',this.value)"></div></td>'
+      + '<td style="' + tdStyle + '"><div id="mrp-det-' + r.ID + '" style="padding:4px;display:block;font-size:10px;white-space:normal;' + detStyle + '" ' + detClick + '>' + (r.DETALLE_ACCION||'') + '</div></td>'
+      + '<td style="' + tdStyle + 'text-align:center;"><span style="cursor:pointer;font-size:16px;margin:0 6px;' + stOk + '" onclick="mrpSetStatus(\'' + r.ID + '\',\'ACEPTADO\')">✔</span><span style="cursor:pointer;font-size:16px;margin:0 6px;' + stNo + '" onclick="mrpSetStatus(\'' + r.ID + '\',\'RECHAZADO\')">✘</span></td>'
+      + '<td style="' + tdStyle + 'text-align:center;"><button style="background:#546e7a;border-radius:50%;width:22px;height:22px;display:' + undoDisplay + ';justify-content:center;align-items:center;border:none;cursor:pointer;color:white;margin:0 auto;" onclick="mrpUndo(\'' + r.ID + '\')">↩️</button></td>'
+      + '</tr>';
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="25" style="text-align:center;padding:20px;">Sin datos</td></tr>';
+  for (var k in sums) {
+    var el = document.getElementById('mrp-sum-' + k);
+    if (el) el.innerText = mrpFmtNum(sums[k]);
+  }
+  mrpUpdateBtn();
+}
+
+function mrpSortData(dir) {
+  var col = mrp_colFiltroActual; if (!col) return;
+  var isNum = mrp_visibleRows.some(function(r){ return !isNaN(parseFloat(r[col])) && isFinite(r[col]); });
+  mrp_datosPlan.sort(function(a,b) {
+    var vA = a[col], vB = b[col];
+    if (isNum) { vA = parseFloat(vA)||0; vB = parseFloat(vB)||0; return dir === 'asc' ? vA-vB : vB-vA; }
+    vA = String(vA).toLowerCase(); vB = String(vB).toLowerCase();
+    if (vA < vB) return dir === 'asc' ? -1 : 1; if (vA > vB) return dir === 'asc' ? 1 : -1; return 0;
+  });
+  mrpRenderTabla();
+}
+
+function mrpSelectOrder(id, pedID) {
+  var row = mrp_datosPlan.find(function(r){ return r.ID == id; });
+  if (row && pedID) {
+    row.TEMP_SEL_PEDIDO = pedID;
+    mrpCalcTextoDetalle(row);
+    var det = document.getElementById('mrp-det-' + id);
+    if (det) det.innerText = row.DETALLE_ACCION;
+    row.ESTATUS_REVISION = 'PENDIENTE';
+    mrp_cambios.add(id);
+    mrpRenderTabla();
+  }
+}
+
+function mrpHandleKeyboard(e) {
+  var v2 = document.getElementById('mrp-view2');
+  if (!v2 || v2.style.display === 'none') return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (mrp_currentRowIndex < mrp_visibleRows.length-1) { mrp_currentRowIndex++; mrpHighlightRow(mrp_currentRowIndex); } }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (mrp_currentRowIndex > 0) { mrp_currentRowIndex--; mrpHighlightRow(mrp_currentRowIndex); } }
+}
+
+function mrpHighlightRow(idx) {
+  document.querySelectorAll('[id^="mrp-tr-"]').forEach(function(tr){ tr.style.outline=''; });
+  var tr = document.getElementById('mrp-tr-' + idx);
+  if (tr) {
+    tr.style.outline = '2px solid #fbc02d';
+    tr.scrollIntoView({ behavior:'smooth', block:'center' });
+    var input = tr.querySelector('input');
+    if (input) { input.focus(); input.select(); }
+  }
+}
+
+function mrpEdit(id, field, val) {
+  var row = mrp_datosPlan.find(function(r){ return r.ID == id; });
+  if (row) {
+    if (field === 'CANTIDAD_ACCION') val = Number(val.replace(/,/g,'')) || 0;
+    row[field] = val;
+    if (field === 'CANTIDAD_ACCION' || field === 'ACCION_SUGERIDA') {
+      mrpCalcTextoDetalle(row);
+      var det = document.getElementById('mrp-det-' + id);
+      if (det) det.innerText = row.DETALLE_ACCION;
+      row.ESTATUS_REVISION = 'ACEPTADO';
+    }
+    mrp_cambios.add(id);
+    mrpRenderTabla();
+  }
+}
+
+function mrpOnAccionChange(id, val) {
+  var row = mrp_datosPlan.find(function(r){ return r.ID == id; });
+  if (!row) return;
+  row.ACCION_SUGERIDA = val;
+  if (val === 'CANCELAR EX') { mrp_cambios.add(id); mrpOpenCancelModal(id); return; }
+  mrpCalcTextoDetalle(row);
+  var det = document.getElementById('mrp-det-' + id);
+  if (det) det.innerText = row.DETALLE_ACCION;
+  row.ESTATUS_REVISION = 'ACEPTADO';
+  mrp_cambios.add(id);
+  mrpRenderTabla();
+}
+
+function mrpCalcTextoDetalle(row) {
+  var accion = row.ACCION_SUGERIDA;
+  var cant = Number(row.CANTIDAD_ACCION) || 0;
+  var txt = '';
+  if (accion === 'NUEVO PEDIDO') {
+    txt = 'Generar PEDIDO INICIAL por ' + mrpFmtNum(cant);
+  } else if (accion === 'CANCELAR EX') {
+    if (row.CANCEL_PEDIDOS || row.MODIFY_PEDIDOS) return;
+    txt = '⚠️ Excedente detectado — Click aquí para gestionar';
+  } else if (accion && accion.includes('CANT')) {
+    var pedID = row.TEMP_SEL_PEDIDO;
+    try {
+      var arr = JSON.parse(row.ID_ULTIMO_PEDIDO);
+      if (!pedID && arr.length === 1) pedID = arr[0].id;
+      var pObj = arr.find(function(p){ return p.id == pedID; });
+      if (pObj) {
+        var currentQ = Math.round(Number(pObj.q));
+        var op = (accion === 'CANT A MAS') ? 1 : -1;
+        var final = currentQ + (op * cant);
+        var opTxt = (accion === 'CANT A MAS') ? 'Sumar ' : 'Restar ';
+        txt = opTxt + mrpFmtNum(cant) + ' a pedido ' + pedID + ' ( ' + mrpFmtNum(currentQ) + ' --> ' + mrpFmtNum(final) + ' )';
+      } else { txt = '⚠️ SELECCIONA EL PEDIDO EN LA COLUMNA \'ULT. PED\''; }
+    } catch(e) { txt = '⚠️ SELECCIONA EL PEDIDO'; }
+  }
+  row.DETALLE_ACCION = txt;
+}
+
+function mrpSetStatus(id, st) {
+  var row = mrp_datosPlan.find(function(r){ return r.ID == id; });
+  if (row && row.ACCION_SUGERIDA === 'NADA' && st === 'ACEPTADO') return;
+  if (row) { row.ESTATUS_REVISION = st; mrp_cambios.add(id); mrpRenderTabla(); }
+}
+
+function mrpSetAllStatus(st) {
+  mrp_visibleRows.forEach(function(r) {
+    if (r.ACCION_SUGERIDA === 'NADA' && st === 'ACEPTADO') return;
+    r.ESTATUS_REVISION = st; mrp_cambios.add(r.ID);
+  });
+  mrpRenderTabla();
+}
+
+function mrpUndo(id) {
+  var orig = mrp_datosOriginal.find(function(r){ return r.ID == id; });
+  var idx = mrp_datosPlan.findIndex(function(r){ return r.ID == id; });
+  mrp_datosPlan[idx] = JSON.parse(JSON.stringify(orig));
+  mrp_cambios.delete(id);
+  mrpRenderTabla();
+}
+
+function mrpUndoAll() {
+  Swal.fire({
+    icon: 'warning',
+    title: '¿Deshacer todo?',
+    text: 'Se revertirán todos los cambios visibles. Esta acción no se puede cancelar.',
+    showCancelButton: true,
+    confirmButtonText: '↩️ Sí, deshacer',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#78909c',
+    cancelButtonColor: '#546e7a'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    mrp_visibleRows.forEach(function(r) {
+      var orig = mrp_datosOriginal.find(function(o){ return o.ID == r.ID; });
+      var idx = mrp_datosPlan.findIndex(function(p){ return p.ID == r.ID; });
+      mrp_datosPlan[idx] = JSON.parse(JSON.stringify(orig));
+      mrp_cambios.delete(r.ID);
+    });
+    mrpRenderTabla();
+  });
+}
+
+function mrpGetDatosVisibles() {
+  return mrp_datosPlan.filter(function(r) {
+    for (var col in mrp_filtrosActivos) {
+      var v = (r[col] == null) ? '' : String(r[col]);
+      if (!mrp_filtrosActivos[col].includes(v)) return false;
+    }
+    return true;
+  });
+}
+
+function mrpGetRowsForFilter(ignoreCol) {
+  return mrp_datosPlan.filter(function(r) {
+    for (var col in mrp_filtrosActivos) {
+      if (col === ignoreCol) continue;
+      var v = (r[col] == null) ? '' : String(r[col]);
+      if (!mrp_filtrosActivos[col].includes(v)) return false;
+    }
+    return true;
+  });
+}
+
+function mrpUpdateBtn() {
+  var btn = document.getElementById('mrp-btnSave');
+  var lbl = document.getElementById('mrp-lblCount');
+  if (!btn) return;
+  if (mrp_cambios.size > 0) { if (lbl) lbl.innerText = mrp_cambios.size; btn.style.display = 'block'; }
+  else btn.style.display = 'none';
+}
+
+function mrpOpenFilter(col) {
+  mrp_colFiltroActual = col;
+  var available = mrpGetRowsForFilter(col);
+  var vals = [];
+  var seen = {};
+  available.forEach(function(r) { var v = (r[col]==null)?'':String(r[col]); if(!seen[v]){seen[v]=1;vals.push(v);} });
+  vals.sort();
+  var sel = mrp_filtrosActivos[col] || vals;
+  var html = '';
+  vals.forEach(function(v) {
+    var chk = sel.includes(v) ? 'checked' : '';
+    var txt = v === '' ? '(Vacío)' : v;
+    html += '<label style="display:flex;align-items:center;gap:8px;padding:4px;cursor:pointer;font-size:11px;"><input type="checkbox" value="' + v + '" ' + chk + '> ' + txt + '</label>';
+  });
+  document.getElementById('mrp-listaOpcionesFiltro').innerHTML = html;
+  document.getElementById('mrp-lblColumnaFiltro').innerText = col;
+  document.getElementById('mrp-filterPopup').style.display = 'flex';
+  var txt = document.getElementById('mrp-txtBuscarFiltro');
+  if (txt) { txt.value = ''; txt.focus(); }
+}
+
+function mrpToggleF(st) {
+  document.querySelectorAll('#mrp-listaOpcionesFiltro input').forEach(function(i){ i.checked = st; });
+}
+
+function mrpFiltrarOpciones(t) {
+  t = t.toLowerCase();
+  document.querySelectorAll('#mrp-listaOpcionesFiltro label').forEach(function(el) {
+    el.style.display = el.innerText.toLowerCase().includes(t) ? 'flex' : 'none';
+  });
+}
+
+function mrpAplicarFiltro() {
+  var chks = document.querySelectorAll('#mrp-listaOpcionesFiltro input:checked');
+  var arr = [];
+  chks.forEach(function(c){ arr.push(c.value); });
+  mrp_filtrosActivos[mrp_colFiltroActual] = arr;
+  var total = document.querySelectorAll('#mrp-listaOpcionesFiltro input').length;
+  if (arr.length >= total) delete mrp_filtrosActivos[mrp_colFiltroActual];
+  mrpRenderTabla();
+  document.getElementById('mrp-filterPopup').style.display = 'none';
+}
+
+function mrpBorrarFiltros() {
+  mrp_filtrosActivos = {};
+  mrpRenderTabla();
+}
+
+function mrpGuardarCambios() {
+  var lista = [];
+  mrp_cambios.forEach(function(id){ lista.push(mrp_datosPlan.find(function(r){ return r.ID == id; })); });
+  if (lista.length === 0) return;
+  var confirmados = lista.filter(function(r){ return r.ESTATUS_REVISION === 'ACEPTADO'; });
+  var rechazados  = lista.filter(function(r){ return r.ESTATUS_REVISION === 'RECHAZADO'; });
+
+  Swal.fire({
+    icon: 'question',
+    title: '¿Guardar cambios?',
+    html: '<div style="text-align:left;font-size:14px;line-height:2.2;">'
+      + '<span style="color:#2e7d32;font-weight:700;">✔ Se ejecutarán:</span> <b>' + confirmados.length + ' registros</b><br>'
+      + '<span style="color:#c62828;font-weight:700;">✘ Se marcarán rechazados:</span> <b>' + rechazados.length + ' registros</b>'
+      + '</div>',
+    showCancelButton: true,
+    confirmButtonText: '💾 Guardar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#2e7d32',
+    cancelButtonColor: '#546e7a'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoader('Guardando cambios...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoader();
+        if (confirmados.length > 0) mrpExportarExcel(confirmados);
+        mrp_datosOriginal = JSON.parse(JSON.stringify(mrp_datosPlan));
+        mrp_cambios.clear();
+        google.script.run.withSuccessHandler(mrpInit).obtenerFamiliasMRP();
+        mrpRenderTabla();
+
+        // Parsear log de respuesta para mostrar con iconos de color
+        var lineas = String(res).split('\n');
+        var htmlLog = lineas.map(function(l) {
+          var icon = ''; var color = '#333';
+          if (l.startsWith('✅')) { color = '#2e7d32'; }
+          else if (l.startsWith('❌')) { color = '#c62828'; }
+          return '<div style="padding:4px 0;border-bottom:1px solid #eee;color:' + color + ';font-size:13px;">' + l + '</div>';
+        }).join('');
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Proceso Terminado',
+          html: '<div style="max-height:320px;overflow-y:auto;text-align:left;padding:4px;">' + htmlLog + '</div>',
+          confirmButtonColor: '#1565c0',
+          confirmButtonText: 'Entendido'
+        });
+      })
+      .guardarCambiosProgramador(lista);
+  });
+}
+
+function mrpExportarExcel(lista) {
+  var dataExport = lista.map(function(r){ return { 'CODIGO':r.CODIGO, 'DESCRIPCION':r.DESCRIPCION, 'MINIMO':r.MINIMO, 'MAXIMO':r.MAXIMO, 'EXISTENCIA':r.EXISTENCIA, 'BACKORDER_ALPHA':r.BACK_ALPHA, 'ACCION_SUGERIDA':r.ACCION_SUGERIDA, 'CANTIDAD_ACCION':r.CANTIDAD_ACCION, 'DETALLE_ACCION':r.DETALLE_ACCION }; });
+  var ws = XLSX.utils.json_to_sheet(dataExport);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Aprobados');
+  XLSX.writeFile(wb, 'MRP_Aprobados_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+function mrpVolver() {
+  document.getElementById('mrp-view2').style.display = 'none';
+  document.getElementById('mrp-view1').style.display = 'block';
+}
+
+function mrpAutoSelectAll() {
+  var count = 0;
+  mrp_visibleRows.forEach(function(r) {
+    var accion = r.ACCION_SUGERIDA;
+    if (accion !== 'CANT A MAS' && accion !== 'CANT A MENOS') return;
+    try {
+      var arrPeds = JSON.parse(r.ID_ULTIMO_PEDIDO);
+      if (arrPeds.length > 0 && !r.TEMP_SEL_PEDIDO) r.TEMP_SEL_PEDIDO = arrPeds[arrPeds.length-1].id;
+    } catch(e) {}
+    mrpCalcTextoDetalle(r);
+    r.ESTATUS_REVISION = 'ACEPTADO';
+    mrp_cambios.add(r.ID);
+    count++;
+  });
+  mrpRenderTabla();
+  if (count > 0) {
+    Swal.fire({
+      icon: 'success',
+      title: '⚡ Auto-Selección completada',
+      html: '<div style="font-size:15px;line-height:2;">'
+        + '<b style="color:#2e7d32;font-size:22px;">' + count + '</b> registros seleccionados<br>'
+        + '<span style="color:#546e7a;">(CANT A MAS / CANT A MENOS)</span><br>'
+        + 'de <b>' + mrp_visibleRows.length + '</b> visibles'
+        + '</div>',
+      confirmButtonColor: '#ff6f00',
+      confirmButtonText: 'Entendido',
+      timer: 4000,
+      timerProgressBar: true
+    });
+  } else {
+    Swal.fire({
+      icon: 'info',
+      title: 'Sin registros elegibles',
+      text: 'No hay registros CANT A MAS/MENOS en la vista actual.',
+      confirmButtonColor: '#607d8b',
+      timer: 3000,
+      timerProgressBar: true
+    });
+  }
+}
+
+function mrpOpenCancelModal(rowID) {
+  var row = mrp_datosPlan.find(function(r){ return r.ID == rowID; });
+  if (!row) return;
+  mrp_cancelModalData.rowID = rowID;
+  mrp_cancelModalData.pedidos = [];
+  document.getElementById('mrp-cancelCodigo').innerText = row.CODIGO + ' — ' + (row.DESCRIPCION||'');
+  var html = '';
+  try {
+    var arrPeds = JSON.parse(row.ID_ULTIMO_PEDIDO);
+    arrPeds.forEach(function(p, idx) {
+      mrp_cancelModalData.pedidos.push({ id:p.id, q:p.q, p:p.p, cancel:false, newQty:p.q });
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;font-size:12px;">'
+        + '<input type="checkbox" id="mrp-cancelChk' + idx + '" onchange="mrpToggleCancelPed(' + idx + ', this.checked)" style="width:18px;height:18px;accent-color:#c62828;">'
+        + '<span style="font-weight:900;color:#1565c0;min-width:100px;">' + p.id + '</span>'
+        + '<span style="color:#555;flex:1;">Solicitado: <b>' + mrpFmtNum(p.q) + '</b> | Producido: <b>' + mrpFmtNum(p.p) + '</b></span>'
+        + '<input type="number" id="mrp-cancelQty' + idx + '" value="' + p.q + '" onchange="mrpUpdateCancelQty(' + idx + ', this.value)" style="width:80px;border:1px solid #ccc;border-radius:4px;padding:4px;text-align:right;font-weight:bold;font-size:12px;">'
+        + '<span style="font-size:10px;color:#888;">← Cancelar ✓ / Editar cant.</span>'
+        + '</div>';
+    });
+  } catch(e) { html = '<p style="padding:15px;color:#c62828;">No hay pedidos asociados</p>'; }
+  document.getElementById('mrp-cancelBody').innerHTML = html;
+  document.getElementById('mrp-cancelModal').style.display = 'flex';
+}
+
+function mrpCloseCancelModal() {
+  document.getElementById('mrp-cancelModal').style.display = 'none';
+  mrp_cancelModalData = { rowID:null, pedidos:[] };
+}
+
+function mrpToggleCancelPed(idx, checked) {
+  mrp_cancelModalData.pedidos[idx].cancel = checked;
+  var qtyInput = document.getElementById('mrp-cancelQty' + idx);
+  if (qtyInput) { qtyInput.disabled = checked; qtyInput.style.background = checked ? '#ffcdd2' : 'white'; }
+}
+
+function mrpUpdateCancelQty(idx, val) {
+  mrp_cancelModalData.pedidos[idx].newQty = Number(val) || 0;
+}
+
+function mrpApplyCancelModal() {
+  var row = mrp_datosPlan.find(function(r){ return r.ID == mrp_cancelModalData.rowID; });
+  if (!row) return;
+  var cancelados = [], modificados = [];
+  mrp_cancelModalData.pedidos.forEach(function(p) {
+    if (p.cancel) cancelados.push(p.id);
+    else if (p.newQty !== p.q) modificados.push({ id:p.id, oldQty:p.q, newQty:p.newQty });
+  });
+  if (cancelados.length === 0 && modificados.length === 0) {
+    Swal.fire({ icon:'warning', title:'Sin cambios', text:'Selecciona al menos un pedido para cancelar o modifica alguna cantidad.', confirmButtonColor:'#c62828' });
+    return;
+  }
+  row.CANCEL_PEDIDOS = cancelados;
+  row.MODIFY_PEDIDOS = modificados;
+  var detParts = [];
+  cancelados.forEach(function(id){ detParts.push('🚫 CANCELAR ' + id + ' (pedido + todas sus órdenes)'); });
+  modificados.forEach(function(m){ detParts.push('✏️ ' + m.id + ': ' + mrpFmtNum(m.oldQty) + ' → ' + mrpFmtNum(m.newQty)); });
+  row.DETALLE_ACCION = detParts.join(' | ');
+  row.ESTATUS_REVISION = 'ACEPTADO';
+  mrp_cambios.add(row.ID);
+  mrpCloseCancelModal();
+  mrpRenderTabla();
+}
+
+function mrpOpenWipModal(el) {
+  var codigo = el.getAttribute('data-mrp-wip-codigo');
+  var desc = el.getAttribute('data-mrp-wip-desc') || '';
+  document.getElementById('mrp-wipCodigo').innerText = codigo + ' — ' + desc;
+  document.getElementById('mrp-wipBody').innerHTML = '<p style="text-align:center;color:#999;padding:20px;">⏳ Cargando producción...</p>';
+  document.getElementById('mrp-wipModal').style.display = 'flex';
+  google.script.run
+    .withSuccessHandler(function(json) {
+      try { mrpRenderWipData(JSON.parse(json)); }
+      catch(e) { document.getElementById('mrp-wipBody').innerHTML = '<p style="color:red;padding:15px;">Error: ' + e + '</p>'; }
+    })
+    .withFailureHandler(function(e) { document.getElementById('mrp-wipBody').innerHTML = '<p style="color:red;padding:15px;">Error: ' + e + '</p>'; })
+    .obtenerProduccionDetallada(codigo);
+}
+
+function mrpRenderWipData(data) {
+  if (!data.ordenes || data.ordenes.length === 0) {
+    document.getElementById('mrp-wipBody').innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Sin producción registrada</p>'; return;
+  }
+  var html = '';
+  data.ordenes.forEach(function(ord) {
+    html += '<div style="margin-bottom:15px;"><div style="background:#1565c0;color:white;padding:6px 12px;font-weight:900;border-radius:6px 6px 0 0;">📋 ORDEN: ' + ord.nombre + ' — Pedido: ' + ord.pedido + '</div>';
+    ord.procesos.forEach(function(proc) {
+      html += '<div style="margin-bottom:12px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;"><div style="background:#263238;color:white;padding:8px 12px;font-weight:900;font-size:12px;display:flex;justify-content:space-between;"><span>SEC ' + proc.sec + ' — ' + proc.proceso + '</span><span>Solicitado: ' + mrpFmtNum(proc.solicitado) + ' kg</span></div>';
+      if (proc.produccion.length > 0) {
+        html += '<div style="max-height:200px;overflow-y:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#eceff1;"><th style="padding:5px 8px;text-align:center;font-weight:700;border-bottom:1px solid #ccc;">FECHA</th><th style="padding:5px 8px;text-align:center;font-weight:700;border-bottom:1px solid #ccc;">TURNO</th><th style="padding:5px 8px;text-align:center;font-weight:700;border-bottom:1px solid #ccc;">LOTE</th><th style="padding:5px 8px;text-align:center;font-weight:700;border-bottom:1px solid #ccc;">MAQUINA</th><th style="padding:5px 8px;text-align:center;font-weight:700;border-bottom:1px solid #ccc;">PRODUCIDO (kg)</th></tr></thead><tbody>';
+        proc.produccion.forEach(function(p) {
+          html += '<tr><td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">' + p.fecha + '</td><td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">' + p.turno + '</td><td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">' + p.lote + '</td><td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">' + p.maquina + '</td><td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;font-weight:bold;">' + mrpFmtNum(p.producido) + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      } else { html += '<div style="padding:8px;color:#999;text-align:center;">Sin registros de producción</div>'; }
+      html += '<div style="background:#fff3e0;padding:6px 12px;font-weight:900;text-align:right;border-top:2px solid #ff9800;color:#e65100;">TOTAL PRODUCIDO: ' + mrpFmtNum(proc.totalProd) + ' kg</div></div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('mrp-wipBody').innerHTML = html;
+}
+// ══ FIN PROGRAMADOR MRP MODULE ══════════════════════════════════════
