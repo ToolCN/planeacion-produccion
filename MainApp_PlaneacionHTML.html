@@ -1771,6 +1771,7 @@ var tm_CONFIG = [
 // Metas activas del mes (se cargan desde backend al abrir el módulo)
 var tm_metasMes = {};
 var tm_expandedCats = {}; // Rastrea qué categorías están expandidas
+var tm_mesRangoCargado = null; // {ini, fin, mes, año} del mes actualmente en memoria
 var tm_PROD_CATS = [
   "CLAVO CONCRETO","CLAVO MADERA","EMPAQUE CLAVO","VARILLA","BARRA","TREFILADO",
   "COLATADO","TRATAMIENTOS TÉRMICOS","TORNILLO - GRANDES","TORNILLO - FIDE",
@@ -1975,7 +1976,7 @@ function loadTableroMetricas() {
     </div>
   </div>
 
-  <button class="tm-fab-update" id="tm-btnActualizar" onclick="tm_actualizarVistaActual()">🔄 ACTUALIZAR VISTA ACTUAL</button>
+  <button class="tm-fab-update" id="tm-btnActualizar" onclick="tm_actualizarVistaActual()">🔄 Actualizar vista (MES)</button>
 
   <!-- MODAL DETALLE MÁQUINAS -->
   <div id="tm-modalDetalle" class="tm-modal-overlay" style="display:none;">
@@ -2024,6 +2025,7 @@ function loadTableroMetricas() {
   tm_fechaReferencia = new Date();
   tm_datosTablero = [];
   tm_datosProduccion = {};
+  tm_mesRangoCargado = null;
   tm_esPrimeraCarga = true;
   tm_actualizarSemana();
 }
@@ -2046,6 +2048,11 @@ function tm_cambiarSemana(delta) {
   var cambioDeMes = (mesAntes !== mesDespues || anioAntes !== anioDespues);
   if(cambioDeMes) {
     // Cambió el mes: recargar datos del nuevo mes desde backend
+    var _lnesRef = new Date(tm_fechaReferencia);
+    var _dow = _lnesRef.getDay();
+    _lnesRef.setDate(_lnesRef.getDate() + (_dow === 0 ? -6 : 1 - _dow));
+    var _nomMes = _lnesRef.toLocaleString('es-MX', { month: 'long' }).toUpperCase();
+    document.getElementById('tm-btnActualizar').textContent = '🔄 Actualizar vista (' + _nomMes + ')';
     document.getElementById('tm-btnActualizar').style.display = 'block';
   } else {
     // Misma semana del mismo mes: solo re-renderizar con datos ya cargados
@@ -2109,10 +2116,12 @@ function tm_actualizarSemana() {
   // El mes de referencia lo define el LUNES (para el label y para el mes de metas)
   var mesActual = lunes.getMonth();
   var añoActual = lunes.getFullYear();
-  // Pero el rango de datos debe cubrir TODA la semana lunes→sábado,
-  // aunque algún día caiga en otro mes
-  var fIniMes = formatISO(lunes);   // siempre desde el lunes
-  var fFinMes = formatISO(sabado);  // siempre hasta el sábado
+  // El rango de datos cubre TODO el mes (primer día al último día del mes del lunes)
+  var primerDiaMes = new Date(añoActual, mesActual, 1);
+  var ultimoDiaMes = new Date(añoActual, mesActual + 1, 0);
+  var fIniMes = formatISO(primerDiaMes);
+  var fFinMes = formatISO(ultimoDiaMes);
+  tm_mesRangoCargado = { ini: fIniMes, fin: fFinMes, mes: mesActual, año: añoActual };
   document.getElementById('tm-lblSemana').innerText = "SEMANA " + tm_getWeekNumber(lunes) + " (" + lunes.toLocaleString('es-MX',{month:'long'}).toUpperCase() + ")";
   tm_actualizarEncabezados();
 
@@ -2411,10 +2420,21 @@ function tm_renderizarTabla2() {
       } else { cellHtml='<div class="tm-bg-gray" style="height:100%;"></div>'; }
       tr.innerHTML += '<td'+(esInhabT2?' class="tm-cel-inhabil"':'')+'>'+cellHtml+'</td>';
     }
-    var promFinal=(diasOperativos>0)?sumKilosTotal/diasOperativos:0;
-    var effGlobal=(sumTeoTotal>0)?(sumRealTotal/sumTeoTotal)*100:0; if(effGlobal>100)effGlobal=100;
+    // Acumulado del MES COMPLETO (todas las fechas en tm_datosProduccion, no solo la semana)
+    var sumKilosMes=0, sumRealMes=0, sumTeoMes=0, diasOperativosMes=0;
+    if(tm_datosProduccion[cat]) {
+      for(var fMesKey in tm_datosProduccion[cat]) {
+        var dMes=tm_datosProduccion[cat][fMesKey];
+        var kD=(dMes[1]?dMes[1].k:0)+(dMes[2]?dMes[2].k:0)+(dMes[3]?dMes[3].k:0);
+        var rD=(dMes[1]?dMes[1].uReal:0)+(dMes[2]?dMes[2].uReal:0)+(dMes[3]?dMes[3].uReal:0);
+        var tD=(dMes[1]?dMes[1].uTeo:0)+(dMes[2]?dMes[2].uTeo:0)+(dMes[3]?dMes[3].uTeo:0);
+        if(kD>0||tD>0){ sumKilosMes+=kD; sumRealMes+=rD; sumTeoMes+=tD; diasOperativosMes+=tm_pesoLaboral(fMesKey); }
+      }
+    }
+    var promFinal=(diasOperativosMes>0)?sumKilosMes/diasOperativosMes:0;
+    var effGlobal=(sumTeoMes>0)?(sumRealMes/sumTeoMes)*100:0; if(effGlobal>100)effGlobal=100;
     var styleGlob=tm_getEstiloEficiencia(effGlobal);
-    tr.innerHTML+='<td class="tm-col-prom" style="vertical-align:middle;text-align:center;"><div style="font-weight:900;font-size:14px;color:#0d47a1;">'+Math.round(promFinal).toLocaleString()+'</div><div style="font-size:9px;color:#555;margin-top:3px;">PROM/DÍA</div><div style="margin-top:3px;font-weight:bold;font-size:10px;background:'+styleGlob.bg+';color:'+styleGlob.txt+';padding:1px;border-radius:3px;">'+effGlobal.toFixed(0)+'%</div></td>';
+    tr.innerHTML+='<td class="tm-col-prom" style="vertical-align:middle;text-align:center;" title="Acumulado mes completo"><div style="font-weight:900;font-size:14px;color:#0d47a1;">'+Math.round(promFinal).toLocaleString()+'</div><div style="font-size:9px;color:#555;margin-top:3px;">PROM/DÍA MES</div><div style="margin-top:3px;font-weight:bold;font-size:10px;background:'+styleGlob.bg+';color:'+styleGlob.txt+';padding:1px;border-radius:3px;">'+effGlobal.toFixed(0)+'%</div></td>';
     tbody.appendChild(tr);
     // Fila de expansión por máquina (se muestra si la categoría está expandida)
     var trExp = document.createElement('tr');
@@ -4079,6 +4099,7 @@ var np_pedidosSheets   = [];   // pedidos existentes traídos de Sheets (solo PE
 var np_codigoActual    = null; // {desc, unidad} del código buscado
 var np_codeTimer       = null; // debounce búsqueda de código
 var np_pedTimer        = null; // debounce validación de pedido
+var np_catalogoRutas   = {};   // mapa codigo→{desc,unidad} cargado al iniciar (búsqueda local)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INIT
@@ -4102,6 +4123,8 @@ function np_init(){
 
   // Cargar pedidos existentes de Sheets para validar duplicados
   np_cargarPedidosExistentes();
+  // Cargar catálogo de RUTAS en memoria para búsqueda local instantánea
+  np_cargarCatalogoRutas();
 }
 
 function np_verDebug(){
@@ -4212,13 +4235,55 @@ function np_validarPedido(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CARGAR CATÁLOGO DE RUTAS EN MEMORIA (una sola vez al iniciar)
+// ═══════════════════════════════════════════════════════════════════════════
+function np_cargarCatalogoRutas(){
+  np_catalogoRutas = {};
+  google.script.run
+    .withSuccessHandler(function(r){
+      r = (typeof r === 'string') ? JSON.parse(r) : r;
+      if(r && r.success && r.mapa){
+        np_catalogoRutas = r.mapa;
+      }
+    })
+    .withFailureHandler(function(e){
+      console.warn('np_cargarCatalogoRutas error:', e);
+    })
+    .npObtenerCatalogoRutas();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BUSCAR CÓDIGO EN RUTAS (debounce 500ms)
 // ═══════════════════════════════════════════════════════════════════════════
 function np_buscarCodigo(){
   np_codigoActual=null;
   var inp=document.getElementById('np-inpCodigo'); if(!inp) return;
   var raw=inp.value.trim();
-  if(!raw){ document.getElementById('np-descBox').innerText='—'; document.getElementById('np-inpUnidad').value=''; return; }
+  var db=document.getElementById('np-descBox');
+  var iu=document.getElementById('np-inpUnidad');
+  if(!raw){ if(db) db.innerText='—'; if(iu) iu.value=''; return; }
+
+  // Normalizar: solo dígitos, 8 dígitos → agregar cero a la izquierda
+  var codNum = raw.replace(/[^0-9]/g,'');
+  if(codNum.length === 8) codNum = '0' + codNum;
+
+  // Búsqueda local instantánea en el catálogo precargado
+  if(Object.keys(np_catalogoRutas).length > 0){
+    var encontrado = np_catalogoRutas[codNum];
+    if(encontrado){
+      np_codigoActual = {desc: encontrado.desc, unidad: encontrado.unidad, codigo: codNum};
+      if(db) db.innerText = encontrado.desc;
+      if(iu) iu.value = encontrado.unidad;
+      document.getElementById('np-inpCodigo').value = codNum; // normalizar
+    } else {
+      np_codigoActual = null;
+      if(db) db.innerText = '⚠️ Código no encontrado en RUTAS';
+      if(iu) iu.value = '';
+    }
+    return;
+  }
+
+  // Fallback: catálogo aún no cargado → usar backend con debounce
   clearTimeout(np_codeTimer);
   np_codeTimer=setTimeout(function(){
     var sp=document.getElementById('np-codSpinner'); if(sp) sp.style.display='inline';
@@ -4230,7 +4295,7 @@ function np_buscarCodigo(){
           np_codigoActual={desc:r.desc, unidad:r.unidad, codigo:r.codigo};
           var db=document.getElementById('np-descBox'); if(db) db.innerText=r.desc;
           var iu=document.getElementById('np-inpUnidad'); if(iu) iu.value=r.unidad;
-          document.getElementById('np-inpCodigo').value=r.codigo; // normalizar
+          document.getElementById('np-inpCodigo').value=r.codigo;
         } else {
           np_codigoActual=null;
           var db=document.getElementById('np-descBox'); if(db) db.innerText='⚠️ Código no encontrado en RUTAS';

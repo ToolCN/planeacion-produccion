@@ -1871,6 +1871,32 @@ function npObtenerPedidosExistentes() {
 }
 
 /**
+ * Devuelve el catálogo completo de RUTAS como mapa { codNormalizado: {desc, unidad} }
+ * para que el frontend haga búsqueda local instantánea sin roundtrips al backend.
+ */
+function npObtenerCatalogoRutas() {
+  try {
+    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var sh   = ss.getSheetByName("RUTAS");
+    var data = sh.getDataRange().getValues();
+    var mapa = {};
+    for (var i = 1; i < data.length; i++) {
+      var codHoja = String(data[i][1]).replace(/[^0-9]/g, ''); // Col B
+      if (codHoja.length === 8) codHoja = '0' + codHoja;
+      if (codHoja && !mapa[codHoja]) {
+        mapa[codHoja] = {
+          desc:   String(data[i][2]  || '').trim(), // Col C: DESCRIPCION
+          unidad: String(data[i][16] || 'PZA').trim() // Col Q: UNIDAD
+        };
+      }
+    }
+    return JSON.stringify({ success: true, mapa: mapa });
+  } catch(e) {
+    return JSON.stringify({ success: false, mapa: {}, msg: e.toString() });
+  }
+}
+
+/**
  * Buscar un código en Col B de RUTAS.
  * Devuelve Col C (DESCRIPCION, índice 2) y Col Q (UNIDAD, índice 16).
  */
