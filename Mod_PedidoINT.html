@@ -3,57 +3,7 @@
 // ══════════════════════════════════════════════════════
 function loadPedidoINT() {
   var area = document.getElementById('content-area');
-  area.innerHTML = `
-<div id="pint-panel">
-
-  <!-- FORMULARIO PRINCIPAL -->
-  <div class="pint-card" id="pint-mainCard">
-    <div class="pint-title">📦 NUEVO PEDIDO INTERNO (INT)</div>
-
-    <div class="pint-input-group">
-      <label class="pint-label">1. Selecciona el Código de Producto</label>
-      <input type="text" id="pint-searchCode" class="pint-input" placeholder="🔍 Escribe para buscar código o descripción..." oninput="pintFilterCodes()">
-      <select id="pint-selCodigo" class="pint-select" size="6" onchange="pintCargarRuta()"></select>
-    </div>
-
-    <div class="pint-input-group">
-      <label class="pint-label">2. Cantidad Solicitada (KG / PZA)</label>
-      <input type="number" id="pint-numCant" class="pint-input" placeholder="Ingresa la cantidad total..." oninput="pintValidar()">
-    </div>
-
-    <div id="pint-rutaPreview" class="pint-ruta-container" style="display:none;">
-      <label class="pint-label">3. Previsualización de Ruta y Ajuste de Máquinas</label>
-      <div id="pint-pasosLista" style="margin-top:10px;"></div>
-    </div>
-
-    <button id="pint-btnSave" class="pint-btn-save" onclick="pintGuardar()" disabled>GENERAR PEDIDO PLANEADO</button>
-  </div>
-
-  <!-- PANTALLA DE ÉXITO -->
-  <div class="pint-card" id="pint-successScreen" style="display:none;">
-    <div class="pint-success-header">
-      <div class="pint-checkmark-circle">
-        <svg class="pint-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-          <circle class="pint-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-          <path class="pint-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-        </svg>
-      </div>
-    </div>
-    <h2 style="color:#2e7d32;margin:0;font-weight:900;">PEDIDO INT GENERADO CON ÉXITO</h2>
-    <h3 id="pint-resFolio" style="color:#1565c0;margin-top:5px;font-weight:900;"></h3>
-    <div class="pint-summary-box">
-      <label class="pint-label" style="color:#1565c0">Órdenes de Producción Generadas:</label>
-      <div id="pint-resOrdenes"></div>
-      <br>
-      <label class="pint-label" style="color:#1565c0">Lotes Creados (División por Cant. Lote):</label>
-      <div id="pint-resLotes" style="max-height:150px;overflow-y:auto;"></div>
-    </div>
-    <div class="pint-btn-footer">
-      <button class="pint-btn-nvo" onclick="pintResetForm()">🔄 GENERAR NUEVO</button>
-      <button class="pint-btn-close" onclick="loadDashboard()">✖ CERRAR</button>
-    </div>
-  </div>
-</div>`;
+  area.innerHTML = '\n<div id="pint-panel">\n\n  <!-- FORMULARIO PRINCIPAL -->\n  <div class="pint-card" id="pint-mainCard">\n    <div class="pint-title">📦 NUEVO PEDIDO INTERNO (INT)</div>\n\n    <div class="pint-input-group">\n      <label class="pint-label">1. Selecciona el Código de Producto</label>\n      <input type="text" id="pint-searchCode" class="pint-input" placeholder="🔍 Escribe para buscar código o descripción..." oninput="pintFilterCodes()">\n      <select id="pint-selCodigo" class="pint-select" size="6" onchange="pintCargarRuta()"></select>\n    </div>\n\n    <div class="pint-input-group">\n      <label class="pint-label">2. Cantidad Solicitada (KG / PZA)</label>\n      <input type="number" id="pint-numCant" class="pint-input" placeholder="Ingresa la cantidad total..." oninput="pintValidar()">\n    </div>\n\n    <div id="pint-rutaPreview" class="pint-ruta-container" style="display:none;">\n      <label class="pint-label">3. Previsualización de Ruta y Ajuste de Máquinas</label>\n      <div id="pint-pasosLista" style="margin-top:10px;"></div>\n    </div>\n\n    <button id="pint-btnSave" class="pint-btn-save" onclick="pintGuardar()" disabled>GENERAR PEDIDO PLANEADO</button>\n  </div>\n\n  <!-- PANTALLA DE ÉXITO -->\n  <div class="pint-card" id="pint-successScreen" style="display:none;">\n    <div class="pint-success-header">\n      <div class="pint-checkmark-circle">\n        <svg class="pint-checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">\n          <circle class="pint-checkmark__circle" cx="26" cy="26" r="25" fill="none"/>\n          <path class="pint-checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>\n        </svg>\n      </div>\n    </div>\n    <h2 style="color:#2e7d32;margin:0;font-weight:900;">PEDIDO INT GENERADO CON ÉXITO</h2>\n    <h3 id="pint-resFolio" style="color:#1565c0;margin-top:5px;font-weight:900;"></h3>\n    <div class="pint-summary-box">\n      <label class="pint-label" style="color:#1565c0">Órdenes de Producción Generadas:</label>\n      <div id="pint-resOrdenes"></div>\n      <br>\n      <label class="pint-label" style="color:#1565c0">Lotes Creados (División por Cant. Lote):</label>\n      <div id="pint-resLotes" style="max-height:150px;overflow-y:auto;"></div>\n    </div>\n    <div class="pint-btn-footer">\n      <button class="pint-btn-nvo" onclick="pintResetForm()">🔄 GENERAR NUEVO</button>\n      <button class="pint-btn-close" onclick="loadDashboard()">✖ CERRAR</button>\n    </div>\n  </div>\n</div>';
 
   // --- Inicializar datos del módulo ---
   pint_catalogoCompleto = [];

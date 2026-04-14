@@ -5,111 +5,11 @@ function loadMisRegistros() {
   if (!document.getElementById('mr-style')) {
     var st = document.createElement('style');
     st.id = 'mr-style';
-    st.textContent = `
-      #mr-panel { font-family:'Roboto',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); }
-      #mr-panel .mr-header { background:white; padding:16px 20px; border-radius:8px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08); border-top:5px solid #1565c0; display:flex; align-items:center; gap:12px; }
-      #mr-panel .mr-title { font-size:20px; font-weight:900; color:#1565c0; flex:1; }
-      #mr-panel .mr-btn { padding:8px 16px; border-radius:6px; border:none; font-weight:900; font-size:12px; cursor:pointer; }
-      #mr-panel .mr-btn-primary { background:#1565c0; color:white; }
-      #mr-panel .mr-btn-primary:hover { background:#0d47a1; }
-      #mr-panel .mr-table-wrap { background:white; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08); overflow-x:auto; max-height:calc(100vh - 140px); overflow-y:auto; }
-      #mr-panel table { width:100%; border-collapse:collapse; font-size:11px; min-width:1400px; }
-      #mr-panel th { background:#1565c0; color:white; padding:8px 6px; font-weight:900; text-align:center; font-size:10px; border:1px solid #1976d2; position:sticky; top:0; z-index:2; cursor:pointer; white-space:nowrap; user-select:none; }
-      #mr-panel th:hover { background:#0d47a1; }
-      #mr-panel th.mr-th-filtered { background:#f57f17 !important; }
-      #mr-panel td { border:1px solid #e0e0e0; padding:4px 5px; text-align:center; vertical-align:middle; }
-      #mr-panel tr:nth-child(even) td { background:#f9f9ff; }
-      #mr-panel tr.mr-modified td { background:#fff8e1 !important; }
-      #mr-panel tr.mr-hidden { display:none; }
-      #mr-panel .mr-tbl-input { border:1px solid #90caf9; border-radius:4px; padding:3px 5px; font-size:11px; font-weight:700; width:100%; background:#e3f2fd; text-align:center; box-sizing:border-box; }
-      #mr-panel .mr-tbl-input:focus { outline:none; border-color:#1565c0; background:#fff; }
-      #mr-panel .mr-lote { font-weight:900; color:#1565c0; font-size:12px; }
-      #mr-panel .mr-producto { font-size:10px; color:#6a1b9a; font-weight:700; text-align:left; max-width:200px; white-space:normal; line-height:1.3; }
-      #mr-panel .mr-registrador { font-size:10px; color:#37474f; font-weight:700; }
-      #mr-panel .mr-fab { position:fixed; bottom:28px; right:28px; background:#1565c0; color:white; padding:14px 28px; border-radius:50px; font-weight:900; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,0.3); border:none; cursor:pointer; display:none; z-index:3000; }
-      #mr-panel .mr-fab:hover { background:#0d47a1; }
-      #mr-panel .mr-empty { padding:40px; text-align:center; color:#999; font-size:14px; }
-      #mr-panel .mr-cambios { font-size:9px; color:#888; font-style:italic; text-align:left; max-width:180px; white-space:normal; line-height:1.3; }
-      /* Barra de scroll lateral fija */
-      #mr-scrollbar { position:fixed; right:0; top:48px; width:14px; height:calc(100vh - 48px); background:#e0e0e0; z-index:4000; cursor:pointer; border-left:1px solid #bdbdbd; }
-      #mr-scrollbar-thumb { position:absolute; width:100%; background:#1565c0; border-radius:7px; cursor:grab; transition:background 0.2s; }
-      #mr-scrollbar-thumb:hover, #mr-scrollbar-thumb:active { background:#0d47a1; }
-      /* Barra filtros fecha/turno/proceso */
-      #mr-filtro-bar { background:white; border-radius:8px; padding:12px 16px; margin-bottom:10px; box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-      #mr-filtro-bar .mr-fb-label { font-size:11px; font-weight:900; color:#546e7a; text-transform:uppercase; white-space:nowrap; }
-      #mr-filtro-bar .mr-fb-fecha { border:2px solid #1565c0; border-radius:6px; padding:6px 10px; font-size:13px; font-weight:700; color:#0f172a; outline:none; cursor:pointer; }
-      #mr-filtro-bar .mr-proc-chips { display:flex; gap:6px; flex-wrap:wrap; flex:1; }
-      #mr-filtro-bar .mr-chip-proc { padding:5px 12px; border-radius:20px; border:2px solid #1565c0; background:white; color:#1565c0; font-weight:900; font-size:11px; cursor:pointer; transition:all 0.15s; }
-      #mr-filtro-bar .mr-chip-proc.activo { background:#1565c0; color:white; }
-      #mr-filtro-bar .mr-turn-group { display:flex; gap:4px; }
-      #mr-filtro-bar .mr-chip-turn { width:36px; height:36px; border-radius:50%; border:2px solid #546e7a; background:white; color:#546e7a; font-weight:900; font-size:14px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
-      #mr-filtro-bar .mr-chip-turn.activo { background:#546e7a; color:white; }
-      #mr-filtro-bar .mr-btn-efic { background:#0088cc; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:900; font-size:12px; cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,136,204,0.3); }
-      #mr-filtro-bar .mr-btn-efic:hover { background:#006faa; }
-      /* FILTRO POPUP */
-      #mr-filtro-popup { display:none; position:fixed; background:white; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.25); z-index:9999; width:280px; max-height:400px; flex-direction:column; border:1px solid #e0e0e0; }
-      #mr-filtro-popup.visible { display:flex; }
-      #mr-filtro-header { background:#1565c0; color:white; padding:10px 14px; border-radius:10px 10px 0 0; font-weight:900; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
-      #mr-filtro-search { padding:8px 10px; border:none; border-bottom:1px solid #e0e0e0; font-size:12px; outline:none; width:100%; box-sizing:border-box; }
-      #mr-filtro-btn-all { margin:6px 10px 4px; padding:5px 10px; background:#546e7a; color:white; border:none; border-radius:6px; font-weight:900; font-size:11px; cursor:pointer; width:calc(100% - 20px); box-sizing:border-box; }
-      #mr-filtro-lista { overflow-y:auto; flex:1; padding:4px 0; }
-      .mr-filtro-item { display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer; font-size:12px; font-weight:600; }
-      .mr-filtro-item:hover { background:#f1f5f9; }
-      .mr-filtro-item input[type=checkbox] { cursor:pointer; width:14px; height:14px; flex-shrink:0; }
-      #mr-filtro-footer { padding:8px 10px; border-top:1px solid #eee; display:flex; gap:8px; }
-      #mr-filtro-footer button { flex:1; padding:6px; border:none; border-radius:6px; font-weight:900; font-size:11px; cursor:pointer; }
-      .mr-flt-aplicar { background:#2e7d32; color:white; }
-      .mr-flt-limpiar { background:#d32f2f; color:white; }
-    `;
+    st.textContent = '\n      #mr-panel { font-family:\'Roboto\',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); }\n      #mr-panel .mr-header { background:white; padding:16px 20px; border-radius:8px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08); border-top:5px solid #1565c0; display:flex; align-items:center; gap:12px; }\n      #mr-panel .mr-title { font-size:20px; font-weight:900; color:#1565c0; flex:1; }\n      #mr-panel .mr-btn { padding:8px 16px; border-radius:6px; border:none; font-weight:900; font-size:12px; cursor:pointer; }\n      #mr-panel .mr-btn-primary { background:#1565c0; color:white; }\n      #mr-panel .mr-btn-primary:hover { background:#0d47a1; }\n      #mr-panel .mr-table-wrap { background:white; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08); overflow-x:auto; max-height:calc(100vh - 140px); overflow-y:auto; }\n      #mr-panel table { width:100%; border-collapse:collapse; font-size:11px; min-width:1400px; }\n      #mr-panel th { background:#1565c0; color:white; padding:8px 6px; font-weight:900; text-align:center; font-size:10px; border:1px solid #1976d2; position:sticky; top:0; z-index:2; cursor:pointer; white-space:nowrap; user-select:none; }\n      #mr-panel th:hover { background:#0d47a1; }\n      #mr-panel th.mr-th-filtered { background:#f57f17 !important; }\n      #mr-panel td { border:1px solid #e0e0e0; padding:4px 5px; text-align:center; vertical-align:middle; }\n      #mr-panel tr:nth-child(even) td { background:#f9f9ff; }\n      #mr-panel tr.mr-modified td { background:#fff8e1 !important; }\n      #mr-panel tr.mr-hidden { display:none; }\n      #mr-panel .mr-tbl-input { border:1px solid #90caf9; border-radius:4px; padding:3px 5px; font-size:11px; font-weight:700; width:100%; background:#e3f2fd; text-align:center; box-sizing:border-box; }\n      #mr-panel .mr-tbl-input:focus { outline:none; border-color:#1565c0; background:#fff; }\n      #mr-panel .mr-lote { font-weight:900; color:#1565c0; font-size:12px; }\n      #mr-panel .mr-producto { font-size:10px; color:#6a1b9a; font-weight:700; text-align:left; max-width:200px; white-space:normal; line-height:1.3; }\n      #mr-panel .mr-registrador { font-size:10px; color:#37474f; font-weight:700; }\n      #mr-panel .mr-fab { position:fixed; bottom:28px; right:28px; background:#1565c0; color:white; padding:14px 28px; border-radius:50px; font-weight:900; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,0.3); border:none; cursor:pointer; display:none; z-index:3000; }\n      #mr-panel .mr-fab:hover { background:#0d47a1; }\n      #mr-panel .mr-empty { padding:40px; text-align:center; color:#999; font-size:14px; }\n      #mr-panel .mr-cambios { font-size:9px; color:#888; font-style:italic; text-align:left; max-width:180px; white-space:normal; line-height:1.3; }\n      /* Barra de scroll lateral fija */\n      #mr-scrollbar { position:fixed; right:0; top:48px; width:14px; height:calc(100vh - 48px); background:#e0e0e0; z-index:4000; cursor:pointer; border-left:1px solid #bdbdbd; }\n      #mr-scrollbar-thumb { position:absolute; width:100%; background:#1565c0; border-radius:7px; cursor:grab; transition:background 0.2s; }\n      #mr-scrollbar-thumb:hover, #mr-scrollbar-thumb:active { background:#0d47a1; }\n      /* Barra filtros fecha/turno/proceso */\n      #mr-filtro-bar { background:white; border-radius:8px; padding:12px 16px; margin-bottom:10px; box-shadow:0 2px 6px rgba(0,0,0,0.08); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }\n      #mr-filtro-bar .mr-fb-label { font-size:11px; font-weight:900; color:#546e7a; text-transform:uppercase; white-space:nowrap; }\n      #mr-filtro-bar .mr-fb-fecha { border:2px solid #1565c0; border-radius:6px; padding:6px 10px; font-size:13px; font-weight:700; color:#0f172a; outline:none; cursor:pointer; }\n      #mr-filtro-bar .mr-proc-chips { display:flex; gap:6px; flex-wrap:wrap; flex:1; }\n      #mr-filtro-bar .mr-chip-proc { padding:5px 12px; border-radius:20px; border:2px solid #1565c0; background:white; color:#1565c0; font-weight:900; font-size:11px; cursor:pointer; transition:all 0.15s; }\n      #mr-filtro-bar .mr-chip-proc.activo { background:#1565c0; color:white; }\n      #mr-filtro-bar .mr-turn-group { display:flex; gap:4px; }\n      #mr-filtro-bar .mr-chip-turn { width:36px; height:36px; border-radius:50%; border:2px solid #546e7a; background:white; color:#546e7a; font-weight:900; font-size:14px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }\n      #mr-filtro-bar .mr-chip-turn.activo { background:#546e7a; color:white; }\n      #mr-filtro-bar .mr-btn-efic { background:#0088cc; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:900; font-size:12px; cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,136,204,0.3); }\n      #mr-filtro-bar .mr-btn-efic:hover { background:#006faa; }\n      /* FILTRO POPUP */\n      #mr-filtro-popup { display:none; position:fixed; background:white; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.25); z-index:9999; width:280px; max-height:400px; flex-direction:column; border:1px solid #e0e0e0; }\n      #mr-filtro-popup.visible { display:flex; }\n      #mr-filtro-header { background:#1565c0; color:white; padding:10px 14px; border-radius:10px 10px 0 0; font-weight:900; font-size:13px; display:flex; justify-content:space-between; align-items:center; }\n      #mr-filtro-search { padding:8px 10px; border:none; border-bottom:1px solid #e0e0e0; font-size:12px; outline:none; width:100%; box-sizing:border-box; }\n      #mr-filtro-btn-all { margin:6px 10px 4px; padding:5px 10px; background:#546e7a; color:white; border:none; border-radius:6px; font-weight:900; font-size:11px; cursor:pointer; width:calc(100% - 20px); box-sizing:border-box; }\n      #mr-filtro-lista { overflow-y:auto; flex:1; padding:4px 0; }\n      .mr-filtro-item { display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer; font-size:12px; font-weight:600; }\n      .mr-filtro-item:hover { background:#f1f5f9; }\n      .mr-filtro-item input[type=checkbox] { cursor:pointer; width:14px; height:14px; flex-shrink:0; }\n      #mr-filtro-footer { padding:8px 10px; border-top:1px solid #eee; display:flex; gap:8px; }\n      #mr-filtro-footer button { flex:1; padding:6px; border:none; border-radius:6px; font-weight:900; font-size:11px; cursor:pointer; }\n      .mr-flt-aplicar { background:#2e7d32; color:white; }\n      .mr-flt-limpiar { background:#d32f2f; color:white; }\n    ';
     document.head.appendChild(st);
   }
 
-  ca.innerHTML = `
-    <div id="mr-panel" style="padding-right:18px;">
-      <div class="mr-header">
-        <div class="mr-title">📋 Mis Registros de Producción</div>
-        <button class="mr-btn mr-btn-primary" onclick="mrCargar()">🔄 Actualizar</button>
-      </div>
-      <!-- Barra de filtros: fecha + turno + procesos + botón reporte -->
-      <div id="mr-filtro-bar">
-        <span class="mr-fb-label">Fecha:</span>
-        <input type="date" class="mr-fb-fecha" id="mr-filtro-fecha">
-        <span class="mr-fb-label">Turno:</span>
-        <div class="mr-turn-group">
-          <button class="mr-chip-turn activo" id="mr-turn-1" onclick="mrSetTurno(1)">1</button>
-          <button class="mr-chip-turn" id="mr-turn-2" onclick="mrSetTurno(2)">2</button>
-          <button class="mr-chip-turn" id="mr-turn-3" onclick="mrSetTurno(3)">3</button>
-        </div>
-        <span class="mr-fb-label">Procesos:</span>
-        <div class="mr-proc-chips" id="mr-chips-proc"></div>
-        <button class="mr-btn-efic" onclick="mrEnviarReporteEficiencia()">📊 Enviar Reporte de Eficiencia</button>
-      </div>
-      <div class="mr-table-wrap" id="mr-table-wrap">
-        <div id="mr-tabla-contenido"><div class="mr-empty">Cargando registros...</div></div>
-      </div>
-      <button class="mr-fab" id="mr-fabGuardar" onclick="mrGuardarPendientes()">💾 GUARDAR (<span id="mr-cnt">0</span>)</button>
-    </div>
-    <!-- Barra de scroll lateral custom -->
-    <div id="mr-scrollbar">
-      <div id="mr-scrollbar-up" style="position:absolute;top:0;left:0;width:100%;height:20px;background:#1565c0;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;cursor:pointer;user-select:none;z-index:2;border-radius:0 0 4px 4px;">▲</div>
-      <div id="mr-scrollbar-thumb" style="position:absolute;top:20px;"></div>
-      <div id="mr-scrollbar-down" style="position:absolute;bottom:0;left:0;width:100%;height:20px;background:#1565c0;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;cursor:pointer;user-select:none;z-index:2;border-radius:4px 4px 0 0;">▼</div>
-    </div>
-    <!-- Popup filtro -->
-    <div id="mr-filtro-popup">
-      <div id="mr-filtro-header">
-        <span id="mr-filtro-titulo">Filtrar</span>
-        <span style="cursor:pointer;font-size:16px;" onclick="mrCerrarFiltro()">✕</span>
-      </div>
-      <input id="mr-filtro-search" type="text" placeholder="Buscar..." oninput="mrFiltroSearch(this.value)">
-      <button id="mr-filtro-btn-all" onclick="mrFiltroToggleAll()">☑ Sel/Desel todos</button>
-      <div id="mr-filtro-lista"></div>
-      <div id="mr-filtro-footer">
-        <button class="mr-flt-aplicar" onclick="mrFiltroAplicar()">✅ Aplicar</button>
-        <button class="mr-flt-limpiar" onclick="mrFiltroLimpiar()">🗑 Limpiar</button>
-      </div>
-    </div>
-  `;
+  ca.innerHTML = '\n    <div id="mr-panel" style="padding-right:18px;">\n      <div class="mr-header">\n        <div class="mr-title">📋 Mis Registros de Producción</div>\n        <button class="mr-btn mr-btn-primary" onclick="mrCargar()">🔄 Actualizar</button>\n      </div>\n      <!-- Barra de filtros: fecha + turno + procesos + botón reporte -->\n      <div id="mr-filtro-bar">\n        <span class="mr-fb-label">Fecha:</span>\n        <input type="date" class="mr-fb-fecha" id="mr-filtro-fecha">\n        <span class="mr-fb-label">Turno:</span>\n        <div class="mr-turn-group">\n          <button class="mr-chip-turn activo" id="mr-turn-1" onclick="mrSetTurno(1)">1</button>\n          <button class="mr-chip-turn" id="mr-turn-2" onclick="mrSetTurno(2)">2</button>\n          <button class="mr-chip-turn" id="mr-turn-3" onclick="mrSetTurno(3)">3</button>\n        </div>\n        <span class="mr-fb-label">Procesos:</span>\n        <div class="mr-proc-chips" id="mr-chips-proc"></div>\n        <button class="mr-btn-efic" onclick="mrEnviarReporteEficiencia()">📊 Enviar Reporte de Eficiencia</button>\n      </div>\n      <div class="mr-table-wrap" id="mr-table-wrap">\n        <div id="mr-tabla-contenido"><div class="mr-empty">Cargando registros...</div></div>\n      </div>\n      <button class="mr-fab" id="mr-fabGuardar" onclick="mrGuardarPendientes()">💾 GUARDAR (<span id="mr-cnt">0</span>)</button>\n    </div>\n    <!-- Barra de scroll lateral custom -->\n    <div id="mr-scrollbar">\n      <div id="mr-scrollbar-up" style="position:absolute;top:0;left:0;width:100%;height:20px;background:#1565c0;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;cursor:pointer;user-select:none;z-index:2;border-radius:0 0 4px 4px;">▲</div>\n      <div id="mr-scrollbar-thumb" style="position:absolute;top:20px;"></div>\n      <div id="mr-scrollbar-down" style="position:absolute;bottom:0;left:0;width:100%;height:20px;background:#1565c0;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;cursor:pointer;user-select:none;z-index:2;border-radius:4px 4px 0 0;">▼</div>\n    </div>\n    <!-- Popup filtro -->\n    <div id="mr-filtro-popup">\n      <div id="mr-filtro-header">\n        <span id="mr-filtro-titulo">Filtrar</span>\n        <span style="cursor:pointer;font-size:16px;" onclick="mrCerrarFiltro()">✕</span>\n      </div>\n      <input id="mr-filtro-search" type="text" placeholder="Buscar..." oninput="mrFiltroSearch(this.value)">\n      <button id="mr-filtro-btn-all" onclick="mrFiltroToggleAll()">☑ Sel/Desel todos</button>\n      <div id="mr-filtro-lista"></div>\n      <div id="mr-filtro-footer">\n        <button class="mr-flt-aplicar" onclick="mrFiltroAplicar()">✅ Aplicar</button>\n        <button class="mr-flt-limpiar" onclick="mrFiltroLimpiar()">🗑 Limpiar</button>\n      </div>\n    </div>\n  ';
 
   mrCargar();
 }

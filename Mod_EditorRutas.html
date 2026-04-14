@@ -16,43 +16,7 @@ function loadEditorRutas(idOrden) {
   if (!document.getElementById('er-style')) {
     var st = document.createElement('style');
     st.id = 'er-style';
-    st.textContent = `
-      #er-panel { font-family:'Roboto',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); touch-action:pan-y; }
-      #er-panel .er-header-card { background:white; padding:20px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-top:5px solid #212121; }
-      #er-panel .er-title { font-size:24px; font-weight:900; color:#1565c0; margin-bottom:5px; }
-      #er-panel .er-subtitle { font-size:12px; color:#666; font-weight:bold; }
-      #er-panel .er-desc-input { width:100%; padding:8px; font-size:14px; border:1px solid #ddd; border-radius:4px; margin-top:5px; font-weight:bold; color:#333; }
-      #er-panel .er-btn { padding:10px 15px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }
-      #er-panel .er-btn-primary { background:#1976d2; color:white; width:100%; padding:12px; margin-top:10px; }
-      #er-panel .er-btn-action { background:#212121; color:white; }
-      #er-panel .er-btn-icon { width:35px; height:35px; padding:0; font-size:16px; }
-      #er-panel .er-btn-danger { background:#d32f2f; color:white; }
-      #er-panel .er-btn-config { background:#ff9800; color:white; }
-      #er-panel .er-view-section { display:none; }
-      #er-panel .er-active { display:block; }
-      #er-panel .er-route-card { background:white; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); border-left:5px solid #1976d2; }
-      #er-panel .er-step-header { font-weight:900; font-size:16px; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px; color:#333; }
-      #er-panel .er-grid-fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
-      #er-panel .er-field-group { display:flex; flex-direction:column; }
-      #er-panel .er-field-label { font-size:10px; color:#999; margin-bottom:2px; font-weight:bold; text-transform:uppercase; }
-      #er-panel .er-field-input { padding:8px; border:1px solid #ddd; border-radius:4px; font-size:13px; width:100%; background:#fafafa; }
-      #er-panel .er-field-input:focus { border-color:#1976d2; background:#fff; outline:none; }
-      #er-panel .er-sortable-item { background:white; border-radius:6px; padding:10px; margin-bottom:8px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
-      #er-panel .er-handle { font-size:20px; color:#bbb; cursor:grab; }
-      #er-panel .er-step-badge { background:#333; color:white; width:25px; height:25px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:12px; font-weight:bold; }
-      #er-panel .er-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:2000; }
-      #er-panel .er-modal-content { background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; }
-      #er-panel .er-checkbox-item { padding:12px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:15px; cursor:pointer; transition:background 0.2s; }
-      #er-panel .er-checkbox-item:hover { background:#f9f9f9; }
-      #er-panel .er-machine-check { width:24px; height:24px; border:2px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; background:white; }
-      #er-panel .er-machine-check.selected { background:#1976d2; border-color:#1976d2; }
-      #er-panel .er-loading { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; justify-content:center; align-items:center; z-index:999; }
-      .er-modal-progress-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:3000; display:none; justify-content:center; align-items:center; }
-      .er-progress-box { background:white; padding:30px; border-radius:8px; width:80%; max-width:400px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3); }
-      .er-prog-track-lg { width:100%; height:20px; background:#eee; border-radius:10px; margin:20px 0; overflow:hidden; border:1px solid #ccc; }
-      .er-prog-fill-lg { height:100%; background:#2e7d32; width:0%; transition:width 0.5s ease; }
-      .er-prog-text { font-weight:900; font-size:16px; color:#1565c0; }
-    `;
+    st.textContent = '\n      #er-panel { font-family:\'Roboto\',sans-serif; background:#f4f4f9; padding:15px; font-size:12px; min-height:calc(100vh - 48px); touch-action:pan-y; }\n      #er-panel .er-header-card { background:white; padding:20px; border-radius:8px; margin-bottom:20px; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-top:5px solid #212121; }\n      #er-panel .er-title { font-size:24px; font-weight:900; color:#1565c0; margin-bottom:5px; }\n      #er-panel .er-subtitle { font-size:12px; color:#666; font-weight:bold; }\n      #er-panel .er-desc-input { width:100%; padding:8px; font-size:14px; border:1px solid #ddd; border-radius:4px; margin-top:5px; font-weight:bold; color:#333; }\n      #er-panel .er-btn { padding:10px 15px; border-radius:6px; border:none; font-weight:bold; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; justify-content:center; gap:5px; }\n      #er-panel .er-btn-primary { background:#1976d2; color:white; width:100%; padding:12px; margin-top:10px; }\n      #er-panel .er-btn-action { background:#212121; color:white; }\n      #er-panel .er-btn-icon { width:35px; height:35px; padding:0; font-size:16px; }\n      #er-panel .er-btn-danger { background:#d32f2f; color:white; }\n      #er-panel .er-btn-config { background:#ff9800; color:white; }\n      #er-panel .er-view-section { display:none; }\n      #er-panel .er-active { display:block; }\n      #er-panel .er-route-card { background:white; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,0.05); border-left:5px solid #1976d2; }\n      #er-panel .er-step-header { font-weight:900; font-size:16px; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px; color:#333; }\n      #er-panel .er-grid-fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }\n      #er-panel .er-field-group { display:flex; flex-direction:column; }\n      #er-panel .er-field-label { font-size:10px; color:#999; margin-bottom:2px; font-weight:bold; text-transform:uppercase; }\n      #er-panel .er-field-input { padding:8px; border:1px solid #ddd; border-radius:4px; font-size:13px; width:100%; background:#fafafa; }\n      #er-panel .er-field-input:focus { border-color:#1976d2; background:#fff; outline:none; }\n      #er-panel .er-sortable-item { background:white; border-radius:6px; padding:10px; margin-bottom:8px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }\n      #er-panel .er-handle { font-size:20px; color:#bbb; cursor:grab; }\n      #er-panel .er-step-badge { background:#333; color:white; width:25px; height:25px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:12px; font-weight:bold; }\n      #er-panel .er-modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:2000; }\n      #er-panel .er-modal-content { background:white; padding:20px; border-radius:8px; width:90%; max-width:400px; max-height:80vh; overflow-y:auto; }\n      #er-panel .er-checkbox-item { padding:12px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:15px; cursor:pointer; transition:background 0.2s; }\n      #er-panel .er-checkbox-item:hover { background:#f9f9f9; }\n      #er-panel .er-machine-check { width:24px; height:24px; border:2px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; color:white; background:white; }\n      #er-panel .er-machine-check.selected { background:#1976d2; border-color:#1976d2; }\n      #er-panel .er-loading { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); display:flex; justify-content:center; align-items:center; z-index:999; }\n      .er-modal-progress-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:3000; display:none; justify-content:center; align-items:center; }\n      .er-progress-box { background:white; padding:30px; border-radius:8px; width:80%; max-width:400px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3); }\n      .er-prog-track-lg { width:100%; height:20px; background:#eee; border-radius:10px; margin:20px 0; overflow:hidden; border:1px solid #ccc; }\n      .er-prog-fill-lg { height:100%; background:#2e7d32; width:0%; transition:width 0.5s ease; }\n      .er-prog-text { font-weight:900; font-size:16px; color:#1565c0; }\n    ';
     document.head.appendChild(st);
   }
 
@@ -68,29 +32,7 @@ function loadEditorRutas(idOrden) {
 
   window.er_mostrarPantallaBusqueda = function() {
     var ca = document.getElementById('content-area');
-    ca.innerHTML = `
-<div id="er-panel">
-  <div style="padding:30px; max-width:520px; margin:0 auto;">
-    <div class="er-header-card" style="text-align:center;">
-      <div class="er-title">✏️ EDITOR DE RUTAS</div>
-      <div class="er-subtitle" style="margin-bottom:8px;">Escribe la orden para cargar su ruta</div>
-      <div style="background:#e3f2fd; border-radius:6px; padding:10px 14px; margin-bottom:16px; text-align:left; font-size:11px; color:#1565c0; font-weight:bold;">
-        📌 Formato: <b>SERIE.CONSECUTIVO</b> &nbsp;|&nbsp; Ejemplos: <b>F.8848</b> &nbsp;·&nbsp; <b>P.0025</b> &nbsp;·&nbsp; <b>GEN.0100</b>
-      </div>
-      <div style="display:flex; gap:10px; margin-top:5px;">
-        <input type="text" id="er-txtBuscarOrden" class="er-desc-input"
-               placeholder="Ej: F.8848, P.0025, GEN.0100"
-               style="flex:1; font-size:15px; padding:10px; text-transform:uppercase;"
-               onkeydown="if(event.key==='Enter') er_buscarOrden()"
-               oninput="this.value=this.value.toUpperCase()">
-        <button class="er-btn er-btn-action" style="padding:10px 20px;" onclick="er_buscarOrden()">
-          🔍 CARGAR
-        </button>
-      </div>
-      <div id="er-msgBusqueda" style="margin-top:12px; font-size:12px; font-weight:bold;"></div>
-    </div>
-  </div>
-</div>`;
+    ca.innerHTML = '\n<div id="er-panel">\n  <div style="padding:30px; max-width:520px; margin:0 auto;">\n    <div class="er-header-card" style="text-align:center;">\n      <div class="er-title">✏️ EDITOR DE RUTAS</div>\n      <div class="er-subtitle" style="margin-bottom:8px;">Escribe la orden para cargar su ruta</div>\n      <div style="background:#e3f2fd; border-radius:6px; padding:10px 14px; margin-bottom:16px; text-align:left; font-size:11px; color:#1565c0; font-weight:bold;">\n        📌 Formato: <b>SERIE.CONSECUTIVO</b> &nbsp;|&nbsp; Ejemplos: <b>F.8848</b> &nbsp;·&nbsp; <b>P.0025</b> &nbsp;·&nbsp; <b>GEN.0100</b>\n      </div>\n      <div style="display:flex; gap:10px; margin-top:5px;">\n        <input type="text" id="er-txtBuscarOrden" class="er-desc-input"\n               placeholder="Ej: F.8848, P.0025, GEN.0100"\n               style="flex:1; font-size:15px; padding:10px; text-transform:uppercase;"\n               onkeydown="if(event.key===\'Enter\') er_buscarOrden()"\n               oninput="this.value=this.value.toUpperCase()">\n        <button class="er-btn er-btn-action" style="padding:10px 20px;" onclick="er_buscarOrden()">\n          🔍 CARGAR\n        </button>\n      </div>\n      <div id="er-msgBusqueda" style="margin-top:12px; font-size:12px; font-weight:bold;"></div>\n    </div>\n  </div>\n</div>';
     setTimeout(function(){
       var inp = document.getElementById('er-txtBuscarOrden');
       if (inp) inp.focus();
@@ -99,84 +41,7 @@ function loadEditorRutas(idOrden) {
 
   window.er_mostrarPanelEditor = function(ordenId) {
     var ca = document.getElementById('content-area');
-    ca.innerHTML = `
-<div id="er-panel">
-  <div id="er-loading" class="er-loading">
-    <div style="text-align:center;">
-      <div style="border:5px solid #f3f3f3;border-top:5px solid #1976d2;border-radius:50%;width:40px;height:40px;animation:erSpin 1s linear infinite;margin:0 auto 10px;"></div>
-      <h3 style="color:#1565c0;">Cargando...</h3>
-    </div>
-  </div>
-  <style>@keyframes erSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>
-
-  <div class="er-header-card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <div class="er-title" id="er-lblOrden">Cargando...</div>
-        <div class="er-subtitle" id="er-lblCodigo">...</div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="er-btn" style="background:#607d8b;color:white;font-size:12px;padding:8px 12px;" onclick="er_volverBusqueda()">← OTRA ORDEN</button>
-        <button class="er-btn er-btn-action" onclick="er_toggleMode()" id="er-btn-mode">⚙️ ESTRUCTURA</button>
-      </div>
-    </div>
-    <div style="margin-top:10px;">
-      <label class="er-field-label">DESCRIPCIÓN GLOBAL</label>
-      <input type="text" class="er-desc-input" id="er-globalDesc" oninput="er_syncDescripcion(this.value)">
-    </div>
-  </div>
-
-  <div id="er-view-fields" class="er-view-section er-active">
-    <div id="er-container-fields"></div>
-    <button class="er-btn er-btn-primary" onclick="er_guardarTodo()">💾 GUARDAR CAMBIOS</button>
-  </div>
-
-  <div id="er-view-structure" class="er-view-section">
-    <div id="er-container-structure"></div>
-    <div style="text-align:center; margin:20px;">
-      <button class="er-btn er-btn-action" style="width:100%;" onclick="er_abrirModalAgregar()">(+) AGREGAR PROCESO</button>
-    </div>
-    <button class="er-btn er-btn-primary" onclick="er_guardarTodo()">💾 GUARDAR ESTRUCTURA</button>
-  </div>
-
-  <!-- MODAL AGREGAR -->
-  <div id="er-modalAdd" class="er-modal-overlay">
-    <div class="er-modal-content">
-      <h3>Agregar Proceso</h3>
-      <label class="er-field-label">PROCESO</label>
-      <select id="er-newProc" class="er-field-input" onchange="er_cargarMaquinasModalAdd()"></select>
-      <br><br>
-      <label class="er-field-label">MÁQUINA</label>
-      <select id="er-newMaq" class="er-field-input"></select>
-      <br><br>
-      <div style="display:flex; gap:10px;">
-        <button class="er-btn" style="background:#eee;color:#333;flex:1;" onclick="document.getElementById('er-modalAdd').style.display='none'">Cancelar</button>
-        <button class="er-btn er-btn-primary" style="margin-top:0;flex:1;" onclick="er_confirmarAgregar()">Agregar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL MAQUINAS -->
-  <div id="er-modalMaquinas" class="er-modal-overlay">
-    <div class="er-modal-content">
-      <h3 id="er-lblTituloMaquinas">Gestión de Máquinas</h3>
-      <div id="er-listaCheckMaquinas" style="max-height:300px;overflow-y:auto;margin-bottom:15px;border:1px solid #eee;"></div>
-      <div style="display:flex; gap:10px;">
-        <button class="er-btn" style="background:#eee;color:#333;flex:1;" onclick="document.getElementById('er-modalMaquinas').style.display='none'">Cancelar</button>
-        <button class="er-btn er-btn-primary" style="margin-top:0;flex:1;" onclick="er_guardarSeleccionMaquinas()">Guardar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL PROGRESO GUARDADO -->
-  <div id="er-modalProgress" class="er-modal-progress-overlay">
-    <div class="er-progress-box">
-      <h3 style="margin:0;color:#333;">GUARDANDO</h3>
-      <div class="er-prog-track-lg"><div id="er-progBar" class="er-prog-fill-lg"></div></div>
-      <div id="er-progMsg" class="er-prog-text">Iniciando...</div>
-    </div>
-  </div>
-</div>`;
+    ca.innerHTML = '\n<div id="er-panel">\n  <div id="er-loading" class="er-loading">\n    <div style="text-align:center;">\n      <div style="border:5px solid #f3f3f3;border-top:5px solid #1976d2;border-radius:50%;width:40px;height:40px;animation:erSpin 1s linear infinite;margin:0 auto 10px;"></div>\n      <h3 style="color:#1565c0;">Cargando...</h3>\n    </div>\n  </div>\n  <style>@keyframes erSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style>\n\n  <div class="er-header-card">\n    <div style="display:flex; justify-content:space-between; align-items:center;">\n      <div>\n        <div class="er-title" id="er-lblOrden">Cargando...</div>\n        <div class="er-subtitle" id="er-lblCodigo">...</div>\n      </div>\n      <div style="display:flex; gap:8px;">\n        <button class="er-btn" style="background:#607d8b;color:white;font-size:12px;padding:8px 12px;" onclick="er_volverBusqueda()">← OTRA ORDEN</button>\n        <button class="er-btn er-btn-action" onclick="er_toggleMode()" id="er-btn-mode">⚙️ ESTRUCTURA</button>\n      </div>\n    </div>\n    <div style="margin-top:10px;">\n      <label class="er-field-label">DESCRIPCIÓN GLOBAL</label>\n      <input type="text" class="er-desc-input" id="er-globalDesc" oninput="er_syncDescripcion(this.value)">\n    </div>\n  </div>\n\n  <div id="er-view-fields" class="er-view-section er-active">\n    <div id="er-container-fields"></div>\n    <button class="er-btn er-btn-primary" onclick="er_guardarTodo()">💾 GUARDAR CAMBIOS</button>\n  </div>\n\n  <div id="er-view-structure" class="er-view-section">\n    <div id="er-container-structure"></div>\n    <div style="text-align:center; margin:20px;">\n      <button class="er-btn er-btn-action" style="width:100%;" onclick="er_abrirModalAgregar()">(+) AGREGAR PROCESO</button>\n    </div>\n    <button class="er-btn er-btn-primary" onclick="er_guardarTodo()">💾 GUARDAR ESTRUCTURA</button>\n  </div>\n\n  <!-- MODAL AGREGAR -->\n  <div id="er-modalAdd" class="er-modal-overlay">\n    <div class="er-modal-content">\n      <h3>Agregar Proceso</h3>\n      <label class="er-field-label">PROCESO</label>\n      <select id="er-newProc" class="er-field-input" onchange="er_cargarMaquinasModalAdd()"></select>\n      <br><br>\n      <label class="er-field-label">MÁQUINA</label>\n      <select id="er-newMaq" class="er-field-input"></select>\n      <br><br>\n      <div style="display:flex; gap:10px;">\n        <button class="er-btn" style="background:#eee;color:#333;flex:1;" onclick="document.getElementById(\'er-modalAdd\').style.display=\'none\'">Cancelar</button>\n        <button class="er-btn er-btn-primary" style="margin-top:0;flex:1;" onclick="er_confirmarAgregar()">Agregar</button>\n      </div>\n    </div>\n  </div>\n\n  <!-- MODAL MAQUINAS -->\n  <div id="er-modalMaquinas" class="er-modal-overlay">\n    <div class="er-modal-content">\n      <h3 id="er-lblTituloMaquinas">Gestión de Máquinas</h3>\n      <div id="er-listaCheckMaquinas" style="max-height:300px;overflow-y:auto;margin-bottom:15px;border:1px solid #eee;"></div>\n      <div style="display:flex; gap:10px;">\n        <button class="er-btn" style="background:#eee;color:#333;flex:1;" onclick="document.getElementById(\'er-modalMaquinas\').style.display=\'none\'">Cancelar</button>\n        <button class="er-btn er-btn-primary" style="margin-top:0;flex:1;" onclick="er_guardarSeleccionMaquinas()">Guardar</button>\n      </div>\n    </div>\n  </div>\n\n  <!-- MODAL PROGRESO GUARDADO -->\n  <div id="er-modalProgress" class="er-modal-progress-overlay">\n    <div class="er-progress-box">\n      <h3 style="margin:0;color:#333;">GUARDANDO</h3>\n      <div class="er-prog-track-lg"><div id="er-progBar" class="er-prog-fill-lg"></div></div>\n      <div id="er-progMsg" class="er-prog-text">Iniciando...</div>\n    </div>\n  </div>\n</div>';
 
   // Nota: er_mostrarPanelEditor solo construye el HTML. La carga de datos
   // se hace desde er_buscarOrden (manual) o desde er_initUI (desde Planificador).
