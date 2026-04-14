@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "build": "node rebuild_main.js",
+    "deploy": "node rebuild_main.js && clasp push",
+    "deploy:prod": "node rebuild_main.js && clasp push --deploymentId AKfycbyDxTSHPygL1Ba93kHFisiInmZZf6zHM63jOHfqPGv45bdbOJ1Av2lg-DigAGjH50Co1w"
+  }
+}

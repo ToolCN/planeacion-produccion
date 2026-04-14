@@ -4,5 +4,6 @@ unwrap_modules.js
 rebuild_main.js
 fix_script_tags.js
 split_html.py
+package.json
 *.md
 .gitignore
