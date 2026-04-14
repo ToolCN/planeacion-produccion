@@ -6065,6 +6065,7 @@ function loadPlanificador() {
 #planif-panel .pt-seleccionada.pt-foco { background: #f9a825 !important; }
 #planif-panel .pt-drag-handle { color: #90a4ae; font-size: 16px; padding: 4px 8px; }
 #planif-panel .sortable-ghost { opacity: 0.4 !important; }
+    @keyframes planifShimmer { 0%,100%{ color:#7b1fa2; } 50%{ color:#000000; } }
     @keyframes planifBlink { 0%,100%{opacity:1} 50%{opacity:0.25} }
     @keyframes planifShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-3px)} 60%{transform:translateX(3px)} 80%{transform:translateX(-2px)} }
     #planif-panel .pt-btn-sobrep { animation: planifShake 0.6s ease infinite; box-shadow: 0 0 0 2px #d32f2f !important; }
@@ -10928,6 +10929,7 @@ function planifRenderBoardTabla() {
         {key:'invMax',      label:'Max'},
         {key:'invExist',    label:'Exist'},
         {key:'invPct',      label:'%'},
+        {key:'invAMax',     label:'A Max',  noClick:true},
         {key:'invExistNeg', label:'Ex_Neg', soloC7:true},
         {key:'sol',         label:'Solic.'},
         {key:'prod',        label:'Prod.'},
@@ -11235,7 +11237,22 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
     (Number(o.prod) > 0
       ? '<td onclick="planifAbrirModalProdPlanif(\'' + idE + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#880e4f;font-weight:900;text-decoration:underline;" title="Click para ver producción">' + planifFormatN(o.prod) + '</td>'
       : '<td style="padding:4px 8px;text-align:right;color:#999;">' + planifFormatN(o.prod) + '</td>') +
-    '<td style="padding:4px 8px;text-align:right;font-weight:900;color:#000;">' + planifFormatN(Math.max(0, (Number(o.sol)||0) - (Number(o.prod)||0))) + '</td>' +
+    (function(){
+      var restan = Math.max(0, (Number(o.sol)||0) - (Number(o.prod)||0));
+      var restanTitle = '';
+      if (o.invEsVarilla === true) {
+        var pesoKgM2  = parseFloat(o.peso) || 0;
+        var longStr2  = String(o.long || '');
+        var longMatch2 = longStr2.match(/[\d.]+/);
+        var longM2    = longMatch2 ? (parseFloat(longMatch2[0]) || 0) : 0;
+        var pesoPza2  = (pesoKgM2 > 0 && longM2 > 0) ? pesoKgM2 * longM2 : 0;
+        if (pesoPza2 > 0) {
+          var restanPzas = Math.round(restan / pesoPza2);
+          restanTitle = ' title="' + restanPzas.toLocaleString('es-MX') + ' pzas"';
+        }
+      }
+      return '<td style="padding:4px 8px;text-align:right;font-weight:900;color:#000;"' + restanTitle + '>' + planifFormatN(restan) + '</td>';
+    })() +
     '<td style="padding:4px 8px;text-align:center;"><button onclick="planifTablaToggleEstado(\'' + idE + '\')" class="' + estadoExtraClass + '" style="background:' + estadoColor + ';color:white;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;" id="pt-estbtn-' + o.id + '">' + estadoLabel + '</button></td>' +
     '</tr>';
 }
@@ -11516,7 +11533,7 @@ function planifInvCeldas(o, tieneC7) {
 
   // Si no hay dato de inventario (código no encontrado en INVENTARIO_EXTERNO)
   if (exist === null || exist === undefined) {
-    var blancos = sinDato + sinDato + sinDato + sinDato;
+    var blancos = sinDato + sinDato + sinDato + sinDato + sinDato;
     if (tieneC7) blancos += celdaExNegVacia;
     return blancos;
   }
@@ -11540,10 +11557,45 @@ function planifInvCeldas(o, tieneC7) {
 
   var pctLabel = pct !== null ? pct + '%' : '—';
 
+  // ── A Max: diferencia MAX - EXIST ──
+  // Para VARILLA (invEsVarilla=true): MAX y EXIST están en PIEZAS en el inventario.
+  //   → Celda muestra kg = aMax_pzas × (peso_kg_metro × longitud_metros)
+  //   → Tooltip muestra las piezas originales del inventario
+  // Para todo lo demás: MAX y EXIST ya están en kg → celda directa, sin tooltip
+  var invEsVar = o.invEsVarilla === true;
+  var aMaxRaw  = Math.max(0, maxNum - existNum); // en la unidad del inventario (pzas si varilla, kg si no)
+  var aMaxKg   = 0;
+  var aMaxTooltip = '';
+
+  if (invEsVar) {
+    // aMaxRaw está en piezas — convertir a kg: pzas × peso_kg_metro × longitud_metros
+    // Extraer el número del campo long (puede ser "3.0 metros", "1.0 metros", "3 1/2", etc.)
+    var pesoKgM  = parseFloat(o.peso) || 0;
+    var longStr  = String(o.long || '');
+    var longMatch = longStr.match(/[\d.]+/);
+    var longM    = longMatch ? (parseFloat(longMatch[0]) || 0) : 0;
+    var pesoPorPza = (pesoKgM > 0 && longM > 0) ? pesoKgM * longM : 0;
+    if (pesoPorPza > 0) {
+      aMaxKg = aMaxRaw * pesoPorPza;
+      aMaxTooltip = ' title="' + Math.round(aMaxRaw).toLocaleString('es-MX') + ' pzas"';
+    } else {
+      // Sin datos de peso/longitud: mostrar piezas con aviso
+      aMaxKg = aMaxRaw;
+      aMaxTooltip = ' title="en pzas (sin peso/long para convertir)"';
+    }
+  } else {
+    // KG: ya está en kg, mostrar directo
+    aMaxKg = aMaxRaw;
+  }
+
+  var aMaxFmt   = Math.round(aMaxKg).toLocaleString('es-MX');
+  var aMaxStyle = 'padding:3px 6px;text-align:right;font-size:11px;font-weight:900;cursor:default;animation:planifShimmer 2.5s ease-in-out infinite;';
+
   var celdas = '<td style="padding:4px 6px;text-align:right;font-size:11px;">' + fmtN(minNum) + '</td>' +
                '<td style="padding:4px 6px;text-align:right;font-size:11px;">' + fmtN(maxNum) + '</td>' +
                '<td style="padding:4px 6px;text-align:right;font-size:11px;">' + fmtN(existNum) + '</td>' +
-               '<td style="padding:3px 6px;text-align:center;font-size:11px;font-weight:900;background:' + colInfo.bg + ';color:' + textColor + ';' + blinkStyle + '">' + pctLabel + '</td>';
+               '<td style="padding:3px 6px;text-align:center;font-size:11px;font-weight:900;background:' + colInfo.bg + ';color:' + textColor + ';' + blinkStyle + '">' + pctLabel + '</td>' +
+               '<td style="' + aMaxStyle + '"' + aMaxTooltip + '>' + (aMaxKg > 0 ? aMaxFmt : '—') + '</td>';
 
   // Celda Ex_Neg: SIEMPRE emitirla cuando tieneC7=true para mantener alineación
   if (tieneC7) {
@@ -11796,7 +11848,7 @@ function planifTablaRefrescarEncabezados(maqKey, maqSafe) {
     if (_lbls) { esp1 = _lbls.esp1 || 'Esp.1'; esp2 = _lbls.esp2 || 'Esp.2'; }
   }
   // COLUMNAS FIJAS: [0]=check,[1]=Pedido,[2]=drag1,[3]=#,[4]=Orden,[5]=🏭 → offset=6
-  var colsKeys   = ['codigo','tipo','_drag2','dia','long','cuerpo','cuerda','_drag3','acero','_docs','invMin','invMax','invExist','invPct','sol','prod','_restan'];
+  var colsKeys   = ['codigo','tipo','_drag2','dia','long','cuerpo','cuerda','_drag3','acero','_docs','invMin','invMax','invExist','invPct','invAMax','sol','prod','_restan'];
   var colsLabels = ['Código','Tipo','','Diam.','Long.',esp1,esp2,'','Acero','\uD83D\uDCCB','Min','Max','Exist','%','Solic.','Prod.','Restan'];
   var ths = tabla.querySelectorAll('thead th');
   colsKeys.forEach(function(key, i) {
@@ -20618,7 +20670,8 @@ function loadTableroSup() {
       '#tsup-panel .btn-imprimir:active{background:#e65100;}',
       '@media print{@page{size:letter landscape;margin:10mm 5mm;} #tsup-panel .plan-topbar,#tsup-panel .turno-topbar,#tsup-panel .proc-header,#tsup-panel .ord-topbar,#tsup-miniLoader,#sidebar,#header-bar,.no-print{display:none!important;} #tsup-panel .plan-body,#tsup-panel .turno-body{overflow:visible!important;height:auto!important;padding:0!important;} body,#tsup-panel{background:white!important;} -webkit-print-color-adjust:exact; print-color-adjust:exact;}',
       '#tsup-panel .ord-topbar{background:#161b22;padding:12px 15px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #ff6b00;flex-shrink:0;}',
-      '#tsup-panel .btn-back{background:none;border:2px solid #ff6b00;color:#ff6b00;padding:8px 14px;border-radius:8px;font-weight:900;font-size:16px;cursor:pointer;}',
+      '#tsup-panel .btn-back{background:#00c853;border:2px solid #00c853;color:#fff;padding:8px 14px;border-radius:8px;font-weight:900;font-size:16px;cursor:pointer;animation:btnBackPulse 1.4s ease-in-out infinite;box-shadow:0 0 0 0 rgba(0,200,83,0.7);}',
+      '@keyframes btnBackPulse{0%{box-shadow:0 0 0 0 rgba(0,200,83,0.7);}60%{box-shadow:0 0 0 10px rgba(0,200,83,0);}100%{box-shadow:0 0 0 0 rgba(0,200,83,0);}}',
       '#tsup-panel .ord-title{flex:1;font-size:20px;font-weight:900;color:#ff6b00;letter-spacing:2px;}',
       '#tsup-panel .btn-hist{background:#30363d;border:1px solid #484f58;color:#c9d1d9;padding:8px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;}',
       '#tsup-panel .btn-hist.active{background:#ff6b00;color:#0d1117;border-color:#ff6b00;}',
@@ -20637,8 +20690,10 @@ function loadTableroSup() {
       '#tsup-panel .maq-chip:active{transform:scale(0.95);}',
 
       /* Lista Órdenes */
-      '#tsup-panel .ord-list{flex:1;overflow-y:auto;padding:8px;}',
-      '#tsup-panel .maq-group{margin-bottom:16px;}',
+      '#tsup-panel .ord-list{flex:1;overflow-y:auto;padding:4px 8px 8px 8px;}',
+      '#tsup-panel .maq-group{margin-bottom:12px;margin-top:0;}',
+      '#tsup-panel .maq-group:first-of-type{margin-top:0;}',
+      '#tsup-panel .ord-list{flex:1;overflow-y:auto;padding:4px 8px 8px 8px;}',
       '#tsup-panel .maq-group-header{background:linear-gradient(90deg,#1c2333,#161b22);border:1px solid #30363d;border-left:4px solid #ff6b00;border-radius:8px 8px 0 0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;}',
       '#tsup-panel .maq-group-name{font-size:15px;font-weight:900;color:#ff6b00;letter-spacing:1px;}',
       '#tsup-panel .maq-group-cnt{font-size:11px;color:#8b949e;background:#0d1117;padding:2px 8px;border-radius:10px;}',
@@ -20760,10 +20815,9 @@ function loadTableroSup() {
     <div class="ord-topbar">
       <button class="btn-back" onclick="tsupVolverAProcesos()">◀</button>
       <div class="ord-title" id="tsup-txtProcesoActual">---</div>
+      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)" style="padding:7px 12px;border:2px solid #ffd600;border-radius:8px;background:#161b22;color:#e6edf3;font-size:13px;font-weight:700;outline:none;width:400px;flex-shrink:0;animation:buscarPulso 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,214,0,0.6);">
+      <style>#tsup-inputBuscar:focus{animation:none!important;box-shadow:0 0 0 3px rgba(255,214,0,0.5)!important;border-color:#ffd600!important;}@keyframes buscarPulso{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.6);border-color:#ffd600;}50%{box-shadow:0 0 0 8px rgba(255,214,0,0);border-color:#ffe57f;}}</style>
       <button class="btn-hist" id="tsup-btnHist" onclick="tsupToggleHistoricas()">📜 Históricas</button>
-    </div>
-    <div class="ord-search">
-      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)">
     </div>
     <div id="tsup-maqFilterBar"></div>
     <div class="ord-list" id="tsup-listaOrdenes"></div>
@@ -21250,9 +21304,6 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
           + '<td style="border:2px solid #000;padding:2px;text-align:center;">' + getCirculoAvance(o.avance || 0) + '</td>'
           + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:11px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
-          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.ultimoLote || '-') + '</td>'
-          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + Math.round(Number(o.ultimoPIni) || 0) + '</td>'
-          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + Math.round(Number(o.ultimoPFin) || 0) + '</td>'
           + '<td style="border:2px solid #000;border-left:3px solid #000;padding:2px;background:#fafafa;width:22px;"></td>'
           + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
           + '<td style="border:2px solid #000;padding:2px;background:#fafafa;"></td>'
@@ -21264,73 +21315,43 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '</tr>';
       });
 
-      var filaBlanco =
-          '<tr style="height:28px;">'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;"></td>'
-          + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;width:22px;"></td>'
-          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
-          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
-          + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
-          + '<td style="border:2px solid #000;border-left:2px solid #000;background:#fafafa;width:22px;"></td>'
-          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
-          + '<td style="border:2px solid #000;background:#fafafa;"></td>'
-          + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
-          + '</tr>';
-
       html +=
-        '<div style="margin-bottom:12px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);page-break-inside:avoid;break-inside:avoid;">'
+        '<div style="margin-bottom:36px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);page-break-inside:avoid;break-inside:avoid;">'
         + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
         + '<tr style="background:#fff9c4;height:44px;">'
         + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:12px;text-transform:uppercase;width:30%;color:#000;">⚙ MÁQUINA: ' + m.nombre + '</td>'
         + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:40%;color:#000;">Operador:</td>'
-        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:30%;color:#000;">Horario: <span style="border:2px solid #000;display:inline-block;width:60px;height:22px;vertical-align:middle;"></span> a <span style="border:2px solid #000;display:inline-block;width:60px;height:22px;vertical-align:middle;"></span></td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:11px;font-weight:700;width:30%;color:#000;">Total de Rollos: <span style="border:2px solid #000;display:inline-block;width:80px;height:22px;vertical-align:middle;"></span></td>'
         + '</tr>'
         + '</table>'
         + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
         + '<thead>'
         + '<tr style="background:#dde3f0;">'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Pedido</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Orden</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:8%">Producto</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">Diam.</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">Long.</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:7%">BARNIZ</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">CAJA</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Solic.</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Prod.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Pedido</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Orden</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:12%">Producto</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Diam.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Long.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:8%">BARNIZ</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">CAJA</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Solic.</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:6%">Prod.</th>'
         + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Av.</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Restan</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:5%">Ult.Lote</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">P.Ini</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:4%">P.Fin</th>'
-        + '<th style="border:2px solid #000;border-left:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:3%">Lote</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Inicio</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Final</th>'
-        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Total</th>'
-        + '<th style="border:2px solid #000;border-left:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:3%">Lote</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Inicio</th>'
-        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">R.Final</th>'
-        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Total</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:8px;color:#000;width:7%">Restan</th>'
+        + '<th style="border:2px solid #000;border-left:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Tarima</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Inicio</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Final</th>'
+        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">Total</th>'
+        + '<th style="border:2px solid #000;border-left:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:4%">Tarima</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Inicio</th>'
+        + '<th style="border:2px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:6%">Rollos Final</th>'
+        + '<th style="border:2px solid #000;border-right:3px solid #000;padding:3px;text-align:center;font-size:7px;color:#000;width:5%">Total</th>'
         + '</tr>'
         + '</thead>'
         + '<tbody>'
         + filasDatos
-        + filaBlanco
         + '</tbody></table>'
-        + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:10px;font-weight:700;min-height:22px;color:#000;">Observaciones:</div>'
+        + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:10px;font-weight:700;min-height:44px;color:#000;">Observaciones:</div>'
         + '</div>';
     });
     return html;
@@ -21384,19 +21405,136 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     }
   };
 
+  function tsupHtmlTurnoColatadoVertical(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#000;">No hay órdenes para este proceso.</p>';
+
+    function getCirculoAvance(avance) {
+      var pct = Math.round(avance);
+      var color = pct <= 50 ? '#2196f3' : pct <= 75 ? '#fbc02d' : pct <= 90 ? '#66bb6a' : pct <= 105 ? '#2e7d32' : '#e91e63';
+      var r = 14, circ = 2 * Math.PI * r;
+      var fill = Math.min(avance, 105);
+      var offset = circ - (fill / 105) * circ;
+      return '<svg width="38" height="38" viewBox="0 0 38 38" style="display:inline-block;vertical-align:middle;">'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="#e0e0e0" stroke-width="4"/>'
+        + '<circle cx="19" cy="19" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4"'
+        + ' stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '"'
+        + ' stroke-linecap="round" transform="rotate(-90 19 19)"/>'
+        + '<text x="19" y="23" text-anchor="middle" font-size="8" font-weight="900" fill="' + color + '">' + pct + '%</text>'
+        + '</svg>';
+    }
+
+    var imgTarima = '<img src="https://supraciclaje.com/wp-content/uploads/2021/06/compra-tarima-estandar-usada-mexico.png" style="width:90px;height:65px;object-fit:contain;display:block;" />';
+
+    var bloqueCaptura = function() {
+      return '<td style="padding:4px 6px;vertical-align:top;width:50%;">'
+        + '<div style="display:flex;align-items:flex-start;gap:6px;">'
+        + '<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;">'
+        + imgTarima
+        + '<table style="border-collapse:collapse;width:90px;margin-top:2px;">'
+        + '<tr style="background:#fff9c4;">'
+        + '<td style="border:1.5px solid #000;padding:2px 4px;font-weight:900;font-size:8px;white-space:nowrap;">Tarima #</td>'
+        + '<td style="border:1.5px solid #000;padding:2px 4px;background:white;width:50px;">&nbsp;</td>'
+        + '</tr>'
+        + '</table>'
+        + '</div>'
+        + '<table style="border-collapse:collapse;flex:1;font-size:9px;">'
+        + '<tr style="height:26px;">'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;font-weight:900;white-space:nowrap;">Rollos Inicio</td>'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;background:white;min-width:60px;">&nbsp;</td>'
+        + '</tr>'
+        + '<tr style="height:26px;">'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;font-weight:900;white-space:nowrap;">Rollos Final</td>'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;background:white;">&nbsp;</td>'
+        + '</tr>'
+        + '<tr style="background:#e8f5e9;height:26px;">'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;font-weight:900;color:#2e7d32;white-space:nowrap;">Total Rollos</td>'
+        + '<td style="border:1.5px solid #000;padding:5px 5px;background:white;">&nbsp;</td>'
+        + '</tr>'
+        + '</table>'
+        + '</div>'
+        + '</td>';
+    };
+
+    var html = '';
+    lista.forEach(function(m) {
+      var ordenesFiltradas = (m.ordenes || []).slice(0, 2);
+      var filasDatos = '';
+      ordenesFiltradas.forEach(function(o) {
+        var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+        var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+        var filaCabecera = '<tr style="background:#dde3f0;">'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:7%">Pedido</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:7%">Orden</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:14%">Producto</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:6%">Diam.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:6%">Long.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:9%">BARNIZ</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:7%">CAJA</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:8%">Solic.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:8%">Prod.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:6%">Av.</th>'
+          + '<th style="border:2px solid #000;padding:2px;text-align:center;font-size:7px;color:#000;width:8%">Restan</th>'
+          + '</tr>';
+
+        filasDatos += filaCabecera
+          + '<tr style="height:28px;">'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;font-weight:900;color:#000;">' + (o.pedido || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#1565c0;">' + (o.ordenFull || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;color:#000;">' + (o.producto || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + diam + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + lon + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerda || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;color:#000;">' + (o.cuerpo || '') + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:11px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+          + '<td style="border:2px solid #000;padding:2px;text-align:center;">' + getCirculoAvance(o.avance || 0) + '</td>'
+          + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:11px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+          + '</tr>'
+          + '<tr style="background:#fffde7;">'
+          + '<td colspan="11" style="border:2px solid #000;padding:0;">'
+          + '<table style="width:100%;border-collapse:collapse;"><tr>'
+          + bloqueCaptura()
+          + bloqueCaptura()
+          + '</tr></table>'
+          + '</td>'
+          + '</tr>';
+      });
+
+      html +=
+        '<div style="margin-bottom:54px;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.18);page-break-inside:avoid;break-inside:avoid;">'
+        + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
+        + '<tr style="background:#fff9c4;height:36px;">'
+        + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:40%;color:#000;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:35%;color:#000;">Operador:</td>'
+        + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:25%;color:#000;">Total de Rollos:</td>'
+        + '</tr>'
+        + '</table>'
+        + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
+        + '<tbody>'
+        + filasDatos
+        + '</tbody></table>'
+        + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:9px;font-weight:700;min-height:36px;color:#000;">Observaciones:</div>'
+        + '</div>';
+    });
+    return html;
+  }
+
   function tsupImprimirColatado(proceso, lista, orientacion) {
     orientacion = orientacion || 'horizontal';
     var esVertical = orientacion === 'vertical';
-    var htmlMaquinas = tsupHtmlTurnoColatado(lista);
 
-    var htmlFinal = htmlMaquinas.replace(/(<div style="margin-bottom:12px;)/g, '<div class="bloque-maq" style="margin-bottom:3px;');
+    var htmlMaquinas = esVertical
+      ? tsupHtmlTurnoColatadoVertical(lista)
+      : tsupHtmlTurnoColatado(lista);
+
+    var htmlFinal = htmlMaquinas.replace(/(<div style="margin-bottom:1[02]px;)/g, '<div class="bloque-maq" style="margin-bottom:3px;');
 
     var pageStyle = esVertical
-      ? '@page{size:letter portrait;margin:4mm 3mm;}'
+      ? '@page{size:letter portrait;margin:6mm 5mm;}'
       : '@page{size:letter landscape;margin:4mm 3mm;}';
 
     var escalaStyle = esVertical
-      ? '.bloque-maq{zoom:0.58;margin-bottom:3px;break-inside:avoid;page-break-inside:avoid;}'
+      ? '.bloque-maq{break-inside:avoid;page-break-inside:avoid;}'
       : '.bloque-maq{break-inside:avoid;page-break-inside:avoid;}';
 
     var win = window.open('', '_blank');
@@ -21413,7 +21551,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       + '<div class="no-print">'
       + '<button onclick="window.print()" style="padding:8px 18px;background:#1565c0;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:4px;">🖨️ IMPRIMIR</button>'
       + '</div>'
-      + '<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">'
+      + '<table style="width:100%;border-collapse:collapse;margin-bottom:2px;">'
       + '<tr>'
       + '<td style="width:80px;padding:0 8px 0 0;vertical-align:middle;">'
       + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:60px;width:auto;display:block;" onerror="this.style.display=\'none\'">'
@@ -21432,7 +21570,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       + '</td>'
       + '</tr>'
       + '</table>'
-      + '<hr style="border:2px solid #000;margin:0 0 6px 0;">'
+      + '<hr style="border:2px solid #000;margin:0 0 4px 0;">'
       + htmlFinal
       + '</body></html>');
     win.document.close();
@@ -21478,10 +21616,10 @@ function tsupRenderChipsGrupos(lista) {
   var gs = new Set();
   lista.forEach(function(o) { if (o.grupo) gs.add(o.grupo); });
   var grupos = Array.from(gs).sort();
-  tsup_grupoFiltrosActivos = new Set();
+  tsup_grupoFiltrosActivos = new Set(); // reset al recargar lista
   var bar = document.getElementById('tsup-maqFilterBar');
   if (grupos.length === 0) { bar.innerHTML = ''; return; }
-  var h = '<div class="maq-chip chip-all" id="tsup-chipTodoNada" onclick="tsupToggleTodoNada()">✦ TODO</div>';
+  var h = '<div class="maq-chip chip-all" id="tsup-chipTodoNada" onclick="tsupToggleTodoNada()">✦ TODO / NADA</div>';
   h += grupos.map(function(g) {
     return '<div class="maq-chip" data-grupo="' + g + '" onclick="tsupToggleGrupoChip(\'' + g + '\')">' + g + '</div>';
   }).join('');
@@ -21522,7 +21660,15 @@ window.tsupToggleGrupoChip = tsupToggleGrupoChip;
 function tsupAplicarFiltros(lista, txt) {
   txt = (txt || '').toLowerCase();
   return lista.filter(function(o) {
-    if (tsup_grupoFiltrosActivos.size > 0 && !tsup_grupoFiltrosActivos.has(o.grupo || '')) return false;
+    // Filtro de grupo: si hay grupos activos, la orden debe pertenecer a uno de ellos
+    if (tsup_grupoFiltrosActivos.size > 0) {
+      var grupoOrden = (o.grupo || '').toUpperCase().trim();
+      var match = false;
+      tsup_grupoFiltrosActivos.forEach(function(g) {
+        if (g.toUpperCase().trim() === grupoOrden) match = true;
+      });
+      if (!match) return false;
+    }
     if (txt) {
       var op = (o.serie + '.' + ('0000' + o.orden).slice(-4)).toLowerCase();
       var s = [op, o.pedido, o.codigo, o.tipo, o.diametro, o.longitud, o.cuerda, o.cuerpo, o.acero, o.maquina].join(' ').toLowerCase();
@@ -21538,8 +21684,13 @@ function tsupRenderOrdenes(lista) {
   if (lista.length === 0) { el.innerHTML = '<div class="ord-count">No hay órdenes para mostrar</div>'; return; }
   var grupos = {};
   lista.forEach(function(o) { var m = (o.maquina || 'SIN MÁQUINA').trim(); if (!grupos[m]) grupos[m] = []; grupos[m].push(o); });
+  // Ordenar órdenes dentro de cada máquina por prioridad ascendente
+  Object.keys(grupos).forEach(function(maq) {
+    grupos[maq].sort(function(a, b) { return (a.prioridad || 999) - (b.prioridad || 999); });
+  });
   var maqsSorted = Object.keys(grupos).sort();
-  var h = '<div class="ord-count">' + lista.length + ' órdenes · ' + maqsSorted.length + ' máquina(s)</div>';
+  var h = '<style>@keyframes tsupSobrePulso{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0.7);border-color:#ff1744;}50%{box-shadow:0 0 0 8px rgba(255,23,68,0);border-color:#ff6090;}}</style>'
+    + '<div class="ord-count">' + lista.length + ' órdenes · ' + maqsSorted.length + ' máquina(s)</div>';
   maqsSorted.forEach(function(maq) {
     var ords = grupos[maq];
     h += '<div class="maq-group">';
@@ -21549,7 +21700,8 @@ function tsupRenderOrdenes(lista) {
       var color = pct < 50 ? '#ff6b00' : pct < 95 ? '#58a6ff' : '#3fb950';
       var opName = o.serie + '.' + ('0000' + o.orden).slice(-4);
       var det = [o.cuerpo, o.cuerda, o.acero].filter(function(x) { return x && x.trim() && x.trim() !== 'undefined'; }).join(' · ');
-      var rowStyle = o.cerrada ? 'opacity:0.55;border-left:3px solid #484f58;' : '';
+      var sobreproducido = (!o.cerrada && o.sol > 0 && o.prod > o.sol);
+      var rowStyle = o.cerrada ? 'opacity:0.55;border-left:3px solid #484f58;' : (sobreproducido ? 'border:2px solid #ff1744;animation:tsupSobrePulso 1.2s ease-in-out infinite;' : '');
       var estadoBadge = o.cerrada
         ? '<span style="font-size:9px;background:#21262d;color:#8b949e;padding:1px 6px;border-radius:8px;font-weight:900;margin-left:4px;">' + o.estado + '</span>'
         : '';

@@ -3914,19 +3914,22 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
       maqPermitidasMap[String(dRutas[r][1]).trim() + "_" + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || "");
     }
 
-    // Cargar INVENTARIO_EXTERNO: col A=CODIGO, B=EXISTENCIA, C=MINIMO, D=MAXIMO
+    // Cargar INVENTARIO_EXTERNO: col A=CODIGO, B=EXISTENCIA, C=MINIMO, D=MAXIMO, buscar UNIDAD por header
     var shInvExt = ss.getSheetByName("INVENTARIO_EXTERNO");
     var invExtMap = {};
     if (shInvExt) {
       var dInvExt = shInvExt.getDataRange().getValues();
+      var hInvExt = dInvExt[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var ieUNID  = hInvExt.indexOf("UNIDAD"); if (ieUNID < 0) ieUNID = hInvExt.indexOf("UNID");
       for (var ie = 1; ie < dInvExt.length; ie++) {
         var invCod = String(dInvExt[ie][0] || "").trim().toUpperCase();
         if (!invCod) continue;
         invExtMap[invCod] = {
-          exist: parseFloat(dInvExt[ie][1]) || 0,
-          min:   parseFloat(dInvExt[ie][2]) || 0,
-          max:   parseFloat(dInvExt[ie][3]) || 0,
-          back:  parseFloat(dInvExt[ie][4]) || 0
+          exist:  parseFloat(dInvExt[ie][1]) || 0,
+          min:    parseFloat(dInvExt[ie][2]) || 0,
+          max:    parseFloat(dInvExt[ie][3]) || 0,
+          back:   parseFloat(dInvExt[ie][4]) || 0,
+          unidad: ieUNID >= 0 ? String(dInvExt[ie][ieUNID] || "").trim().toUpperCase() : ""
         };
       }
     }
@@ -4026,7 +4029,9 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
             invMin:      planif_invTmp ? planif_invTmp.min : null,
             invMax:      planif_invTmp ? planif_invTmp.max : null,
             invExistNeg: planif_invTmp ? (planif_invTmp.existNeg !== undefined ? planif_invTmp.existNeg : null) : null,
-            invBack:     planif_invTmp ? (planif_invTmp.back !== undefined ? planif_invTmp.back : 0) : 0
+            invBack:      planif_invTmp ? (planif_invTmp.back !== undefined ? planif_invTmp.back : 0) : 0,
+            invUnidad:    planif_invTmp ? (planif_invTmp.unidad || "") : "",
+            invEsVarilla: planif_invTmp ? (planif_invTmp.esVarilla === true) : false
           });
         }
       }
@@ -8989,8 +8994,8 @@ function obtenerProcesosTablero() {
   
   var procesos = sheetMenu.getDataRange().getValues().slice(1)
     .filter(r => String(r[1]).toUpperCase().trim() == "PROCESO")
-    .map(r => ({ nombre: r[0], img: r[2] }));
-  
+    .map(r => ({ nombre: String(r[0]).toUpperCase().trim(), img: r[2] }));
+
   return { procesos: procesos };
 }
 
@@ -9052,7 +9057,7 @@ function obtenerOrdenesTableroLight(nombreProceso) {
 
     // Solo órdenes VIVAS — cerradas van al botón Histórico
     if (estOrd === "CANCELADO" || estOrd === "TERMINADO" || estOrd === "SOBREPRODUCCION") continue;
-    if (!pedidosVivos[pedido.toUpperCase()]) continue;
+    // No filtrar por estado del pedido padre: mostrar orden viva aunque el pedido esté cerrado
 
     if (!serieOrdenMap[serieOrd]) {
       serieOrdenMap[serieOrd] = { idPrimerProc: String(r[0]) };
@@ -10898,7 +10903,7 @@ function obtenerDatosPlanProduccion(procesoInput) {
   for (var i = 1; i < data.length; i++) {
     var row     = data[i];
     var proceso = String(row[idx.proc]).trim();
-    if (proceso !== procesoInput) continue;
+    if (proceso.toUpperCase() !== String(procesoInput).trim().toUpperCase()) continue;
 
     var estado = String(row[idx.est]).trim().toUpperCase();
     if (EXCLUIR.indexOf(estado) > -1) continue;
@@ -10995,13 +11000,13 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
     }
   }
   // FORM.PROD solo muestra ACTIVE y EN PROCESO
-  var PERMITIDOS = ["ACTIVE", "EN PROCESO"];
+  var PERMITIDOS = ["ACTIVE", "EN PROCESO", "ABIERTO"];
   var listaMaquinas = {};
   for (var i = 1; i < dataOrd.length; i++) {
     var row     = dataOrd[i];
     var proceso = String(row[idxO.proc]).trim();
     var estado  = String(row[idxO.est]).trim().toUpperCase();
-    if (proceso !== procesoInput) continue;
+    if (proceso.toUpperCase() !== String(procesoInput).trim().toUpperCase()) continue;
     if (PERMITIDOS.indexOf(estado) < 0) continue;
     var maquina = String(row[idxO.maq]).trim();
     if (!maquina) continue;
