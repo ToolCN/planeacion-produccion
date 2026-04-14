@@ -1348,13 +1348,14 @@ function setText(id,v){var el=document.getElementById(id);if(el)el.innerText=v;}
 // ══════════════════════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════════════════════════
+<script>
 <?!= include('Mod_Dashboard'); ?>
 <?!= include('Mod_Metricas'); ?>
+<?!= include('Mod_Generador'); ?>
 <?!= include('Mod_Validador'); ?>
 <?!= include('Mod_Tracking'); ?>
 <?!= include('Mod_NuevoPedido'); ?>
 <?!= include('Mod_PedidoINT'); ?>
-<?!= include('Mod_Generador'); ?>
 <?!= include('Mod_Planificador'); ?>
 <?!= include('Mod_Programador'); ?>
 <?!= include('Mod_ProgInteractivo'); ?>
@@ -1370,7 +1371,6 @@ function setText(id,v){var el=document.getElementById(id);if(el)el.innerText=v;}
 <?!= include('Mod_MrpMp'); ?>
 <?!= include('Mod_SalidaAlambres'); ?>
 <?!= include('Mod_MisRegistros'); ?>
-// MÓDULO: PEDIDOS PENDIENTES  (prefijo pp-)
-// ══════════════════════════════════════════════════════
 <?!= include('Mod_PedidosPendientes'); ?>
+</script>
 </html>
