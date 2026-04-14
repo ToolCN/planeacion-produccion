@@ -1,3 +1,4 @@
+<script>
 function loadGenerador() {
   var area = document.getElementById('content-area');
   area.style.padding = '1rem 1.5rem 2rem';
@@ -653,3 +654,5 @@ function temGuardar() {
     .withFailureHandler(function(err) { hideLoader(); sAlert('Error: ' + err); })
     .guardarCambiosTEM(lista);
 }
+
+</script>

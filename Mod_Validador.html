@@ -1,3 +1,4 @@
+<script>
 // ══════════════════════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════════════
 //  MÓDULO: VALIDADOR
@@ -918,3 +919,5 @@ function val_ejecutarTransferencia(){
     .withFailureHandler(function(err){btn.disabled=false;btn.textContent='Ejecutar';sAlert('Error: '+err.message);})
     .transferirProduccion(payload);
 }
+
+</script>
