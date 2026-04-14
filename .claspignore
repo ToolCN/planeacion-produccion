@@ -1,9 +1,24 @@
+# Scripts de utilidad Node.js
+rebuild_main.js
 fix_backticks.js
 wrap_modules.js
 unwrap_modules.js
-rebuild_main.js
-fix_script_tags.js
 split_html.py
+
+# Archivos de proyecto (no son código GAS)
 package.json
+package-lock.json
+ESTADO_PROYECTO.md
+README.md
 *.md
-.gitignore
+
+# Node
+node_modules/
+
+# Scripts temporales
+*.py
+*.sh
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
