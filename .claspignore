@@ -1,6 +1,7 @@
 # Scripts de utilidad Node.js
 rebuild_main.js
 fix_backticks.js
+fix_script_tags.js
 wrap_modules.js
 unwrap_modules.js
 split_html.py
