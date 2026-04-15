@@ -4361,112 +4361,111 @@ function obtenerDatosCantidadOrden(id) {
 
 function actualizarCantidadOrden(id, nuevaCantidad) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
-    var sh = ss.getSheetByName("ORDENES");
+    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var sh        = ss.getSheetByName("ORDENES");
     var shPedidos = ss.getSheetByName("PEDIDOS");
-    var data = sh.getDataRange().getValues();
-    var headers = data[0].map(h => String(h).toUpperCase().trim());
-    
-    var getIdx = function(n) { return headers.indexOf(n); };
+    var data      = sh.getDataRange().getValues();
+    var headers   = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
+
+    var getIdx = function(n){ return headers.indexOf(n); };
     var idx = {
-      ID: getIdx("ID"),
-      SERIE: getIdx("SERIE"),
-      ORDEN: getIdx("ORDEN"),
-      PEDIDO: getIdx("PEDIDO"),
-      UNIDAD: getIdx("UNIDAD"),
-      CANTIDAD: getIdx("CANTIDAD"),
-      SOLICITADO: getIdx("SOLICITADO"),
+      ID:          getIdx("ID"),
+      SERIE:       getIdx("SERIE"),
+      ORDEN:       getIdx("ORDEN"),
+      PEDIDO:      getIdx("PEDIDO"),
+      UNIDAD:      getIdx("UNIDAD"),
+      CANTIDAD:    getIdx("CANTIDAD"),
+      SOLICITADO:  getIdx("SOLICITADO"),
       DESCRIPCION: getIdx("DESCRIPCION"),
-      PESO: getIdx("PESO"),
-      LONGITUD: getIdx("LONGITUD"),
-      PRODUCIDO: getIdx("PRODUCIDO"),
-      ESTADO: getIdx("ESTADO")
+      PESO:        getIdx("PESO"),
+      LONGITUD:    getIdx("LONGITUD"),
+      PRODUCIDO:   getIdx("PRODUCIDO"),
+      ESTADO:      getIdx("ESTADO")
     };
-    
-    var serieTarget = "";
-    var ordenTarget = "";
+
+    // Buscar serie, orden y pedido de la orden recibida
+    var serieTarget  = "";
+    var ordenTarget  = "";
     var pedidoTarget = "";
-    var cantidadOriginal = 0;
-    
-    // Buscar datos de la orden
-    for(var i=1; i<data.length; i++){
-      if(String(data[i][idx.ID]) === String(id)){
-        serieTarget = String(data[i][idx.SERIE]);
-        ordenTarget = String(data[i][idx.ORDEN]);
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idx.ID]) === String(id)) {
+        serieTarget  = String(data[i][idx.SERIE]);
+        ordenTarget  = String(data[i][idx.ORDEN]);
         pedidoTarget = String(data[i][idx.PEDIDO]);
-        cantidadOriginal = parseFloat(data[i][idx.CANTIDAD]) || 0;
         break;
       }
     }
-    
-    var diferenciaCantidad = nuevaCantidad - cantidadOriginal;
-    
-    // Actualizar todos los procesos de esa orden
-    for(var j=1; j<data.length; j++){
-      if(String(data[j][idx.SERIE]) === serieTarget && String(data[j][idx.ORDEN]) === ordenTarget){
-        var unidad = String(data[j][idx.UNIDAD] || "").toUpperCase();
-        var descripcion = String(data[j][idx.DESCRIPCION] || "");
-        var peso = parseFloat(data[j][idx.PESO]) || 0;
-        // Parsear longitud con regex para manejar strings como "3.00 mts" o "6 m"
-        var longStr   = String(data[j][idx.LONGITUD] || '');
-        var longMatch = longStr.match(/[\d.]+/);
-        var longitud  = longMatch ? parseFloat(longMatch[0]) : 0;
 
-        // Actualizar CANTIDAD
-        sh.getRange(j+1, idx.CANTIDAD+1).setValue(nuevaCantidad);
+    // ── Actualizar ORDENES: todos los procesos de esa serie.orden ──
+    for (var j = 1; j < data.length; j++) {
+      if (String(data[j][idx.SERIE]) !== serieTarget || String(data[j][idx.ORDEN]) !== ordenTarget) continue;
 
-        // Calcular SOLICITADO según reglas de negocio
-        var nuevoSolicitado  = nuevaCantidad;
-        var esVarilla        = descripcion.toUpperCase().indexOf('VARILLA') > -1;
+      var unidad      = String(data[j][idx.UNIDAD]      || "").toUpperCase().trim();
+      var descripcion = String(data[j][idx.DESCRIPCION] || "").toUpperCase();
+      var peso        = parseFloat(data[j][idx.PESO])   || 0;
+      var longStr     = String(data[j][idx.LONGITUD]    || "");
+      var longMatch   = longStr.match(/[\d.]+/);
+      var longitud    = longMatch ? parseFloat(longMatch[0]) : 0;
+      var esVarilla   = descripcion.indexOf("VARILLA") > -1;
 
-        if (unidad === 'KG' || unidad === 'ROL') {
-          nuevoSolicitado = nuevaCantidad;
-        } else if (unidad === 'PZA' || unidad === 'CTO') {
-          nuevoSolicitado = nuevaCantidad * peso;
-          if (esVarilla && longitud > 0) {
-            nuevoSolicitado = nuevoSolicitado * longitud;
-          }
+      // Col I: CANTIDAD = nuevaCantidad (en unidad del pedido, sin convertir)
+      sh.getRange(j + 1, idx.CANTIDAD + 1).setValue(nuevaCantidad);
+
+      // Col N: SOLICITADO = conversión a KG según unidad
+      var nuevoSolicitado = nuevaCantidad;
+      if (unidad === "KG" || unidad === "ROL") {
+        nuevoSolicitado = nuevaCantidad;
+      } else if (unidad === "PZA" || unidad === "CTO") {
+        nuevoSolicitado = nuevaCantidad * peso;
+        if (esVarilla && longitud > 0) {
+          nuevoSolicitado = nuevoSolicitado * longitud;
         }
-        
-        sh.getRange(j+1, idx.SOLICITADO+1).setValue(nuevoSolicitado);
+      }
+      sh.getRange(j + 1, idx.SOLICITADO + 1).setValue(nuevoSolicitado);
 
-        // Re-evaluar ESTADO: si estaba TERMINADO o SOBREPRODUCCION y producido < nuevo solicitado → EN PROCESO
-        var ESTADOS_REVERTIBLES = ["TERMINADO", "SOBREPRODUCCION"];
-        if(idx.PRODUCIDO > -1 && idx.ESTADO > -1) {
-          var producido = parseFloat(data[j][idx.PRODUCIDO]) || 0;
-          var estadoActual = String(data[j][idx.ESTADO] || "").toUpperCase().trim();
-          if(ESTADOS_REVERTIBLES.indexOf(estadoActual) > -1 && producido < nuevoSolicitado) {
-            sh.getRange(j+1, idx.ESTADO+1).setValue("EN PROCESO");
-          }
+      // Re-evaluar ESTADO si estaba TERMINADO o SOBREPRODUCCION
+      if (idx.PRODUCIDO > -1 && idx.ESTADO > -1) {
+        var producido    = parseFloat(data[j][idx.PRODUCIDO]) || 0;
+        var estadoActual = String(data[j][idx.ESTADO] || "").toUpperCase().trim();
+        var REVERTIBLES  = ["TERMINADO", "SOBREPRODUCCION"];
+        if (REVERTIBLES.indexOf(estadoActual) > -1 && producido < nuevoSolicitado) {
+          sh.getRange(j + 1, idx.ESTADO + 1).setValue("EN PROCESO");
         }
       }
     }
 
-    // Actualizar el pedido: Col G (Cant) y Col P (CANT_PLAN)
-    // Primero recalcular planeadoTotal leyendo ORDENES frescos (sin duplicar por serie.orden)
+    // ── Actualizar PEDIDOS: Col G (Cant) y Col P (CANT_PLAN) ──
+    // Col G = nueva cantidad en unidad del pedido (PZA, KG, etc.) — sin convertir
+    // Col P = suma de CANTIDAD de órdenes no canceladas del pedido (sin duplicar por serie.orden)
     if (pedidoTarget && shPedidos) {
-      var dataOrdFresh = sh.getDataRange().getValues();
-      var planeadoTotal = 0;
+      // Leer ORDENES frescos (ya escribimos encima, pero getDataRange vuelve a leer de Sheets)
+      // Para evitar doble lectura, recorremos data[] actualizada en memoria
+      // pero como ya hicimos setValue, recalculamos con los valores nuevos
+      var cantPlanTotal = 0;
       var keysContadas  = {};
-      for (var j = 1; j < dataOrdFresh.length; j++) {
-        var rowOrd = dataOrdFresh[j];
-        if (String(rowOrd[idx.PEDIDO]).trim() !== String(pedidoTarget).trim()) continue;
-        if (String(rowOrd[idx.ESTADO] || '').toUpperCase().trim() === 'CANCELADO') continue;
-        var keyOrd = String(rowOrd[idx.SERIE]) + '.' + String(rowOrd[idx.ORDEN]);
+      for (var k = 1; k < data.length; k++) {
+        if (String(data[k][idx.PEDIDO]).trim() !== String(pedidoTarget).trim()) continue;
+        if (String(data[k][idx.ESTADO] || "").toUpperCase().trim() === "CANCELADO") continue;
+        var keyOrd = String(data[k][idx.SERIE]) + "." + String(data[k][idx.ORDEN]);
         if (keysContadas[keyOrd]) continue;
         keysContadas[keyOrd] = true;
-        planeadoTotal += parseFloat(rowOrd[idx.SOLICITADO]) || 0;
+        // Sumar CANTIDAD (en unidad del pedido), pero actualizar con nuevaCantidad si es la orden editada
+        var estaOrden = String(data[k][idx.SERIE]) === serieTarget && String(data[k][idx.ORDEN]) === ordenTarget;
+        cantPlanTotal += estaOrden ? nuevaCantidad : (parseFloat(data[k][idx.CANTIDAD]) || 0);
       }
-      var dataPed = shPedidos.getDataRange().getValues();
+
+      var dataPed    = shPedidos.getDataRange().getValues();
       var headersPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
-      var colPlanPed = headersPed.indexOf('CANT_PLAN'); // Col P
-      for (var k = 1; k < dataPed.length; k++) {
-        if (String(dataPed[k][1]).trim() !== String(pedidoTarget).trim()) continue;
-        // Col G (índice 6): Cant = planeadoTotal (mismo valor que CANT_PLAN)
-        shPedidos.getRange(k + 1, 7).setValue(planeadoTotal);
-        // Col P: CANT_PLAN = planeadoTotal
+      var colPlanPed = headersPed.indexOf("CANT_PLAN"); // Col P
+
+      for (var p = 1; p < dataPed.length; p++) {
+        if (String(dataPed[p][1]).trim() !== String(pedidoTarget).trim()) continue;
+        // Col G (índice 6): Cant = cantPlanTotal (en unidad del pedido)
+        shPedidos.getRange(p + 1, 7).setValue(cantPlanTotal);
+        // Col P: CANT_PLAN = cantPlanTotal (mismo valor)
         if (colPlanPed > -1) {
-          shPedidos.getRange(k + 1, colPlanPed + 1).setValue(planeadoTotal);
+          shPedidos.getRange(p + 1, colPlanPed + 1).setValue(cantPlanTotal);
         }
         break;
       }
