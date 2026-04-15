@@ -17785,7 +17785,7 @@ function loadTableroSup() {
   }
 
   // ── Inyectar HTML ──
-  ca.innerHTML = '\n<div id="tsup-panel">\n\n  <div id="tsup-miniLoader">⏳ <span id="tsup-miniLoaderTxt">CARGANDO...</span></div>\n\n  <div id="tsup-screenProcesos">\n    <div class="proc-header"><h1>⚙ TABLERO DEL SUPERVISOR</h1><p>Selecciona un proceso para ver sus órdenes</p></div>\n    <div class="proc-grid" id="tsup-gridProcesos"></div>\n  </div>\n\n  <div id="tsup-screenPlan">\n    <div class="plan-topbar">\n      <button class="btn-back" onclick="tsupVolverDesddePlan()">◀</button>\n      <div class="plan-title">📋 PLAN — <span id="tsup-planProceso"></span></div>\n      <button class="btn-imprimir" onclick="tsupImprimirPlan()">🖨 IMPRIMIR</button>\n    </div>\n    <div class="plan-body" id="tsup-planBody">\n      <div class="plan-empty">Cargando plan...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenTurno">\n    <div class="turno-topbar">\n      <button class="btn-back" onclick="tsupVolverDesdeTurno()">◀</button>\n      <div class="turno-title">🖨 FORM. PRODUCCIÓN — <span id="tsup-turnoProceso"></span></div>\n      <div id="tsup-turnoGrupoChecks" style="display:none;align-items:center;gap:14px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;">\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkVarillaN1" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> VARILLA N1\n        </label>\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkVarillaTool" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> VARILLA TOOL\n        </label>\n      </div>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'horizontal\')" style="background:#1565c0;">🖨 Horizontal</button>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'vertical\')" style="background:#2e7d32;margin-left:6px;">🖨 Vertical</button>\n    </div>\n    <div class="turno-body" id="tsup-turnoBody">\n      <div class="turno-empty">Cargando reporte...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenOrdenes">\n    <div class="ord-topbar">\n      <button class="btn-back" onclick="tsupVolverAProcesos()">◀</button>\n      <div class="ord-title" id="tsup-txtProcesoActual">---</div>\n      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)" style="padding:7px 12px;border:2px solid #ffd600;border-radius:8px;background:#161b22;color:#e6edf3;font-size:13px;font-weight:700;outline:none;width:400px;flex-shrink:0;animation:buscarPulso 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,214,0,0.6);">\n      <style>#tsup-inputBuscar:focus{animation:none!important;box-shadow:0 0 0 3px rgba(255,214,0,0.5)!important;border-color:#ffd600!important;}@keyframes buscarPulso{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.6);border-color:#ffd600;}50%{box-shadow:0 0 0 8px rgba(255,214,0,0);border-color:#ffe57f;}}</style>\n      <button class="btn-hist" id="tsup-btnHist" onclick="tsupToggleHistoricas()">📜 Históricas</button>\n    </div>\n    <div id="tsup-maqFilterBar"></div>\n    <div class="ord-list" id="tsup-listaOrdenes"></div>\n  </div>\n\n  <div id="tsup-modalOrden" onclick="if(event.target===this)tsupCerrarModal()">\n    <div class="mo-container">\n      <div class="mo-header">\n        <button class="mo-close" onclick="tsupCerrarModal()">✕ CERRAR</button>\n        <div class="mo-title" id="tsup-moTitle">---</div>\n        <div class="mo-sub" id="tsup-moSub">---</div>\n      </div>\n      <div class="mo-progress">\n        <div class="mo-kpi"><span>SOLICITADO</span><b id="tsup-moSol">0</b></div>\n        <div class="mo-bar-wrap"><div class="mo-bar"><div class="mo-bar-fill" id="tsup-moBarFill"></div></div></div>\n        <div class="mo-kpi"><span>PRODUCIDO</span><b id="tsup-moProd">0</b></div>\n        <div class="mo-kpi pending"><span>PENDIENTE</span><b id="tsup-moPen">0</b></div>\n      </div>\n      <div class="mo-body">\n        <div class="mo-left">\n          <div class="mo-section">\n            <div class="mo-section-title">📦 LOTES GENERADOS</div>\n            <div class="lotes-scroll" id="tsup-moLotes"></div>\n            <button class="btn-gen" onclick="tsupAbrirGenLotes()">+ GENERAR MÁS LOTES</button>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">🖨 CONFIGURAR IMPRESIÓN</div>\n            <div class="print-panel">\n              <div class="print-row">\n                <label>LOTE INICIAL:</label><input type="number" class="inp-lote" id="tsup-moLoteIni">\n                <label>LOTE FINAL:</label><input type="number" class="inp-lote" id="tsup-moLoteFin">\n              </div>\n              <div style="display:flex;gap:6px;">\n                <button class="btn-print btn-et1" onclick="tsupImprimir(\'ETIQUETA\')">🏷 TIPO 1</button>\n                <button class="btn-print btn-et2" onclick="tsupImprimir(\'ETIQUETA_2\')">🏷 TIPO 2</button>\n                <button class="btn-print btn-rpt" onclick="tsupImprimir(\'REPORTE_SOLO\')">📋 REPORTE</button>\n              </div>\n            </div>\n          </div>\n        </div>\n        <div class="mo-right">\n          <div class="mo-section">\n            <div class="mo-section-title">🔧 RUTA DE FABRICACIÓN</div>\n            <div id="tsup-moRuta"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">📄 DOCUMENTACIÓN TÉCNICA</div>\n            <div id="tsup-moDocs"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n        </div>\n      </div>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniGenLotes" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">+ GENERAR LOTES</div>\n      <label style="font-size:12px;color:#8b949e;">CANTIDAD DE LOTES:</label>\n      <input type="number" class="mini-input" id="tsup-genCant" placeholder="Ej: 5">\n      <label style="font-size:12px;color:#8b949e;">PESO POR LOTE (KG):</label>\n      <input type="number" class="mini-input" id="tsup-genPeso" placeholder="0">\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarGenLotes()">✅ CONFIRMAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniGenLotes\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniCambioMaq" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">🔧 CAMBIAR MÁQUINA</div>\n      <div id="tsup-maqProcLabel" style="font-size:12px;color:#8b949e;margin-bottom:8px;"></div>\n      <select class="mini-select" id="tsup-selectMaq"></select>\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarCambioMaq()">✅ APLICAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniCambioMaq\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n</div>';
+  ca.innerHTML = '\n<div id="tsup-panel">\n\n  <div id="tsup-miniLoader">⏳ <span id="tsup-miniLoaderTxt">CARGANDO...</span></div>\n\n  <div id="tsup-screenProcesos">\n    <div class="proc-header"><h1>⚙ TABLERO DEL SUPERVISOR</h1><p>Selecciona un proceso para ver sus órdenes</p></div>\n    <div class="proc-grid" id="tsup-gridProcesos"></div>\n  </div>\n\n  <div id="tsup-screenPlan">\n    <div class="plan-topbar">\n      <button class="btn-back" onclick="tsupVolverDesddePlan()">◀</button>\n      <div class="plan-title">📋 PLAN — <span id="tsup-planProceso"></span></div>\n      <button class="btn-imprimir" onclick="tsupImprimirPlan()">🖨 IMPRIMIR</button>\n    </div>\n    <div class="plan-body" id="tsup-planBody">\n      <div class="plan-empty">Cargando plan...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenTurno">\n    <div class="turno-topbar">\n      <button class="btn-back" onclick="tsupVolverDesdeTurno()">◀</button>\n      <div class="turno-title">🖨 FORM. PRODUCCIÓN — <span id="tsup-turnoProceso"></span></div>\n      <div id="tsup-turnoGrupoChecks" style="display:none;align-items:center;gap:14px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;">\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkVarillaN1" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> VARILLA N1\n        </label>\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkVarillaTool" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> VARILLA TOOL\n        </label>\n      </div>\n      <div id="tsup-turnoGrupoChecksEst" style="display:none;align-items:center;gap:14px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;">\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkEst1" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> CLAVERAS 01-09\n        </label>\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkEst2" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> CLAVERAS 10-32\n        </label>\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkEstTool" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> CLAVERAS TOOL\n        </label>\n      </div>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'horizontal\')" style="background:#1565c0;">🖨 Horizontal</button>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'vertical\')" style="background:#2e7d32;margin-left:6px;">🖨 Vertical</button>\n    </div>\n    <div class="turno-body" id="tsup-turnoBody">\n      <div class="turno-empty">Cargando reporte...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenOrdenes">\n    <div class="ord-topbar">\n      <button class="btn-back" onclick="tsupVolverAProcesos()">◀</button>\n      <div class="ord-title" id="tsup-txtProcesoActual">---</div>\n      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)" style="padding:7px 12px;border:2px solid #ffd600;border-radius:8px;background:#161b22;color:#e6edf3;font-size:13px;font-weight:700;outline:none;width:400px;flex-shrink:0;animation:buscarPulso 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,214,0,0.6);">\n      <style>#tsup-inputBuscar:focus{animation:none!important;box-shadow:0 0 0 3px rgba(255,214,0,0.5)!important;border-color:#ffd600!important;}@keyframes buscarPulso{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.6);border-color:#ffd600;}50%{box-shadow:0 0 0 8px rgba(255,214,0,0);border-color:#ffe57f;}}</style>\n      <button class="btn-hist" id="tsup-btnHist" onclick="tsupToggleHistoricas()">📜 Históricas</button>\n    </div>\n    <div id="tsup-maqFilterBar"></div>\n    <div class="ord-list" id="tsup-listaOrdenes"></div>\n  </div>\n\n  <div id="tsup-modalOrden" onclick="if(event.target===this)tsupCerrarModal()">\n    <div class="mo-container">\n      <div class="mo-header">\n        <button class="mo-close" onclick="tsupCerrarModal()">✕ CERRAR</button>\n        <div class="mo-title" id="tsup-moTitle">---</div>\n        <div class="mo-sub" id="tsup-moSub">---</div>\n      </div>\n      <div class="mo-progress">\n        <div class="mo-kpi"><span>SOLICITADO</span><b id="tsup-moSol">0</b></div>\n        <div class="mo-bar-wrap"><div class="mo-bar"><div class="mo-bar-fill" id="tsup-moBarFill"></div></div></div>\n        <div class="mo-kpi"><span>PRODUCIDO</span><b id="tsup-moProd">0</b></div>\n        <div class="mo-kpi pending"><span>PENDIENTE</span><b id="tsup-moPen">0</b></div>\n      </div>\n      <div class="mo-body">\n        <div class="mo-left">\n          <div class="mo-section">\n            <div class="mo-section-title">📦 LOTES GENERADOS</div>\n            <div class="lotes-scroll" id="tsup-moLotes"></div>\n            <button class="btn-gen" onclick="tsupAbrirGenLotes()">+ GENERAR MÁS LOTES</button>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">🖨 CONFIGURAR IMPRESIÓN</div>\n            <div class="print-panel">\n              <div class="print-row">\n                <label>LOTE INICIAL:</label><input type="number" class="inp-lote" id="tsup-moLoteIni">\n                <label>LOTE FINAL:</label><input type="number" class="inp-lote" id="tsup-moLoteFin">\n              </div>\n              <div style="display:flex;gap:6px;">\n                <button class="btn-print btn-et1" onclick="tsupImprimir(\'ETIQUETA\')">🏷 TIPO 1</button>\n                <button class="btn-print btn-et2" onclick="tsupImprimir(\'ETIQUETA_2\')">🏷 TIPO 2</button>\n                <button class="btn-print btn-rpt" onclick="tsupImprimir(\'REPORTE_SOLO\')">📋 REPORTE</button>\n              </div>\n            </div>\n          </div>\n        </div>\n        <div class="mo-right">\n          <div class="mo-section">\n            <div class="mo-section-title">🔧 RUTA DE FABRICACIÓN</div>\n            <div id="tsup-moRuta"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">📄 DOCUMENTACIÓN TÉCNICA</div>\n            <div id="tsup-moDocs"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n        </div>\n      </div>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniGenLotes" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">+ GENERAR LOTES</div>\n      <label style="font-size:12px;color:#8b949e;">CANTIDAD DE LOTES:</label>\n      <input type="number" class="mini-input" id="tsup-genCant" placeholder="Ej: 5">\n      <label style="font-size:12px;color:#8b949e;">PESO POR LOTE (KG):</label>\n      <input type="number" class="mini-input" id="tsup-genPeso" placeholder="0">\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarGenLotes()">✅ CONFIRMAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniGenLotes\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniCambioMaq" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">🔧 CAMBIAR MÁQUINA</div>\n      <div id="tsup-maqProcLabel" style="font-size:12px;color:#8b949e;margin-bottom:8px;"></div>\n      <select class="mini-select" id="tsup-selectMaq"></select>\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarCambioMaq()">✅ APLICAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniCambioMaq\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n</div>';
 
   // ── Inicializar estado y cargar datos ──
   tsup_procesos = [];
@@ -18020,14 +18020,21 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     document.getElementById('tsup-screenTurno').style.display    = 'flex';
     document.getElementById('tsup-turnoProceso').textContent     = nombre;
     document.getElementById('tsup-turnoBody').innerHTML = '<div class="turno-empty">⏳ Cargando reporte de turno...</div>';
-    var _chkArea = document.getElementById('tsup-turnoGrupoChecks');
-    if (_chkArea) {
-      var _esRoscado = (nombre || '').toUpperCase().includes('ROSCADO');
-      _chkArea.style.display = _esRoscado ? 'flex' : 'none';
-      if (_esRoscado) {
-        document.getElementById('tsup-chkVarillaN1').checked = false;
-        document.getElementById('tsup-chkVarillaTool').checked = false;
-      }
+    var _chkArea    = document.getElementById('tsup-turnoGrupoChecks');
+    var _chkAreaEst = document.getElementById('tsup-turnoGrupoChecksEst');
+    var _nombreUp   = (nombre || '').toUpperCase();
+    var _esRoscado  = _nombreUp.includes('ROSCADO');
+    var _esEstampado = _nombreUp.includes('ESTAMPADO');
+    if (_chkArea)    _chkArea.style.display    = _esRoscado   ? 'flex' : 'none';
+    if (_chkAreaEst) _chkAreaEst.style.display = _esEstampado ? 'flex' : 'none';
+    if (_esRoscado) {
+      document.getElementById('tsup-chkVarillaN1').checked   = false;
+      document.getElementById('tsup-chkVarillaTool').checked = false;
+    }
+    if (_esEstampado) {
+      document.getElementById('tsup-chkEst1').checked    = false;
+      document.getElementById('tsup-chkEst2').checked    = false;
+      document.getElementById('tsup-chkEstTool').checked = false;
     }
     var mini = document.getElementById('tsup-miniLoader');
     var txt  = document.getElementById('tsup-miniLoaderTxt');
@@ -18113,6 +18120,10 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     }
     if (esRoscado) {
       return tsupHtmlTurnoRoscadoPantalla(lista);
+    }
+    var esEstampado = procNom.includes('ESTAMPADO');
+    if (esEstampado) {
+      return tsupHtmlTurnoEstampadoPantalla(lista);
     }
     // ── Render genérico (procesos distintos a COLATADO) ──
     var html = '';
@@ -18509,6 +18520,15 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
         return;
       }
       tsupImprimirRoscado(proceso, window._tsupListaTurno || [], orientacion);
+    } else if (proceso.toUpperCase().includes('ESTAMPADO')) {
+      var chkE1   = document.getElementById('tsup-chkEst1');
+      var chkE2   = document.getElementById('tsup-chkEst2');
+      var chkETool= document.getElementById('tsup-chkEstTool');
+      if (!chkE1.checked && !chkE2.checked && !chkETool.checked) {
+        Swal.fire({ icon:'warning', title:'Selecciona al menos un grupo', text:'Elige al menos uno de los grupos CLAVERAS antes de imprimir.', confirmButtonColor:'#1565c0', confirmButtonText:'ENTENDIDO' });
+        return;
+      }
+      tsupImprimirEstampado(proceso, window._tsupListaTurno || [], orientacion);
     } else {
       tsupAbrirVentanaImpresion('FORM. PRODUCCIÓN — ' + proceso, tsupHtmlTurno(window._tsupListaTurno || []));
     }
@@ -18829,6 +18849,231 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     var win = window.open('', '_blank');
     win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
       + '<title>FORMATO DE PRODUCCIÓN — ROSCADO</title>'
+      + '<style>'
+      + pageStyle
+      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:2px 4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'table{border-collapse:collapse;}'
+      + '.no-print{position:fixed;top:4px;right:4px;z-index:9999;}'
+      + '@media print{.no-print{display:none!important;}}'
+      + '</style></head><body>'
+      + '<div class="no-print">'
+      + '<button onclick="window.print()" style="padding:8px 18px;background:#1565c0;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:4px;">🖨️ IMPRIMIR</button>'
+      + '</div>'
+      + htmlBody
+      + '</body></html>');
+    win.document.close();
+  }
+
+  function tsupHtmlTurnoEstampadoPantalla(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes para este proceso.</p>';
+    var html = '';
+    lista.forEach(function(m) {
+      var ordenes = (m.ordenes || []).filter(function(o) {
+        var est = (o.estado || '').toUpperCase();
+        return est !== 'TERMINADO' && est !== 'CANCELADO';
+      }).slice(0, 2);
+      if (!ordenes.length) return;
+      html += '<div style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);">'
+            + '<div style="background:#fff9c4;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #f9a825;text-transform:uppercase;color:#000;">🔧 MÁQUINA: ' + m.nombre + '</div>'
+            + '<table style="width:100%;border-collapse:collapse;background:white;font-size:11px;table-layout:fixed;"><thead><tr>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Orden</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:10%">Producto</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Ø</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Long</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:9%">Tipo</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Acero</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Solic</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Prod</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Avance</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Restan</th>'
+            + '</tr></thead><tbody>';
+      ordenes.forEach(function(o) {
+        var pct = Math.round(o.avance || 0), w = Math.min(o.avance || 0, 100);
+        var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+        var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+        html += '<tr>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;">' + (o.ordenFull || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;">' + (o.producto || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;">' + diam + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;">' + lon + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;">' + (o.cuerpo || o.detalle || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;">' + (o.acero || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;">'
+                + '<div style="display:flex;flex-direction:column;align-items:center;">'
+                + '<span style="font-size:9px;font-weight:900;">' + pct + '%</span>'
+                + '<div style="width:90%;height:6px;background:#e0e0e0;border:1px solid #777;">'
+                + '<div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></div></td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+              + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    return html;
+  }
+
+  function tsupImprimirEstampado(proceso, lista, orientacion) {
+    var esVertical = orientacion === 'vertical';
+
+    // Determinar grupos seleccionados
+    var mostrarE1   = document.getElementById('tsup-chkEst1')    ? document.getElementById('tsup-chkEst1').checked    : true;
+    var mostrarE2   = document.getElementById('tsup-chkEst2')    ? document.getElementById('tsup-chkEst2').checked    : true;
+    var mostrarETool= document.getElementById('tsup-chkEstTool') ? document.getElementById('tsup-chkEstTool').checked : true;
+
+    var GRUPOS_EST = ['CLAVERAS 01 - 09', 'CLAVERAS 10 - 32', 'CLAVERAS TOOL'];
+    var MAPA_CHECK = {
+      'CLAVERAS 01 - 09': mostrarE1,
+      'CLAVERAS 10 - 32': mostrarE2,
+      'CLAVERAS TOOL':    mostrarETool
+    };
+
+    // Filtrar máquinas por grupo seleccionado y que tengan órdenes vivas
+    var listaFiltrada = lista.filter(function(m) {
+      var grp = (m.grupo || '').toUpperCase().trim();
+      // Buscar coincidencia flexible con los grupos
+      var match = false;
+      if (mostrarE1   && (grp === 'CLAVERAS 01 - 09' || grp.includes('01') && grp.includes('09'))) match = true;
+      if (mostrarE2   && (grp === 'CLAVERAS 10 - 32' || grp.includes('10') && grp.includes('32'))) match = true;
+      if (mostrarETool && (grp === 'CLAVERAS TOOL'   || grp.includes('TOOL')))                      match = true;
+      if (!match) return false;
+      // Solo máquinas con al menos una orden viva
+      var tieneVivas = (m.ordenes || []).some(function(o) {
+        var est = (o.estado || '').toUpperCase();
+        return est !== 'TERMINADO' && est !== 'CANCELADO';
+      });
+      return tieneVivas;
+    });
+
+    // Agrupar por grupo manteniendo orden CLAVERAS 01-09 → 10-32 → TOOL
+    var grupos = {};
+    var ordenGrupos = [];
+    listaFiltrada.forEach(function(m) {
+      var grp = (m.grupo || 'SIN GRUPO').toUpperCase().trim();
+      if (!grupos[grp]) { grupos[grp] = []; ordenGrupos.push(grp); }
+      grupos[grp].push(m);
+    });
+    // Ordenar grupos según secuencia lógica
+    ordenGrupos.sort(function(a, b) {
+      var idx = function(g) {
+        if (g.includes('01') || g.includes('09')) return 0;
+        if (g.includes('10') || g.includes('32')) return 1;
+        if (g.includes('TOOL')) return 2;
+        return 3;
+      };
+      return idx(a) - idx(b);
+    });
+
+    var pageStyle = esVertical
+      ? '@page{size:letter portrait;margin:4mm 3mm;}'
+      : '@page{size:letter landscape;margin:4mm 3mm;}';
+
+    var htmlBody = '';
+    ordenGrupos.forEach(function(grp, gIdx) {
+      var maqsGrupo = grupos[grp];
+      var pageBreak = gIdx > 0 ? 'page-break-before:always;' : '';
+
+      // Encabezado del grupo
+      htmlBody += '<table style="width:100%;border-collapse:collapse;margin-bottom:4px;margin-top:0;' + pageBreak + '">'
+        + '<tr>'
+        + '<td style="width:80px;padding:0 8px 0 0;vertical-align:middle;">'
+        + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:50px;width:auto;display:block;" onerror="this.style.display=\'none\'">'
+        + '</td>'
+        + '<td style="vertical-align:middle;padding:0 10px;">'
+        + '<div style="font-size:18px;font-weight:900;text-transform:uppercase;line-height:1.1;">FORMATO DE PRODUCCIÓN</div>'
+        + '<div style="font-size:14px;font-weight:900;color:#e65100;text-transform:uppercase;letter-spacing:2px;">ESTAMPADO — ' + grp + '</div>'
+        + '</td>'
+        + '<td style="width:260px;vertical-align:middle;text-align:right;">'
+        + '<table style="border-collapse:collapse;margin-left:auto;width:100%;">'
+        + '<tr>'
+        + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Fecha:</td>'
+        + '<td style="border:2px solid #000;width:100px;height:20px;padding:2px;"></td>'
+        + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Turno:</td>'
+        + '<td style="border:2px solid #000;width:60px;height:20px;padding:2px;"></td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Operador:</td>'
+        + '<td colspan="3" style="border:2px solid #000;height:20px;padding:2px;"></td>'
+        + '</tr>'
+        + '</table>'
+        + '</td>'
+        + '</tr>'
+        + '</table>'
+        + '<hr style="border:2px solid #000;margin:0 0 4px 0;">';
+
+      // Tabla por máquina
+      maqsGrupo.forEach(function(m) {
+        var ordenes = (m.ordenes || []).filter(function(o) {
+          var est = (o.estado || '').toUpperCase();
+          return est !== 'TERMINADO' && est !== 'CANCELADO';
+        }).slice(0, 2);
+
+        htmlBody += '<div style="margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">'
+          + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
+          + '<tr style="background:#fff9c4;height:30px;">'
+          + '<td style="border:2px solid #f9a825;padding:3px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:65%;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+          + '<td style="border:2px solid #f9a825;padding:3px 8px;font-size:10px;font-weight:700;width:35%;">Total Kilos:</td>'
+          + '</tr>'
+          + '</table>'
+          + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
+          + '<thead><tr style="background:#dde3f0;">'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Orden</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:10%">Producto</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Ø</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Long</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:9%">Tipo</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Acero</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Solic.</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Prod.</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">Av.</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Restan</th>'
+          + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">Tina</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">Total</th>'
+          + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">Tina</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">Total</th>'
+          + '</tr></thead><tbody>';
+
+        ordenes.forEach(function(o) {
+          var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+          var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+          var pct  = Math.round(o.avance || 0);
+          var w    = Math.min(o.avance || 0, 100);
+          htmlBody += '<tr style="height:28px;">'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#1565c0;font-size:10px;">' + (o.ordenFull || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;">' + (o.producto || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + diam + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.cuerpo || o.detalle || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.acero || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+            + '<td style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;">' + pct + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:10px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+            + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;border-left:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+            + '</tr>';
+        });
+
+        htmlBody += '</tbody></table></div>';
+      });
+
+      htmlBody += '<div style="border:2px solid #000;padding:5px 10px;font-size:10px;font-weight:700;min-height:40px;margin-top:4px;">Observaciones:</div>';
+      htmlBody += '</div>'; // cierra div del grupo
+    });
+
+    var win = window.open('', '_blank');
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>FORMATO DE PRODUCCIÓN — ESTAMPADO</title>'
       + '<style>'
       + pageStyle
       + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:2px 4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
@@ -22418,6 +22663,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
