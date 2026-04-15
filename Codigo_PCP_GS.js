@@ -4440,25 +4440,43 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
       }
     }
 
-    // Actualizar el pedido
-    if(pedidoTarget && shPedidos) {
+    // Actualizar el pedido: Col G (CANTIDAD) y Col P (CANT_PLAN)
+    if (pedidoTarget && shPedidos) {
+      // -- Col G: CANTIDAD = suma con diferencia (igual que antes pero buscando por folio Col B) --
       var dataPed = shPedidos.getDataRange().getValues();
-      var headersPed = dataPed[0].map(h => String(h).toUpperCase().trim());
-      var colIdPed = headersPed.indexOf("ID");
-      var colCantPed = headersPed.indexOf("CANTIDAD");
-      
-      if(colIdPed > -1 && colCantPed > -1) {
-        for(var k=1; k<dataPed.length; k++){
-          if(String(dataPed[k][colIdPed]) === pedidoTarget){
-            var cantidadPedidoActual = parseFloat(dataPed[k][colCantPed]) || 0;
-            var nuevaCantidadPedido = cantidadPedidoActual + diferenciaCantidad;
-            shPedidos.getRange(k+1, colCantPed+1).setValue(nuevaCantidadPedido);
-            break;
+      var headersPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var colCantPed  = headersPed.indexOf("CANTIDAD");   // Col G
+      var colPlanPed  = headersPed.indexOf("CANT_PLAN");  // Col P
+      // PEDIDOS se busca por folio (Col B, índice 1), que es lo que guarda ORDENES.PEDIDO
+      for (var k = 1; k < dataPed.length; k++) {
+        if (String(dataPed[k][1]).trim() === String(pedidoTarget).trim()) {
+          // Actualizar CANTIDAD (Col G): suma la diferencia sobre el valor actual
+          if (colCantPed > -1) {
+            var cantActual = parseFloat(dataPed[k][colCantPed]) || 0;
+            shPedidos.getRange(k + 1, colCantPed + 1).setValue(cantActual + diferenciaCantidad);
           }
+          // Actualizar CANT_PLAN (Col P): recalcular sumando SOLICITADO de todas las órdenes
+          // del pedido sin duplicar por serie.orden (misma lógica que cancelarOrdenEspecifica)
+          if (colPlanPed > -1) {
+            var dataOrdFresh = sh.getDataRange().getValues();
+            var planeadoTotal = 0;
+            var keysContadas  = {};
+            for (var j = 1; j < dataOrdFresh.length; j++) {
+              var rowOrd = dataOrdFresh[j];
+              if (String(rowOrd[idx.PEDIDO]).trim() !== String(pedidoTarget).trim()) continue;
+              if (String(rowOrd[idx.ESTADO] || '').toUpperCase().trim() === 'CANCELADO') continue;
+              var keyOrd = String(rowOrd[idx.SERIE]) + '.' + String(rowOrd[idx.ORDEN]);
+              if (keysContadas[keyOrd]) continue;
+              keysContadas[keyOrd] = true;
+              planeadoTotal += parseFloat(rowOrd[idx.SOLICITADO]) || 0;
+            }
+            shPedidos.getRange(k + 1, colPlanPed + 1).setValue(planeadoTotal);
+          }
+          break;
         }
       }
     }
-    
+
     SpreadsheetApp.flush();
     return true;
   } catch(e) {
