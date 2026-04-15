@@ -18718,7 +18718,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
 
     var esVertical = orientacion === 'vertical';
     var pageStyle = esVertical
-      ? '@page{size:letter portrait;margin:6mm 5mm;}'
+      ? '@page{size:letter portrait;margin:4mm 3mm;}'
       : '@page{size:letter landscape;margin:4mm 3mm;}';
 
     // Construir HTML de secciones por grupo
@@ -18737,17 +18737,23 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
         + '<div style="font-size:18px;font-weight:900;text-transform:uppercase;line-height:1.1;">FORMATO DE PRODUCCIÓN</div>'
         + '<div style="font-size:14px;font-weight:900;color:#e65100;text-transform:uppercase;letter-spacing:2px;">VARILLA ROSCADA — ' + grp + '</div>'
         + '</td>'
-        + '<td style="width:220px;vertical-align:middle;text-align:right;">'
-        + '<table style="border-collapse:collapse;margin-left:auto;">'
-        + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;">Fecha:</td>'
-        + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
-        + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;">Turno:</td>'
-        + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+        + '<td style="width:260px;vertical-align:middle;text-align:right;">'
+        + '<table style="border-collapse:collapse;margin-left:auto;width:100%;">'
+        + '<tr>'
+        + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Fecha:</td>'
+        + '<td style="border:2px solid #000;width:100px;height:20px;padding:2px;"></td>'
+        + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Turno:</td>'
+        + '<td style="border:2px solid #000;width:60px;height:20px;padding:2px;"></td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Operador:</td>'
+        + '<td colspan="3" style="border:2px solid #000;height:20px;padding:2px;"></td>'
+        + '</tr>'
         + '</table>'
         + '</td>'
         + '</tr>'
         + '</table>'
-        + '<hr style="border:2px solid #000;margin:0 0 6px 0;">';
+        + '<hr style="border:2px solid #000;margin:0 0 4px 0;">';
 
       // Tabla por máquina — primeras 3 órdenes vivas
       maqsGrupo.forEach(function(m) {
@@ -18757,12 +18763,11 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           return est !== 'TERMINADO' && est !== 'CANCELADO';
         }).slice(0, maxOrdenes);
 
-        htmlBody += '<div style="margin-bottom:18px;break-inside:avoid;page-break-inside:avoid;">'
+        htmlBody += '<div style="margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">'
           + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
-          + '<tr style="background:#fff9c4;height:36px;">'
-          + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:40%;">⚙ MÁQUINA: ' + m.nombre + '</td>'
-          + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:35%;">Operador:</td>'
-          + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:25%;">Total Kilos:</td>'
+          + '<tr style="background:#fff9c4;height:30px;">'
+          + '<td style="border:2px solid #f9a825;padding:3px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:65%;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+          + '<td style="border:2px solid #f9a825;padding:3px 8px;font-size:10px;font-weight:700;width:35%;">Total Kilos:</td>'
           + '</tr>'
           + '</table>'
           + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
@@ -18816,9 +18821,9 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
         });
 
         htmlBody += '</tbody></table>'
-          + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:9px;font-weight:700;min-height:30px;">Observaciones:</div>'
           + '</div>';
       });
+      htmlBody += '<div style="border:2px solid #000;padding:5px 10px;font-size:10px;font-weight:700;min-height:40px;margin-top:4px;">Observaciones:</div>';
     });
 
     var win = window.open('', '_blank');
@@ -18826,9 +18831,9 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       + '<title>FORMATO DE PRODUCCIÓN — ROSCADO</title>'
       + '<style>'
       + pageStyle
-      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:2px 4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
       + 'table{border-collapse:collapse;}'
-      + '.no-print{position:fixed;top:10px;right:10px;z-index:9999;}'
+      + '.no-print{position:fixed;top:4px;right:4px;z-index:9999;}'
       + '@media print{.no-print{display:none!important;}}'
       + '</style></head><body>'
       + '<div class="no-print">'
@@ -22413,6 +22418,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
