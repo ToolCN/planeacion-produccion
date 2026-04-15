@@ -18112,7 +18112,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       return tsupHtmlTurnoColatado(lista);
     }
     if (esRoscado) {
-      return '';
+      return tsupHtmlTurnoRoscadoPantalla(lista);
     }
     // ── Render genérico (procesos distintos a COLATADO) ──
     var html = '';
@@ -18313,6 +18313,55 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
 
     html += '</div>'; // cierra flex de órdenes
     html += '</div>'; // cierra div contenedor
+    return html;
+  }
+
+  function tsupHtmlTurnoRoscadoPantalla(lista) {
+    if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes para este proceso.</p>';
+    var html = '';
+    lista.forEach(function(m) {
+      var ordenes = (m.ordenes || []).filter(function(o) {
+        var est = (o.estado || '').toUpperCase();
+        return est !== 'TERMINADO' && est !== 'CANCELADO';
+      }).slice(0, 3);
+      if (!ordenes.length) return;
+      html += '<div style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);">'
+            + '<div style="background:#fff9c4;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #f9a825;text-transform:uppercase;color:#000;">🔧 MÁQUINA: ' + m.nombre + '</div>'
+            + '<table style="width:100%;border-collapse:collapse;background:white;font-size:11px;table-layout:fixed;"><thead><tr>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Orden</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:10%">Tipo</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Ø</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Longitud</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">SAE</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Solic</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Prod</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Avance</th>'
+            + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Restan</th>'
+            + '</tr></thead><tbody>';
+      ordenes.forEach(function(o) {
+        var pct = Math.round(o.avance || 0), w = Math.min(o.avance || 0, 100);
+        var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+        var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+        var colorRaw = (o.cuerpo || o.detalle || '').toUpperCase();
+        var color = colorRaw.includes('VERDE') ? 'VERDE' : colorRaw.includes('AZUL') ? 'AZUL' : 'ROSA';
+        html += '<tr>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;">' + (o.ordenFull || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;line-height:1.3;">VARILLA<br>' + color + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;color:#000;">' + diam + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;color:#000;">' + lon + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + (o.acero || '') + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;">'
+                + '<div style="display:flex;flex-direction:column;align-items:center;">'
+                + '<span style="font-size:9px;font-weight:900;color:#000;">' + pct + '%</span>'
+                + '<div style="width:90%;height:6px;background:#e0e0e0;border:1px solid #777;">'
+                + '<div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></div></td>'
+              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+              + '</tr>';
+      });
+      html += '</tbody></table></div>';
+    });
     return html;
   }
 
@@ -18679,7 +18728,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       var pageBreak = gIdx > 0 ? 'page-break-before:always;' : '';
 
       // Encabezado del grupo
-      htmlBody += '<table style="width:100%;border-collapse:collapse;margin-bottom:4px;' + pageBreak + '">'
+      htmlBody += '<table style="width:100%;border-collapse:collapse;margin-bottom:4px;margin-top:0;' + pageBreak + '">'
         + '<tr>'
         + '<td style="width:80px;padding:0 8px 0 0;vertical-align:middle;">'
         + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:50px;width:auto;display:block;" onerror="this.style.display=\'none\'">'
@@ -18702,10 +18751,11 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
 
       // Tabla por máquina — primeras 3 órdenes vivas
       maqsGrupo.forEach(function(m) {
+        var maxOrdenes = esVertical ? 2 : 3;
         var ordenes = (m.ordenes || []).filter(function(o) {
           var est = (o.estado || '').toUpperCase();
           return est !== 'TERMINADO' && est !== 'CANCELADO';
-        }).slice(0, 3);
+        }).slice(0, maxOrdenes);
 
         htmlBody += '<div style="margin-bottom:18px;break-inside:avoid;page-break-inside:avoid;">'
           + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
@@ -18720,8 +18770,8 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Orden</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:9%">Tipo</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:9%">Ø</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Longitud</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">SAE</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Longitud</th>'
+          + (esVertical ? '' : '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">SAE</th>')
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Solic.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Prod.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">Av.</th>'
@@ -18729,11 +18779,11 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">#Atado</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
-          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Total</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:' + (esVertical ? '8' : '7') + 'px;width:' + (esVertical ? '8' : '5') + '%">Total</th>'
           + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">#Atado</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
-          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Total</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:' + (esVertical ? '8' : '7') + 'px;width:' + (esVertical ? '8' : '5') + '%">Total</th>'
           + '</tr></thead><tbody>';
 
         ordenes.forEach(function(o) {
@@ -18749,7 +18799,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;font-weight:900;line-height:1.3;vertical-align:middle;">VARILLA<br>' + _color + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:11px;font-weight:900;">' + diam + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.acero || '') + '</td>'
+            + (esVertical ? '' : '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.acero || '') + '</td>')
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
             + '<td style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;">' + pct + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></td>'
@@ -18776,7 +18826,7 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       + '<title>FORMATO DE PRODUCCIÓN — ROSCADO</title>'
       + '<style>'
       + pageStyle
-      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
       + 'table{border-collapse:collapse;}'
       + '.no-print{position:fixed;top:10px;right:10px;z-index:9999;}'
       + '@media print{.no-print{display:none!important;}}'
@@ -22363,6 +22413,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
