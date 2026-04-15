@@ -409,12 +409,11 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     document.getElementById('tsup-screenTurno').style.display    = 'flex';
     document.getElementById('tsup-turnoProceso').textContent     = nombre;
     document.getElementById('tsup-turnoBody').innerHTML = '<div class="turno-empty">⏳ Cargando reporte de turno...</div>';
-    // Mostrar checkboxes de grupo solo para ROSCADO
-    var chkArea = document.getElementById('tsup-turnoGrupoChecks');
-    if (chkArea) {
-      var esRoscado = (nombre || '').toUpperCase().includes('ROSCADO');
-      chkArea.style.display = esRoscado ? 'flex' : 'none';
-      if (esRoscado) {
+    var _chkArea = document.getElementById('tsup-turnoGrupoChecks');
+    if (_chkArea) {
+      var _esRoscado = (nombre || '').toUpperCase().includes('ROSCADO');
+      _chkArea.style.display = _esRoscado ? 'flex' : 'none';
+      if (_esRoscado) {
         document.getElementById('tsup-chkVarillaN1').checked = false;
         document.getElementById('tsup-chkVarillaTool').checked = false;
       }
@@ -838,38 +837,18 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
   };
 
   window.tsupImprimirTurno = function(orientacion) {
-    var procesoNombre = document.getElementById('tsup-turnoProceso').textContent || '';
-    var esRoscado = procesoNombre.toUpperCase().includes('ROSCADO');
-    if (esRoscado) {
+    orientacion = orientacion || 'horizontal';
+    var proceso = document.getElementById('tsup-turnoProceso').textContent;
+    if (proceso.toUpperCase().includes('COLATADO')) {
+      tsupImprimirColatado(proceso, window._tsupListaTurno || [], orientacion);
+    } else if (proceso.toUpperCase().includes('ROSCADO')) {
       var chkN1   = document.getElementById('tsup-chkVarillaN1');
       var chkTool = document.getElementById('tsup-chkVarillaTool');
       if (!chkN1.checked && !chkTool.checked) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Selecciona al menos un grupo',
-          text: 'Debes seleccionar VARILLA N1, VARILLA TOOL o ambos antes de imprimir.',
-          confirmButtonColor: '#1565c0',
-          confirmButtonText: 'ENTENDIDO'
-        });
+        Swal.fire({ icon:'warning', title:'Selecciona al menos un grupo', text:'Elige VARILLA N1, VARILLA TOOL o ambos antes de imprimir.', confirmButtonColor:'#1565c0', confirmButtonText:'ENTENDIDO' });
         return;
       }
-    }
-    orientacion = orientacion || 'horizontal';
-    var proceso = procesoNombre;
-    if (proceso.toUpperCase().includes('COLATADO')) {
-      tsupImprimirColatado(proceso, window._tsupListaTurno || [], orientacion);
-    } else if (esRoscado) {
-      var style = document.createElement('style');
-      style.id = 'tsup-print-orient';
-      var old = document.getElementById('tsup-print-orient');
-      if (old) old.remove();
-      style.textContent = orientacion === 'horizontal'
-        ? '@media print{@page{size:letter landscape;margin:10mm 5mm;}}'
-        : '@media print{@page{size:letter portrait;margin:10mm 5mm;}}';
-      document.head.appendChild(style);
-      var body = document.getElementById('tsup-turnoBody');
-      if (body) body.innerHTML = tsupHtmlTurno(window._tsupListaTurno || [], proceso);
-      window.print();
+      tsupImprimirRoscado(proceso, window._tsupListaTurno || [], orientacion);
     } else {
       tsupAbrirVentanaImpresion('FORM. PRODUCCIÓN — ' + proceso, tsupHtmlTurno(window._tsupListaTurno || []));
     }
@@ -1042,6 +1021,158 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       + '</table>'
       + '<hr style="border:2px solid #000;margin:0 0 4px 0;">'
       + htmlFinal
+      + '</body></html>');
+    win.document.close();
+  }
+
+  function tsupImprimirRoscado(proceso, lista, orientacion) {
+    var mostrarN1   = document.getElementById('tsup-chkVarillaN1')   ? document.getElementById('tsup-chkVarillaN1').checked   : true;
+    var mostrarTool = document.getElementById('tsup-chkVarillaTool') ? document.getElementById('tsup-chkVarillaTool').checked : true;
+
+    // Filtrar máquinas por grupo seleccionado
+    var listaFiltrada = lista.filter(function(m) {
+      var grp = (m.grupo || '').toUpperCase();
+      if (mostrarN1   && grp === 'VARILLA N1')   return true;
+      if (mostrarTool && grp === 'VARILLA TOOL') return true;
+      return false;
+    });
+
+    // Si no hay coincidencia exacta, intentar con includes
+    if (!listaFiltrada.length) {
+      listaFiltrada = lista.filter(function(m) {
+        var grp = (m.grupo || '').toUpperCase();
+        if (mostrarN1   && grp.includes('N1'))   return true;
+        if (mostrarTool && grp.includes('TOOL')) return true;
+        return false;
+      });
+    }
+
+    // Agrupar por grupo para separar en secciones
+    var grupos = {};
+    var ordenGrupos = [];
+    listaFiltrada.forEach(function(m) {
+      var grp = (m.grupo || 'SIN GRUPO').toUpperCase();
+      if (!grupos[grp]) { grupos[grp] = []; ordenGrupos.push(grp); }
+      grupos[grp].push(m);
+    });
+
+    var esVertical = orientacion === 'vertical';
+    var pageStyle = esVertical
+      ? '@page{size:letter portrait;margin:6mm 5mm;}'
+      : '@page{size:letter landscape;margin:4mm 3mm;}';
+
+    // Construir HTML de secciones por grupo
+    var htmlBody = '';
+    ordenGrupos.forEach(function(grp, gIdx) {
+      var maqsGrupo = grupos[grp];
+      var pageBreak = gIdx > 0 ? 'page-break-before:always;' : '';
+
+      // Encabezado del grupo
+      htmlBody += '<table style="width:100%;border-collapse:collapse;margin-bottom:4px;' + pageBreak + '">'
+        + '<tr>'
+        + '<td style="width:80px;padding:0 8px 0 0;vertical-align:middle;">'
+        + '<img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" style="height:50px;width:auto;display:block;" onerror="this.style.display=\'none\'">'
+        + '</td>'
+        + '<td style="vertical-align:middle;padding:0 10px;">'
+        + '<div style="font-size:18px;font-weight:900;text-transform:uppercase;line-height:1.1;">FORMATO DE PRODUCCIÓN</div>'
+        + '<div style="font-size:14px;font-weight:900;color:#e65100;text-transform:uppercase;letter-spacing:2px;">VARILLA ROSCADA — ' + grp + '</div>'
+        + '</td>'
+        + '<td style="width:220px;vertical-align:middle;text-align:right;">'
+        + '<table style="border-collapse:collapse;margin-left:auto;">'
+        + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;">Fecha:</td>'
+        + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+        + '<tr><td style="font-size:10px;font-weight:700;padding:2px 4px;text-align:right;">Turno:</td>'
+        + '<td style="border:2px solid #000;width:150px;height:22px;padding:2px;"></td></tr>'
+        + '</table>'
+        + '</td>'
+        + '</tr>'
+        + '</table>'
+        + '<hr style="border:2px solid #000;margin:0 0 6px 0;">';
+
+      // Tabla por máquina — primeras 3 órdenes vivas
+      maqsGrupo.forEach(function(m) {
+        var ordenes = (m.ordenes || []).filter(function(o) {
+          var est = (o.estado || '').toUpperCase();
+          return est !== 'TERMINADO' && est !== 'CANCELADO';
+        }).slice(0, 3);
+
+        htmlBody += '<div style="margin-bottom:18px;break-inside:avoid;page-break-inside:avoid;">'
+          + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
+          + '<tr style="background:#fff9c4;height:36px;">'
+          + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:40%;">⚙ MÁQUINA: ' + m.nombre + '</td>'
+          + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:35%;">Operador:</td>'
+          + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:25%;">Total de Atados:</td>'
+          + '</tr>'
+          + '</table>'
+          + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
+          + '<thead><tr style="background:#dde3f0;">'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Orden</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:12%">Producto</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Ø</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Longitud</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Cuerpo</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">SAE</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Solic.</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Prod.</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">Av.</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Restan</th>'
+          + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">Atado</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Peso Ini</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Atado kg</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Peso Final</th>'
+          + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">Atado</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Peso Ini</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Atado kg</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Peso Final</th>'
+          + '</tr></thead><tbody>';
+
+        ordenes.forEach(function(o) {
+          var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+          var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+          var pct  = Math.round(o.avance || 0);
+          var w    = Math.min(o.avance || 0, 100);
+          htmlBody += '<tr style="height:28px;">'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#1565c0;font-size:10px;">' + (o.ordenFull || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;">' + (o.producto || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + diam + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.cuerpo || o.detalle || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.acero || '') + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+            + '<td style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;">' + pct + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:10px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+            + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;border-left:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+            + '</tr>';
+        });
+
+        htmlBody += '</tbody></table>'
+          + '<div style="border:2px solid #000;border-top:none;padding:4px 10px;font-size:9px;font-weight:700;min-height:30px;">Observaciones:</div>'
+          + '</div>';
+      });
+    });
+
+    var win = window.open('', '_blank');
+    win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+      + '<title>FORMATO DE PRODUCCIÓN — ROSCADO</title>'
+      + '<style>'
+      + pageStyle
+      + 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+      + 'table{border-collapse:collapse;}'
+      + '.no-print{position:fixed;top:10px;right:10px;z-index:9999;}'
+      + '@media print{.no-print{display:none!important;}}'
+      + '</style></head><body>'
+      + '<div class="no-print">'
+      + '<button onclick="window.print()" style="padding:8px 18px;background:#1565c0;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:4px;">🖨️ IMPRIMIR</button>'
+      + '</div>'
+      + htmlBody
       + '</body></html>');
     win.document.close();
   }
