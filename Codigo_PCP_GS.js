@@ -4450,11 +4450,9 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
       // PEDIDOS se busca por folio (Col B, índice 1), que es lo que guarda ORDENES.PEDIDO
       for (var k = 1; k < dataPed.length; k++) {
         if (String(dataPed[k][1]).trim() === String(pedidoTarget).trim()) {
-          // Actualizar CANTIDAD (Col G): suma la diferencia sobre el valor actual
-          if (colCantPed > -1) {
-            var cantActual = parseFloat(dataPed[k][colCantPed]) || 0;
-            shPedidos.getRange(k + 1, colCantPed + 1).setValue(cantActual + diferenciaCantidad);
-          }
+          // Actualizar CANTIDAD (Col G, índice fijo 6 — header "Cant" no "CANTIDAD")
+          var cantActual = parseFloat(dataPed[k][6]) || 0;
+          shPedidos.getRange(k + 1, 7).setValue(cantActual + diferenciaCantidad);
           // Actualizar CANT_PLAN (Col P): recalcular sumando SOLICITADO de todas las órdenes
           // del pedido sin duplicar por serie.orden (misma lógica que cancelarOrdenEspecifica)
           if (colPlanPed > -1) {
