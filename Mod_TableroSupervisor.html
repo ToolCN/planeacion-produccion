@@ -1101,29 +1101,28 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '<tr style="background:#fff9c4;height:36px;">'
           + '<td style="border:2px solid #f9a825;padding:4px 10px;font-weight:900;font-size:11px;text-transform:uppercase;width:40%;">⚙ MÁQUINA: ' + m.nombre + '</td>'
           + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:35%;">Operador:</td>'
-          + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:25%;">Total de Atados:</td>'
+          + '<td style="border:2px solid #f9a825;padding:4px 8px;font-size:10px;font-weight:700;width:25%;">Total Kilos: <span style="border:2px solid #000;display:inline-block;width:80px;height:20px;vertical-align:middle;"></span></td>'
           + '</tr>'
           + '</table>'
           + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;">'
           + '<thead><tr style="background:#dde3f0;">'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Orden</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:12%">Producto</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Ø</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:9%">Tipo/<br>Color</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:9%">Ø</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Longitud</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Cuerpo</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">SAE</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Solic.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Prod.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">Av.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Restan</th>'
-          + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">Atado</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Peso Ini</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Atado kg</th>'
-          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Peso Final</th>'
-          + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">Atado</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Peso Ini</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:6%">Atado kg</th>'
-          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Peso Final</th>'
+          + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">#Atado</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Total</th>'
+          + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">#Atado</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:5%">Total</th>'
           + '</tr></thead><tbody>';
 
         ordenes.forEach(function(o) {
@@ -1131,12 +1130,16 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
           var pct  = Math.round(o.avance || 0);
           var w    = Math.min(o.avance || 0, 100);
+          // Determinar color desde o.cuerpo o o.detalle
+          var _colorRaw = (o.cuerpo || o.detalle || '').toUpperCase();
+          var _color = _colorRaw.includes('VERDE') ? 'VERDE' : _colorRaw.includes('AZUL') ? 'AZUL' : 'ROSA';
+          var _colorBg = _color === 'VERDE' ? '#e8f5e9' : _color === 'AZUL' ? '#e3f2fd' : '#fce4ec';
+          var _colorTxt = _color === 'VERDE' ? '#2e7d32' : _color === 'AZUL' ? '#1565c0' : '#c62828';
           htmlBody += '<tr style="height:28px;">'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#1565c0;font-size:10px;">' + (o.ordenFull || '') + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;">' + (o.producto || '') + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + diam + '</td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:8px;font-weight:900;line-height:1.2;">VARILLA<br><span style="background:' + _colorBg + ';color:' + _colorTxt + ';font-weight:900;font-size:9px;padding:1px 4px;border-radius:3px;">' + _color + '</span></td>'
+            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:11px;font-weight:900;">' + diam + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.cuerpo || o.detalle || '') + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.acero || '') + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
