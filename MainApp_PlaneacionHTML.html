@@ -18983,17 +18983,22 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
         + '<div style="font-size:18px;font-weight:900;text-transform:uppercase;line-height:1.1;">FORMATO DE PRODUCCIÓN</div>'
         + '<div style="font-size:14px;font-weight:900;color:#e65100;text-transform:uppercase;letter-spacing:2px;">ESTAMPADO — ' + grp + '</div>'
         + '</td>'
-        + '<td style="width:260px;vertical-align:middle;text-align:right;">'
+        + '<td style="width:520px;vertical-align:middle;text-align:right;">'
         + '<table style="border-collapse:collapse;margin-left:auto;width:100%;">'
         + '<tr>'
         + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Fecha:</td>'
-        + '<td style="border:2px solid #000;width:100px;height:20px;padding:2px;"></td>'
+        + '<td style="border:2px solid #000;width:200px;height:20px;padding:2px;"></td>'
         + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Turno:</td>'
-        + '<td style="border:2px solid #000;width:60px;height:20px;padding:2px;"></td>'
+        + '<td style="border:2px solid #000;width:120px;height:20px;padding:2px;"></td>'
         + '</tr>'
         + '<tr>'
         + '<td style="font-size:10px;font-weight:700;padding:2px 4px;white-space:nowrap;">Operador:</td>'
-        + '<td colspan="3" style="border:2px solid #000;height:20px;padding:2px;"></td>'
+        + '<td colspan="3" style="border:2px solid #000;height:20px;padding:0;overflow:hidden;">'
+        + '<div style="display:flex;align-items:stretch;height:20px;">'
+        + '<div style="flex:1;border-right:1px solid #999;"></div>'
+        + '<span style="padding:0 3px;display:flex;align-items:center;font-weight:900;font-size:11px;">/</span>'
+        + '<div style="flex:1;"></div>'
+        + '</div></td>'
         + '</tr>'
         + '</table>'
         + '</td>'
@@ -19019,22 +19024,23 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '<thead><tr style="background:#dde3f0;">'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Orden</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:10%">Producto</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Ø</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:8%">Long</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:9%">Tipo</th>'
-          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Acero</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Ø</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:7%">Long</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:4%">Tipo</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Solic.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Prod.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:5%">Av.</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:8px;width:6%">Restan</th>'
-          + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">Tina</th>'
+          + '<th style="border:2px solid #000;border-left:3px solid #000;padding:2px;font-size:7px;width:4%">#Tina</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
-          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">Total</th>'
-          + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">Tina</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:5%">P. Tina</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">TOTAL</th>'
+          + '<th style="border:2px solid #000;border-left:2px solid #000;padding:2px;font-size:7px;width:4%">#Tina</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Inicial</th>'
           + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:7%">P. Final</th>'
-          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">Total</th>'
+          + '<th style="border:2px solid #000;padding:2px;font-size:7px;width:5%">P. Tina</th>'
+          + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">TOTAL</th>'
           + '</tr></thead><tbody>';
 
         ordenes.forEach(function(o) {
@@ -19048,7 +19054,6 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + diam + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.cuerpo || o.detalle || '') + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.acero || '') + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
             + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
             + '<td style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;">' + pct + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></td>'
@@ -19056,8 +19061,10 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
             + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;border-left:2px solid #000;background:#fafafa;"></td>'
+            + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
@@ -22663,6 +22670,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
