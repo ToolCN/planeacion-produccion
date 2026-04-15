@@ -4299,59 +4299,6 @@ function actualizarMaquinasRutaPlanif(codigo, proceso, maqsString) {
 
 //**Agregado nuevo para hacer mejoras */
 
-function obtenerProduccionDeOrden(idOrden) {
-  try {
-    var ss = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
-    var sh = ss.getSheetByName('PRODUCCION');
-    if (!sh) return JSON.stringify([]);
-    var data = sh.getDataRange().getValues();
-    var headers = data[0].map(function(h){ return String(h).trim().toUpperCase(); });
-    // Índices de columnas clave
-    var iId      = headers.indexOf('ID_ORDEN');
-    var iFecha   = headers.indexOf('FECHA');
-    var iTurno   = headers.indexOf('TURNO');
-    var iMaq     = headers.indexOf('MAQUINA');
-    var iLote    = headers.indexOf('LOTE');
-    var iOper    = headers.indexOf('OPERADOR');
-    var iPesoI   = headers.indexOf('PESO_INICIAL');
-    var iPesoF   = headers.indexOf('PESO_FINAL');
-    var iProd    = headers.indexOf('PRODUCIDO');
-    var iHrs     = headers.indexOf('HORAS');
-    // Fallbacks para nombres alternativos
-    if (iPesoI  < 0) iPesoI  = headers.indexOf('PESO_I');
-    if (iPesoF  < 0) iPesoF  = headers.indexOf('PESO_F');
-    if (iProd   < 0) iProd   = headers.indexOf('KG_PROD');
-    if (iOper   < 0) iOper   = headers.indexOf('OPERADOR_TXT');
-    if (iHrs    < 0) iHrs    = headers.indexOf('HRS');
-    var resultado = [];
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (String(row[iId] || '').trim() !== String(idOrden).trim()) continue;
-      var fechaVal = row[iFecha];
-      var fechaStr = '';
-      if (fechaVal instanceof Date) {
-        fechaStr = Utilities.formatDate(fechaVal, Session.getScriptTimeZone(), 'dd/MM/yyyy');
-      } else {
-        fechaStr = String(fechaVal || '');
-      }
-      resultado.push({
-        fecha:    fechaStr,
-        turno:    iTurno   >= 0 ? String(row[iTurno]  || '') : '',
-        maquina:  iMaq     >= 0 ? String(row[iMaq]    || '') : '',
-        lote:     iLote    >= 0 ? String(row[iLote]   || '') : '',
-        operador: iOper    >= 0 ? String(row[iOper]   || '') : '',
-        pesoI:    iPesoI   >= 0 ? (parseFloat(row[iPesoI])  || 0) : 0,
-        pesoF:    iPesoF   >= 0 ? (parseFloat(row[iPesoF])  || 0) : 0,
-        producido:iProd    >= 0 ? (parseFloat(row[iProd])   || 0) : 0,
-        horas:    iHrs     >= 0 ? (parseFloat(row[iHrs])    || '') : ''
-      });
-    }
-    return JSON.stringify(resultado);
-  } catch(e) {
-    return JSON.stringify({ error: e.message });
-  }
-}
-
 function obtenerDatosCantidadOrden(id) {
   try {
     var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);

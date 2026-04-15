@@ -12193,13 +12193,49 @@ function planifConfirmarCambioCantidad() {
   if (!nuevaCantidad || nuevaCantidad <= 0) { sAlert('Ingresa una cantidad válida'); return; }
   planifCerrarModal('planif-modalCantidad');
   showLoader('Actualizando cantidad...');
+  var idGuardando = planif_idCantidadEditando;
   google.script.run.withSuccessHandler(function() {
     hideLoader();
-    planifRefrescarConAnimacion();
+    // Actualizar el objeto en memoria
+    var o = planif_ordenesVivas.find(function(x){ return String(x.id) === String(idGuardando); });
+    if (o) {
+      o.sol = nuevaCantidad;
+      // Re-renderizar solo la TR afectada (patrón idéntico a planifTablaToggleEstado)
+      var tr = document.getElementById('pt-row-' + idGuardando);
+      if (tr) {
+        var tbody  = tr.closest('tbody');
+        var maqKey  = tbody ? tbody.dataset.maqkey  : '';
+        var maqSafe = tbody ? tbody.dataset.maqsafe : '';
+        var rowIdx  = tbody ? Array.from(tbody.querySelectorAll('tr')).indexOf(tr) : 0;
+        var tieneC7 = tbody ? Array.from(tbody.querySelectorAll('tr')).some(function(r){
+          var ord = planif_ordenesVivas.find(function(x){ return x.id == r.dataset.id; });
+          return ord && String(ord.codigo||'').charAt(0) === '7';
+        }) : false;
+        tr.outerHTML = planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7);
+        // Actualizar totales Solic./Prod. del bloque
+        if (maqSafe) {
+          var tbodyRef = document.getElementById('pt-body-' + maqSafe);
+          if (tbodyRef) {
+            var totalSol = 0, totalProd = 0;
+            Array.from(tbodyRef.querySelectorAll('tr')).forEach(function(tr2) {
+              var id2 = tr2.dataset.id;
+              if (!id2) return;
+              var o2 = planif_ordenesVivas.find(function(x){ return x.id == id2; });
+              if (o2) { totalSol += Number(o2.sol)||0; totalProd += Number(o2.prod)||0; }
+            });
+            var elSol  = document.getElementById('pt-total-sol-'  + maqSafe);
+            var elProd = document.getElementById('pt-total-prod-' + maqSafe);
+            if (elSol)  elSol.textContent  = planifFormatN(totalSol);
+            if (elProd) elProd.textContent = planifFormatN(totalProd);
+          }
+        }
+      }
+    }
+    Swal.fire({ icon:'success', title:'Cantidad actualizada', timer:1500, showConfirmButton:false });
   }).withFailureHandler(function(e) {
     hideLoader();
     sAlert('Error al actualizar cantidad: ' + e, 'error');
-  }).actualizarCantidadOrden(planif_idCantidadEditando, nuevaCantidad);
+  }).actualizarCantidadOrden(idGuardando, nuevaCantidad);
 }
 
 function planifAbrirModalProdPlanif(idOrden, folioLabel) {
@@ -12231,7 +12267,9 @@ function planifAbrirModalProdPlanif(idOrden, folioLabel) {
   google.script.run
     .withSuccessHandler(function(resRaw) {
       try {
-        var registros = typeof resRaw === 'string' ? JSON.parse(resRaw) : (resRaw || []);
+        var parsed = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        // La función original retorna { success, registros, ... }
+        var registros = (parsed && parsed.registros) ? parsed.registros : (Array.isArray(parsed) ? parsed : []);
         planif_prodRegistros = registros;
         var cuerpo = document.getElementById('planif-cuerpoProdPlanif');
         if (!registros.length) {
@@ -12249,7 +12287,7 @@ function planifAbrirModalProdPlanif(idOrden, folioLabel) {
         html += '</div>';
         html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
         html += '<thead><tr style="background:#1565c0;color:white;">';
-        ['Fecha','Turno','Máquina','Lote','Operador','P.Ini','P.Fin','Producido (kg)','Hrs'].forEach(function(h){
+        ['Fecha','Turno','Máquina','Lote','P.Ini','P.Fin','P.Tina','Producido (kg)','Hrs'].forEach(function(h){
           html += '<th style="padding:8px 10px;text-align:left;white-space:nowrap;">' + h + '</th>';
         });
         html += '</tr></thead><tbody>';
@@ -12259,9 +12297,9 @@ function planifAbrirModalProdPlanif(idOrden, folioLabel) {
           html += '<td style="padding:6px 10px;">' + (r.turno||'') + '</td>';
           html += '<td style="padding:6px 10px;">' + (r.maquina||'') + '</td>';
           html += '<td style="padding:6px 10px;">' + (r.lote||'') + '</td>';
-          html += '<td style="padding:6px 10px;">' + (r.operador||'') + '</td>';
           html += '<td style="padding:6px 10px;text-align:right;">' + planifFormatN(r.pesoI||0) + '</td>';
           html += '<td style="padding:6px 10px;text-align:right;">' + planifFormatN(r.pesoF||0) + '</td>';
+          html += '<td style="padding:6px 10px;text-align:right;">' + planifFormatN(r.pesoTina||0) + '</td>';
           html += '<td style="padding:6px 10px;text-align:right;font-weight:900;color:#1565c0;">' + planifFormatN(r.producido||0) + '</td>';
           html += '<td style="padding:6px 10px;text-align:right;">' + (r.horas||'') + '</td>';
           html += '</tr>';
@@ -12277,7 +12315,7 @@ function planifAbrirModalProdPlanif(idOrden, folioLabel) {
       document.getElementById('planif-cuerpoProdPlanif').innerHTML =
         '<div style="color:#c62828;padding:20px;font-weight:700;">Error al cargar producción: ' + (err.message||err) + '</div>';
     })
-    .obtenerProduccionDeOrden(idOrden);
+    .obtenerProduccionDeOrden(JSON.stringify([idOrden]));
 }
 
 function planifCerrarModalProdPlanif() {
@@ -22808,6 +22846,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
