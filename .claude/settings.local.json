@@ -15,7 +15,25 @@
       "Bash(kill %1)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(python split_html.py)",
+      "Bash(where py *)",
+      "Bash(where python3 *)",
+      "Bash(ls /c/Python*)",
+      "Read(//c/Users/rcdga/AppData/Local/**)",
+      "Bash(wc -l Mod_*.html)",
+      "Bash(ls -la Mod_*.html)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(sort -k2)",
+      "Bash(ls *.js)",
+      "Bash(ls *.html)",
+      "Bash(grep -l '`' Mod_*.html)",
+      "Bash(grep -n '`' Mod_Dashboard.html)",
+      "Bash(grep -v \"^[0-9]*:\\\\s*<script\\\\|^[0-9]*:\\\\s*</script\\\\|^[0-9]*:.*src=\\\\|^[0-9]*://\\\\|^[0-9]*:\\\\s*//\")",
+      "Bash(grep -n '<\\\\\\\\/' MainApp_PlaneacionHTML.html)",
+      "Bash(grep -n '^<script>$\\\\|^</script>$\\\\|^</body>$\\\\|^</html>$' MainApp_PlaneacionHTML.html)",
+      "Bash(npm run *)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ToolCN/planeacion-produccion/main/Mod_TableroSupervisor.html\")"
     ]
   }
 }
