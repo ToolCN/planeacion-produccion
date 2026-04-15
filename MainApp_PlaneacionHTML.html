@@ -12199,7 +12199,22 @@ function planifConfirmarCambioCantidad() {
     // Actualizar el objeto en memoria
     var o = planif_ordenesVivas.find(function(x){ return String(x.id) === String(idGuardando); });
     if (o) {
-      o.sol = nuevaCantidad;
+      // Calcular nuevo sol (SOLICITADO en KG) con la misma lógica del backend
+      // o.peso = kg/pza, o.long = string "3.0 mts", o.desc contiene "VARILLA" si aplica
+      var _peso     = parseFloat(o.peso) || 0;
+      var _longStr  = String(o.long || '');
+      var _longM    = _longStr.match(/[\d.]+/);
+      var _longitud = _longM ? parseFloat(_longM[0]) : 0;
+      var _esVar    = String(o.desc || '').toUpperCase().indexOf('VARILLA') > -1;
+      var _nuevoSol;
+      if (_peso > 0) {
+        _nuevoSol = nuevaCantidad * _peso;
+        if (_esVar && _longitud > 0) _nuevoSol = _nuevoSol * _longitud;
+      } else {
+        // Sin peso (KG/ROL): sol = cantidad directa
+        _nuevoSol = nuevaCantidad;
+      }
+      o.sol = _nuevoSol;
       // Re-renderizar solo la TR afectada (patrón idéntico a planifTablaToggleEstado)
       var tr = document.getElementById('pt-row-' + idGuardando);
       if (tr) {
@@ -22846,6 +22861,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
