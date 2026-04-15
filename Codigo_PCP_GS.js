@@ -4440,38 +4440,33 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
       }
     }
 
-    // Actualizar el pedido: Col G (CANTIDAD) y Col P (CANT_PLAN)
+    // Actualizar el pedido: Col G (Cant) y Col P (CANT_PLAN)
+    // Primero recalcular planeadoTotal leyendo ORDENES frescos (sin duplicar por serie.orden)
     if (pedidoTarget && shPedidos) {
-      // -- Col G: CANTIDAD = suma con diferencia (igual que antes pero buscando por folio Col B) --
+      var dataOrdFresh = sh.getDataRange().getValues();
+      var planeadoTotal = 0;
+      var keysContadas  = {};
+      for (var j = 1; j < dataOrdFresh.length; j++) {
+        var rowOrd = dataOrdFresh[j];
+        if (String(rowOrd[idx.PEDIDO]).trim() !== String(pedidoTarget).trim()) continue;
+        if (String(rowOrd[idx.ESTADO] || '').toUpperCase().trim() === 'CANCELADO') continue;
+        var keyOrd = String(rowOrd[idx.SERIE]) + '.' + String(rowOrd[idx.ORDEN]);
+        if (keysContadas[keyOrd]) continue;
+        keysContadas[keyOrd] = true;
+        planeadoTotal += parseFloat(rowOrd[idx.SOLICITADO]) || 0;
+      }
       var dataPed = shPedidos.getDataRange().getValues();
       var headersPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
-      var colCantPed  = headersPed.indexOf("CANTIDAD");   // Col G
-      var colPlanPed  = headersPed.indexOf("CANT_PLAN");  // Col P
-      // PEDIDOS se busca por folio (Col B, índice 1), que es lo que guarda ORDENES.PEDIDO
+      var colPlanPed = headersPed.indexOf('CANT_PLAN'); // Col P
       for (var k = 1; k < dataPed.length; k++) {
-        if (String(dataPed[k][1]).trim() === String(pedidoTarget).trim()) {
-          // Actualizar CANTIDAD (Col G, índice fijo 6 — header "Cant" no "CANTIDAD")
-          var cantActual = parseFloat(dataPed[k][6]) || 0;
-          shPedidos.getRange(k + 1, 7).setValue(cantActual + diferenciaCantidad);
-          // Actualizar CANT_PLAN (Col P): recalcular sumando SOLICITADO de todas las órdenes
-          // del pedido sin duplicar por serie.orden (misma lógica que cancelarOrdenEspecifica)
-          if (colPlanPed > -1) {
-            var dataOrdFresh = sh.getDataRange().getValues();
-            var planeadoTotal = 0;
-            var keysContadas  = {};
-            for (var j = 1; j < dataOrdFresh.length; j++) {
-              var rowOrd = dataOrdFresh[j];
-              if (String(rowOrd[idx.PEDIDO]).trim() !== String(pedidoTarget).trim()) continue;
-              if (String(rowOrd[idx.ESTADO] || '').toUpperCase().trim() === 'CANCELADO') continue;
-              var keyOrd = String(rowOrd[idx.SERIE]) + '.' + String(rowOrd[idx.ORDEN]);
-              if (keysContadas[keyOrd]) continue;
-              keysContadas[keyOrd] = true;
-              planeadoTotal += parseFloat(rowOrd[idx.SOLICITADO]) || 0;
-            }
-            shPedidos.getRange(k + 1, colPlanPed + 1).setValue(planeadoTotal);
-          }
-          break;
+        if (String(dataPed[k][1]).trim() !== String(pedidoTarget).trim()) continue;
+        // Col G (índice 6): Cant = planeadoTotal (mismo valor que CANT_PLAN)
+        shPedidos.getRange(k + 1, 7).setValue(planeadoTotal);
+        // Col P: CANT_PLAN = planeadoTotal
+        if (colPlanPed > -1) {
+          shPedidos.getRange(k + 1, colPlanPed + 1).setValue(planeadoTotal);
         }
+        break;
       }
     }
 
