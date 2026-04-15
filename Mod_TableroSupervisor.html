@@ -174,7 +174,7 @@ function loadTableroSup() {
   }
 
   // ── Inyectar HTML ──
-  ca.innerHTML = '\n<div id="tsup-panel">\n\n  <div id="tsup-miniLoader">⏳ <span id="tsup-miniLoaderTxt">CARGANDO...</span></div>\n\n  <div id="tsup-screenProcesos">\n    <div class="proc-header"><h1>⚙ TABLERO DEL SUPERVISOR</h1><p>Selecciona un proceso para ver sus órdenes</p></div>\n    <div class="proc-grid" id="tsup-gridProcesos"></div>\n  </div>\n\n  <div id="tsup-screenPlan">\n    <div class="plan-topbar">\n      <button class="btn-back" onclick="tsupVolverDesddePlan()">◀</button>\n      <div class="plan-title">📋 PLAN — <span id="tsup-planProceso"></span></div>\n      <button class="btn-imprimir" onclick="tsupImprimirPlan()">🖨 IMPRIMIR</button>\n    </div>\n    <div class="plan-body" id="tsup-planBody">\n      <div class="plan-empty">Cargando plan...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenTurno">\n    <div class="turno-topbar">\n      <button class="btn-back" onclick="tsupVolverDesdeTurno()">◀</button>\n      <div class="turno-title">🖨 FORM. PRODUCCIÓN — <span id="tsup-turnoProceso"></span></div>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'horizontal\')" style="background:#1565c0;">🖨 Horizontal</button>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'vertical\')" style="background:#2e7d32;margin-left:6px;">🖨 Vertical</button>\n    </div>\n    <div class="turno-body" id="tsup-turnoBody">\n      <div class="turno-empty">Cargando reporte...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenOrdenes">\n    <div class="ord-topbar">\n      <button class="btn-back" onclick="tsupVolverAProcesos()">◀</button>\n      <div class="ord-title" id="tsup-txtProcesoActual">---</div>\n      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)" style="padding:7px 12px;border:2px solid #ffd600;border-radius:8px;background:#161b22;color:#e6edf3;font-size:13px;font-weight:700;outline:none;width:400px;flex-shrink:0;animation:buscarPulso 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,214,0,0.6);">\n      <style>#tsup-inputBuscar:focus{animation:none!important;box-shadow:0 0 0 3px rgba(255,214,0,0.5)!important;border-color:#ffd600!important;}@keyframes buscarPulso{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.6);border-color:#ffd600;}50%{box-shadow:0 0 0 8px rgba(255,214,0,0);border-color:#ffe57f;}}</style>\n      <button class="btn-hist" id="tsup-btnHist" onclick="tsupToggleHistoricas()">📜 Históricas</button>\n    </div>\n    <div id="tsup-maqFilterBar"></div>\n    <div class="ord-list" id="tsup-listaOrdenes"></div>\n  </div>\n\n  <div id="tsup-modalOrden" onclick="if(event.target===this)tsupCerrarModal()">\n    <div class="mo-container">\n      <div class="mo-header">\n        <button class="mo-close" onclick="tsupCerrarModal()">✕ CERRAR</button>\n        <div class="mo-title" id="tsup-moTitle">---</div>\n        <div class="mo-sub" id="tsup-moSub">---</div>\n      </div>\n      <div class="mo-progress">\n        <div class="mo-kpi"><span>SOLICITADO</span><b id="tsup-moSol">0</b></div>\n        <div class="mo-bar-wrap"><div class="mo-bar"><div class="mo-bar-fill" id="tsup-moBarFill"></div></div></div>\n        <div class="mo-kpi"><span>PRODUCIDO</span><b id="tsup-moProd">0</b></div>\n        <div class="mo-kpi pending"><span>PENDIENTE</span><b id="tsup-moPen">0</b></div>\n      </div>\n      <div class="mo-body">\n        <div class="mo-left">\n          <div class="mo-section">\n            <div class="mo-section-title">📦 LOTES GENERADOS</div>\n            <div class="lotes-scroll" id="tsup-moLotes"></div>\n            <button class="btn-gen" onclick="tsupAbrirGenLotes()">+ GENERAR MÁS LOTES</button>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">🖨 CONFIGURAR IMPRESIÓN</div>\n            <div class="print-panel">\n              <div class="print-row">\n                <label>LOTE INICIAL:</label><input type="number" class="inp-lote" id="tsup-moLoteIni">\n                <label>LOTE FINAL:</label><input type="number" class="inp-lote" id="tsup-moLoteFin">\n              </div>\n              <div style="display:flex;gap:6px;">\n                <button class="btn-print btn-et1" onclick="tsupImprimir(\'ETIQUETA\')">🏷 TIPO 1</button>\n                <button class="btn-print btn-et2" onclick="tsupImprimir(\'ETIQUETA_2\')">🏷 TIPO 2</button>\n                <button class="btn-print btn-rpt" onclick="tsupImprimir(\'REPORTE_SOLO\')">📋 REPORTE</button>\n              </div>\n            </div>\n          </div>\n        </div>\n        <div class="mo-right">\n          <div class="mo-section">\n            <div class="mo-section-title">🔧 RUTA DE FABRICACIÓN</div>\n            <div id="tsup-moRuta"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">📄 DOCUMENTACIÓN TÉCNICA</div>\n            <div id="tsup-moDocs"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n        </div>\n      </div>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniGenLotes" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">+ GENERAR LOTES</div>\n      <label style="font-size:12px;color:#8b949e;">CANTIDAD DE LOTES:</label>\n      <input type="number" class="mini-input" id="tsup-genCant" placeholder="Ej: 5">\n      <label style="font-size:12px;color:#8b949e;">PESO POR LOTE (KG):</label>\n      <input type="number" class="mini-input" id="tsup-genPeso" placeholder="0">\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarGenLotes()">✅ CONFIRMAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniGenLotes\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniCambioMaq" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">🔧 CAMBIAR MÁQUINA</div>\n      <div id="tsup-maqProcLabel" style="font-size:12px;color:#8b949e;margin-bottom:8px;"></div>\n      <select class="mini-select" id="tsup-selectMaq"></select>\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarCambioMaq()">✅ APLICAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniCambioMaq\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n</div>';
+  ca.innerHTML = '\n<div id="tsup-panel">\n\n  <div id="tsup-miniLoader">⏳ <span id="tsup-miniLoaderTxt">CARGANDO...</span></div>\n\n  <div id="tsup-screenProcesos">\n    <div class="proc-header"><h1>⚙ TABLERO DEL SUPERVISOR</h1><p>Selecciona un proceso para ver sus órdenes</p></div>\n    <div class="proc-grid" id="tsup-gridProcesos"></div>\n  </div>\n\n  <div id="tsup-screenPlan">\n    <div class="plan-topbar">\n      <button class="btn-back" onclick="tsupVolverDesddePlan()">◀</button>\n      <div class="plan-title">📋 PLAN — <span id="tsup-planProceso"></span></div>\n      <button class="btn-imprimir" onclick="tsupImprimirPlan()">🖨 IMPRIMIR</button>\n    </div>\n    <div class="plan-body" id="tsup-planBody">\n      <div class="plan-empty">Cargando plan...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenTurno">\n    <div class="turno-topbar">\n      <button class="btn-back" onclick="tsupVolverDesdeTurno()">◀</button>\n      <div class="turno-title">🖨 FORM. PRODUCCIÓN — <span id="tsup-turnoProceso"></span></div>\n      <div id="tsup-turnoGrupoChecks" style="display:none;align-items:center;gap:14px;background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;">\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkVarillaN1" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> VARILLA N1\n        </label>\n        <label style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;cursor:pointer;color:white;">\n          <input type="checkbox" id="tsup-chkVarillaTool" style="width:18px;height:18px;accent-color:#ffca28;cursor:pointer;"> VARILLA TOOL\n        </label>\n      </div>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'horizontal\')" style="background:#1565c0;">🖨 Horizontal</button>\n      <button class="btn-imprimir" onclick="tsupImprimirTurno(\'vertical\')" style="background:#2e7d32;margin-left:6px;">🖨 Vertical</button>\n    </div>\n    <div class="turno-body" id="tsup-turnoBody">\n      <div class="turno-empty">Cargando reporte...</div>\n    </div>\n  </div>\n\n  <div id="tsup-screenOrdenes">\n    <div class="ord-topbar">\n      <button class="btn-back" onclick="tsupVolverAProcesos()">◀</button>\n      <div class="ord-title" id="tsup-txtProcesoActual">---</div>\n      <input type="text" id="tsup-inputBuscar" placeholder="🔍 Buscar OP, pedido, código..." oninput="tsupFiltrarOrdenes(this.value)" style="padding:7px 12px;border:2px solid #ffd600;border-radius:8px;background:#161b22;color:#e6edf3;font-size:13px;font-weight:700;outline:none;width:400px;flex-shrink:0;animation:buscarPulso 1.6s ease-in-out infinite;box-shadow:0 0 0 0 rgba(255,214,0,0.6);">\n      <style>#tsup-inputBuscar:focus{animation:none!important;box-shadow:0 0 0 3px rgba(255,214,0,0.5)!important;border-color:#ffd600!important;}@keyframes buscarPulso{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.6);border-color:#ffd600;}50%{box-shadow:0 0 0 8px rgba(255,214,0,0);border-color:#ffe57f;}}</style>\n      <button class="btn-hist" id="tsup-btnHist" onclick="tsupToggleHistoricas()">📜 Históricas</button>\n    </div>\n    <div id="tsup-maqFilterBar"></div>\n    <div class="ord-list" id="tsup-listaOrdenes"></div>\n  </div>\n\n  <div id="tsup-modalOrden" onclick="if(event.target===this)tsupCerrarModal()">\n    <div class="mo-container">\n      <div class="mo-header">\n        <button class="mo-close" onclick="tsupCerrarModal()">✕ CERRAR</button>\n        <div class="mo-title" id="tsup-moTitle">---</div>\n        <div class="mo-sub" id="tsup-moSub">---</div>\n      </div>\n      <div class="mo-progress">\n        <div class="mo-kpi"><span>SOLICITADO</span><b id="tsup-moSol">0</b></div>\n        <div class="mo-bar-wrap"><div class="mo-bar"><div class="mo-bar-fill" id="tsup-moBarFill"></div></div></div>\n        <div class="mo-kpi"><span>PRODUCIDO</span><b id="tsup-moProd">0</b></div>\n        <div class="mo-kpi pending"><span>PENDIENTE</span><b id="tsup-moPen">0</b></div>\n      </div>\n      <div class="mo-body">\n        <div class="mo-left">\n          <div class="mo-section">\n            <div class="mo-section-title">📦 LOTES GENERADOS</div>\n            <div class="lotes-scroll" id="tsup-moLotes"></div>\n            <button class="btn-gen" onclick="tsupAbrirGenLotes()">+ GENERAR MÁS LOTES</button>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">🖨 CONFIGURAR IMPRESIÓN</div>\n            <div class="print-panel">\n              <div class="print-row">\n                <label>LOTE INICIAL:</label><input type="number" class="inp-lote" id="tsup-moLoteIni">\n                <label>LOTE FINAL:</label><input type="number" class="inp-lote" id="tsup-moLoteFin">\n              </div>\n              <div style="display:flex;gap:6px;">\n                <button class="btn-print btn-et1" onclick="tsupImprimir(\'ETIQUETA\')">🏷 TIPO 1</button>\n                <button class="btn-print btn-et2" onclick="tsupImprimir(\'ETIQUETA_2\')">🏷 TIPO 2</button>\n                <button class="btn-print btn-rpt" onclick="tsupImprimir(\'REPORTE_SOLO\')">📋 REPORTE</button>\n              </div>\n            </div>\n          </div>\n        </div>\n        <div class="mo-right">\n          <div class="mo-section">\n            <div class="mo-section-title">🔧 RUTA DE FABRICACIÓN</div>\n            <div id="tsup-moRuta"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n          <div class="mo-section">\n            <div class="mo-section-title">📄 DOCUMENTACIÓN TÉCNICA</div>\n            <div id="tsup-moDocs"><div style="color:#484f58;">Cargando...</div></div>\n          </div>\n        </div>\n      </div>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniGenLotes" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">+ GENERAR LOTES</div>\n      <label style="font-size:12px;color:#8b949e;">CANTIDAD DE LOTES:</label>\n      <input type="number" class="mini-input" id="tsup-genCant" placeholder="Ej: 5">\n      <label style="font-size:12px;color:#8b949e;">PESO POR LOTE (KG):</label>\n      <input type="number" class="mini-input" id="tsup-genPeso" placeholder="0">\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarGenLotes()">✅ CONFIRMAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniGenLotes\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n  <div class="mini-modal" id="tsup-miniCambioMaq" onclick="if(event.target===this)this.style.display=\'none\'">\n    <div class="mini-box">\n      <div class="mini-title">🔧 CAMBIAR MÁQUINA</div>\n      <div id="tsup-maqProcLabel" style="font-size:12px;color:#8b949e;margin-bottom:8px;"></div>\n      <select class="mini-select" id="tsup-selectMaq"></select>\n      <button class="mini-btn mini-ok" onclick="tsupConfirmarCambioMaq()">✅ APLICAR</button>\n      <button class="mini-btn mini-cancel" onclick="document.getElementById(\'tsup-miniCambioMaq\').style.display=\'none\'">CANCELAR</button>\n    </div>\n  </div>\n\n</div>';
 
   // ── Inicializar estado y cargar datos ──
   tsup_procesos = [];
@@ -409,6 +409,16 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
     document.getElementById('tsup-screenTurno').style.display    = 'flex';
     document.getElementById('tsup-turnoProceso').textContent     = nombre;
     document.getElementById('tsup-turnoBody').innerHTML = '<div class="turno-empty">⏳ Cargando reporte de turno...</div>';
+    // Mostrar checkboxes de grupo solo para ROSCADO
+    var chkArea = document.getElementById('tsup-turnoGrupoChecks');
+    if (chkArea) {
+      var esRoscado = (nombre || '').toUpperCase().includes('ROSCADO');
+      chkArea.style.display = esRoscado ? 'flex' : 'none';
+      if (esRoscado) {
+        document.getElementById('tsup-chkVarillaN1').checked = false;
+        document.getElementById('tsup-chkVarillaTool').checked = false;
+      }
+    }
     var mini = document.getElementById('tsup-miniLoader');
     var txt  = document.getElementById('tsup-miniLoaderTxt');
     if (mini) { if(txt) txt.textContent = 'CARGANDO TURNO...'; mini.style.display = 'flex'; }
@@ -485,9 +495,14 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
 
   function tsupHtmlTurno(lista, procesoNombre) {
     if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes para este proceso.</p>';
-    var esColatado = (procesoNombre || document.getElementById('tsup-turnoProceso').textContent || '').toUpperCase().includes('COLATADO');
+    var procNom = (procesoNombre || document.getElementById('tsup-turnoProceso').textContent || '').toUpperCase();
+    var esColatado = procNom.includes('COLATADO');
+    var esRoscado  = procNom.includes('ROSCADO');
     if (esColatado) {
       return tsupHtmlTurnoColatado(lista);
+    }
+    if (esRoscado) {
+      return tsupHtmlTurnoRoscado(lista);
     }
     // ── Render genérico (procesos distintos a COLATADO) ──
     var html = '';
@@ -541,6 +556,153 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
       });
       html += '</tbody></table></div>';
     });
+    return html;
+  }
+
+  // ── HTML para ROSCADO ──
+  function tsupHtmlTurnoRoscado(lista) {
+    // Determinar qué grupos mostrar según los checkboxes
+    var mostrarN1   = document.getElementById('tsup-chkVarillaN1')   ? document.getElementById('tsup-chkVarillaN1').checked   : true;
+    var mostrarTool = document.getElementById('tsup-chkVarillaTool') ? document.getElementById('tsup-chkVarillaTool').checked : true;
+
+    // Filtrar máquinas por grupo seleccionado
+    var listaFiltrada = lista.filter(function(m) {
+      var grp = (m.grupo || '').toUpperCase();
+      if (mostrarN1   && grp.includes('VARILLA N1'))   return true;
+      if (mostrarTool && grp.includes('VARILLA TOOL')) return true;
+      if (!mostrarN1 && !mostrarTool) return true; // fallback: mostrar todo
+      return false;
+    });
+
+    if (!listaFiltrada.length) return '<p style="padding:20px;text-align:center;color:#777;">No hay máquinas para los grupos seleccionados.</p>';
+
+    // Agrupar máquinas por grupo
+    var grupos = {};
+    var ordenGrupos = [];
+    listaFiltrada.forEach(function(m) {
+      var grp = (m.grupo || 'SIN GRUPO').toUpperCase();
+      if (!grupos[grp]) { grupos[grp] = []; ordenGrupos.push(grp); }
+      grupos[grp].push(m);
+    });
+
+    var html = '';
+    var fechaHoy = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric'});
+
+    ordenGrupos.forEach(function(grp, gIdx) {
+      var maqsGrupo = grupos[grp];
+
+      // ── ENCABEZADO DE GRUPO (página nueva desde el 2do grupo) ──
+      var pageBreak = gIdx > 0 ? 'page-break-before:always;' : '';
+      html += '<div style="' + pageBreak + 'margin-bottom:20px;">';
+
+      html += '<div style="background:#1a237e;color:white;font-weight:900;font-size:14px;padding:8px 14px;border-radius:6px 6px 0 0;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center;">'
+            + '<span>🔩 ' + grp + '</span>'
+            + '</div>';
+
+      // ── TABLA DE ÓRDENES VIVAS (primeras 3 partidas) con recuadros Atado ──
+      html += tsupHtmlRoscadoOrdenesVivas(maqsGrupo, grp, fechaHoy);
+
+      // ── TABLA DE CAPTURA POR MÁQUINA ──
+      maqsGrupo.forEach(function(m) {
+        html += '<div style="margin-top:10px;">';
+        html += '<div style="background:#fff9c4;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #f9a825;text-transform:uppercase;color:#000;">🔧 MÁQUINA: ' + m.nombre + '</div>';
+        html += '<table style="width:100%;border-collapse:collapse;background:white;font-size:11px;table-layout:fixed;"><thead><tr>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Orden</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:12%">Producto</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Ø</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Longitud</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Cuerpo</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">SAE</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Solic</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Prod</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Avance</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:6%">Restan</th>'
+              + '<th style="border:1px solid #bbb;border-left:2px solid #000;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Peso<br>Final</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Peso<br>Ini</th>'
+              + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Atado</th>'
+              + '<th style="border:1px solid #bbb;border-right:2px solid #000;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:5%">Peso<br>Final</th>'
+              + '</tr></thead><tbody>';
+        m.ordenes.forEach(function(o) {
+          var pct = Math.round(o.avance), w = Math.min(o.avance, 100);
+          html += '<tr>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;">' + o.ordenFull + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;font-size:10px;font-weight:900;color:#000;line-height:1.1;">' + o.producto + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;color:#000;">' + o.medidas.split(' x ')[0] + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;color:#000;">' + o.medidas.split(' x ')[1] + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;color:#000;">' + (o.cuerpo || o.detalle || '-') + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;color:#000;">' + o.acero + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.sol).toLocaleString() + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.prod).toLocaleString() + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;">'
+                  + '<div style="display:flex;flex-direction:column;align-items:center;">'
+                  + '<span style="font-size:9px;font-weight:900;color:#000;">' + pct + '%</span>'
+                  + '<div style="width:90%;height:6px;background:#e0e0e0;border:1px solid #777;">'
+                  + '<div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></div></td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;">' + Math.round(o.restan).toLocaleString() + '</td>'
+                + '<td style="border:1px solid #ddd;border-left:2px solid #000;padding:2px;text-align:center;"> </td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;"> </td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;"> </td>'
+                + '<td style="border:1px solid #ddd;border-right:2px solid #000;padding:2px;text-align:center;"> </td>'
+                + '</tr>';
+        });
+        html += '</tbody></table></div>';
+      });
+
+      html += '</div>'; // cierra div del grupo
+    });
+
+    return html;
+  }
+
+  // ── Sección de órdenes vivas con recuadros Atado para ROSCADO ──
+  function tsupHtmlRoscadoOrdenesVivas(maqsGrupo, grupoNombre, fechaHoy) {
+    var todasOrdenes = [];
+    maqsGrupo.forEach(function(m) {
+      m.ordenes.forEach(function(o) {
+        var est = (o.estado || '').toUpperCase();
+        if (est !== 'TERMINADO' && est !== 'CANCELADO') {
+          todasOrdenes.push({ maq: m.nombre, o: o });
+        }
+      });
+    });
+    var primeras3 = todasOrdenes.slice(0, 3);
+    if (!primeras3.length) return '';
+
+    var html = '<div style="margin-bottom:12px;">';
+
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;background:#263238;color:white;padding:6px 10px;font-weight:900;font-size:12px;">'
+          + '<span>🔩 VARILLA ROSCADA — ' + grupoNombre + '</span>'
+          + '<span style="font-size:11px;">' + fechaHoy + ' &nbsp;|&nbsp; TURNO: ______</span>'
+          + '</div>';
+
+    html += '<div style="display:flex;gap:10px;padding:10px;background:#f5f5f5;border:1px solid #ddd;flex-wrap:wrap;">';
+
+    primeras3.forEach(function(item) {
+      var o = item.o;
+      html += '<div style="flex:1;min-width:200px;border:2px solid #1565c0;border-radius:6px;padding:8px;background:white;">';
+      html += '<div style="font-weight:900;font-size:11px;color:#1565c0;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:6px;">'
+            + o.ordenFull + ' — ' + item.maq
+            + '</div>';
+      html += '<div style="font-size:10px;color:#333;margin-bottom:6px;font-weight:700;">'
+            + o.producto + ' | Ø' + o.medidas.split(' x ')[0]
+            + '</div>';
+      html += '<div style="display:flex;gap:8px;">';
+      for (var i = 0; i < 2; i++) {
+        html += '<div style="flex:1;border:1px solid #888;border-radius:4px;padding:4px;">';
+        html += '<div style="font-size:9px;font-weight:900;color:#555;margin-bottom:4px;text-align:center;">ATADO ' + (i+1) + '</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:3px;">';
+        html += '<div style="display:flex;justify-content:space-between;font-size:9px;"><span>P. INI:</span><span style="border-bottom:1px solid #999;min-width:50px;">&nbsp;</span></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:9px;"><span>ATADO:</span><span style="border-bottom:1px solid #999;min-width:50px;">&nbsp;</span></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:9px;"><span>P. FIN:</span><span style="border-bottom:1px solid #999;min-width:50px;">&nbsp;</span></div>';
+        html += '</div>';
+        html += '</div>';
+      }
+      html += '</div>'; // cierra flex de atados
+      html += '</div>'; // cierra card de orden
+    });
+
+    html += '</div>'; // cierra flex de órdenes
+    html += '</div>'; // cierra div contenedor
     return html;
   }
 
@@ -676,10 +838,38 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
   };
 
   window.tsupImprimirTurno = function(orientacion) {
+    var procesoNombre = document.getElementById('tsup-turnoProceso').textContent || '';
+    var esRoscado = procesoNombre.toUpperCase().includes('ROSCADO');
+    if (esRoscado) {
+      var chkN1   = document.getElementById('tsup-chkVarillaN1');
+      var chkTool = document.getElementById('tsup-chkVarillaTool');
+      if (!chkN1.checked && !chkTool.checked) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Selecciona al menos un grupo',
+          text: 'Debes seleccionar VARILLA N1, VARILLA TOOL o ambos antes de imprimir.',
+          confirmButtonColor: '#1565c0',
+          confirmButtonText: 'ENTENDIDO'
+        });
+        return;
+      }
+    }
     orientacion = orientacion || 'horizontal';
-    var proceso = document.getElementById('tsup-turnoProceso').textContent;
+    var proceso = procesoNombre;
     if (proceso.toUpperCase().includes('COLATADO')) {
       tsupImprimirColatado(proceso, window._tsupListaTurno || [], orientacion);
+    } else if (esRoscado) {
+      var style = document.createElement('style');
+      style.id = 'tsup-print-orient';
+      var old = document.getElementById('tsup-print-orient');
+      if (old) old.remove();
+      style.textContent = orientacion === 'horizontal'
+        ? '@media print{@page{size:letter landscape;margin:10mm 5mm;}}'
+        : '@media print{@page{size:letter portrait;margin:10mm 5mm;}}';
+      document.head.appendChild(style);
+      var body = document.getElementById('tsup-turnoBody');
+      if (body) body.innerHTML = tsupHtmlTurno(window._tsupListaTurno || [], proceso);
+      window.print();
     } else {
       tsupAbrirVentanaImpresion('FORM. PRODUCCIÓN — ' + proceso, tsupHtmlTurno(window._tsupListaTurno || []));
     }

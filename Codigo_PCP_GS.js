@@ -10956,8 +10956,10 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
   var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
   var sheetOrd  = ss.getSheetByName("ORDENES");
   var sheetProd = ss.getSheetByName("PRODUCCION");
+  var sheetEst  = ss.getSheetByName("ESTANDARES");
   var dataOrd   = sheetOrd.getDataRange().getValues();
   var dataProd  = sheetProd.getDataRange().getValues();
+  var dataEst   = sheetEst ? sheetEst.getDataRange().getValues() : [];
   var headersOrd = dataOrd[0];
   var getIdxO    = function(n) { return headersOrd.indexOf(n); };
   var idxO = {
@@ -10970,6 +10972,13 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
     prod: getIdxO("PRODUCIDO"), est: getIdxO("ESTADO"),
     maq: getIdxO("MAQUINA"), proc: getIdxO("PROCESO")
   };
+  // Mapa máquina → grupo desde ESTANDARES (col D=idx3:MAQUINA, col J=idx9:GRUPO)
+  var maqGrupoMap = {};
+  for (var s = 1; s < dataEst.length; s++) {
+    var maqEst   = String(dataEst[s][3]).trim().toUpperCase();
+    var grupoEst = String(dataEst[s][9]).trim().toUpperCase();
+    if (maqEst && grupoEst) maqGrupoMap[maqEst] = grupoEst;
+  }
   var headersProd = dataProd[0];
   var findCol = function(candidates) {
     for (var i = 0; i < candidates.length; i++) {
@@ -11010,7 +11019,10 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
     if (PERMITIDOS.indexOf(estado) < 0) continue;
     var maquina = String(row[idxO.maq]).trim();
     if (!maquina) continue;
-    if (!listaMaquinas[maquina]) listaMaquinas[maquina] = { nombre: maquina, ordenes: [] };
+    if (!listaMaquinas[maquina]) {
+      var grupoMaquina = maqGrupoMap[maquina.toUpperCase()] || '';
+      listaMaquinas[maquina] = { nombre: maquina, grupo: grupoMaquina, ordenes: [] };
+    }
     var sol  = Number(row[idxO.sol]) || 0;
     var prod = Number(row[idxO.prod]) || 0;
     var pct  = sol > 0 ? (prod / sol) * 100 : 0;
