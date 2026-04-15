@@ -4407,21 +4407,23 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
         var unidad = String(data[j][idx.UNIDAD] || "").toUpperCase();
         var descripcion = String(data[j][idx.DESCRIPCION] || "");
         var peso = parseFloat(data[j][idx.PESO]) || 0;
-        var longitud = parseFloat(data[j][idx.LONGITUD]) || 0;
-        
+        // Parsear longitud con regex para manejar strings como "3.00 mts" o "6 m"
+        var longStr   = String(data[j][idx.LONGITUD] || '');
+        var longMatch = longStr.match(/[\d.]+/);
+        var longitud  = longMatch ? parseFloat(longMatch[0]) : 0;
+
         // Actualizar CANTIDAD
         sh.getRange(j+1, idx.CANTIDAD+1).setValue(nuevaCantidad);
-        
-        // Calcular SOLICITADO según reglas
-        var nuevoSolicitado = nuevaCantidad;
-        
-        if(unidad === "ROL" || unidad === "KG") {
+
+        // Calcular SOLICITADO según reglas de negocio
+        var nuevoSolicitado  = nuevaCantidad;
+        var esVarilla        = descripcion.toUpperCase().indexOf('VARILLA') > -1;
+
+        if (unidad === 'KG' || unidad === 'ROL') {
           nuevoSolicitado = nuevaCantidad;
-        } else if(unidad === "PZA" || unidad === "CTO") {
+        } else if (unidad === 'PZA' || unidad === 'CTO') {
           nuevoSolicitado = nuevaCantidad * peso;
-          
-          // Si es Varilla, multiplicar por longitud
-          if(descripcion.toUpperCase().indexOf("VARILLA") > -1) {
+          if (esVarilla && longitud > 0) {
             nuevoSolicitado = nuevoSolicitado * longitud;
           }
         }
