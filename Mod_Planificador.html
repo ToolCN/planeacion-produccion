@@ -1294,8 +1294,16 @@ function fpd_renderFila(o, rowIdx, maqKey, maqSafe) {
   var idE = String(o.id).replace(/'/g,"\\'");
   var checked = fpd_tablaChecks[maqKey] && fpd_tablaChecks[maqKey].has(o.id) ? 'checked' : '';
   var estadoUp = String(o.estado||'').toUpperCase();
-  var estadoLabel = estadoUp === 'TERMINADO' ? 'TERMINADO' : 'ACTIVE';
-  var estadoColor = estadoUp === 'TERMINADO' ? '#388e3c' : '#1565c0';
+  var estadoLabel = estadoUp === 'TERMINADO' ? 'TERMINADO'
+                  : estadoUp === 'SOBREPRODUCCION' ? 'SOBREPRODUCCION'
+                  : estadoUp === 'EN PROCESO' ? 'EN PROCESO'
+                  : estadoUp === 'CANCELADO' ? 'CANCELADO'
+                  : 'ACTIVE';
+  var estadoColor = estadoUp === 'TERMINADO'      ? '#388e3c'
+                  : estadoUp === 'SOBREPRODUCCION' ? '#1565c0'
+                  : estadoUp === 'EN PROCESO'      ? '#e65100'
+                  : estadoUp === 'CANCELADO'       ? '#616161'
+                  : '#1565c0';
   var estadoExtraClass = estadoUp === 'SOBREPRODUCCION' ? ' pt-btn-sobrep' : '';
   return '<tr id="fpd-row-' + o.id + '" data-id="' + o.id + '" tabindex="0" style="border-bottom:1px solid #e0e0e0;cursor:pointer;" onclick="planifTablaToggleSeleccion(this)">'
     + '<td style="padding:4px 8px;text-align:center;"><input type="checkbox" ' + checked + ' onchange="fpd_checkRow(\'' + maqKey.replace(/'/g,"\\'") + '\',\'' + idE + '\',this)"></td>'
@@ -4670,8 +4678,16 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
   var idE = String(o.id).replace(/'/g,"\\'");
   var checked = planif_tablaChecks[maqKey] && planif_tablaChecks[maqKey].has(o.id) ? 'checked' : '';
   var estadoUp = String(o.estado||'').toUpperCase();
-  var estadoLabel = estadoUp === 'TERMINADO' ? 'TERMINADO' : 'ACTIVE';
-  var estadoColor = estadoUp === 'TERMINADO' ? '#388e3c' : '#1565c0';
+  var estadoLabel = estadoUp === 'TERMINADO' ? 'TERMINADO'
+                  : estadoUp === 'SOBREPRODUCCION' ? 'SOBREPRODUCCION'
+                  : estadoUp === 'EN PROCESO' ? 'EN PROCESO'
+                  : estadoUp === 'CANCELADO' ? 'CANCELADO'
+                  : 'ACTIVE';
+  var estadoColor = estadoUp === 'TERMINADO'      ? '#388e3c'
+                  : estadoUp === 'SOBREPRODUCCION' ? '#1565c0'
+                  : estadoUp === 'EN PROCESO'      ? '#e65100'
+                  : estadoUp === 'CANCELADO'       ? '#616161'
+                  : '#1565c0';
   var estadoExtraClass = estadoUp === 'SOBREPRODUCCION' ? ' pt-btn-sobrep' : '';
   return '<tr id="pt-row-' + o.id + '" data-id="' + o.id + '" tabindex="0" style="border-bottom:1px solid #e0e0e0;cursor:pointer;" onclick="planifTablaToggleSeleccion(this)">' +
     '<td style="padding:4px 8px;text-align:center;"><input type="checkbox" ' + checked + ' onchange="planifTablaCheckRow(\'' + maqKey + '\',\'' + o.id + '\',this)"></td>' +
@@ -6602,7 +6618,8 @@ function planifSincronizarHistorial() {
         if (item) {
           item.maquina = planif_maqSyncActiva;
           item.proceso = procesoActivo;
-          item.estado  = 'ACTIVE';
+          // Conservar el estado real del historial (puede ser TERMINADO, EN PROCESO, etc.)
+          // El badge en planifRenderTablaFila mostrará el color correcto según o.estado
           // Copiar datos de inventario desde una orden existente del mismo código, si hay
           var ref = planif_ordenesVivas.find(function(x){ return String(x.codigo) === String(item.codigo||''); });
           if (ref) {
@@ -6623,7 +6640,10 @@ function planifSincronizarHistorial() {
       } else {
         // Ya estaba: solo actualizar estado en memoria
         var existente = planif_ordenesVivas.find(function(o) { return String(o.id) === String(id); });
-        if (existente) existente.estado = 'ACTIVE';
+        // Solo actualizar estado si la orden no venía TERMINADO del historial
+        var _itemH = planif_dataHistTemp.find(function(x){ return String(x.id) === String(id); });
+        var _estH = String((_itemH && _itemH.estado) || '').toUpperCase().trim();
+        if (existente && _estH !== 'TERMINADO') existente.estado = 'ACTIVE';
       }
     });
 
@@ -6638,10 +6658,18 @@ function planifSincronizarHistorial() {
   }
 
   idsSync.forEach(function(id) {
-    google.script.run
-      .withSuccessHandler(function() { trasPersistir(); })
-      .withFailureHandler(function(e) { errores++; trasPersistir(); })
-      .ejecutarCambioEstadoDirecto(id, 'ACTIVE');
+    var itemHist = planif_dataHistTemp.find(function(x){ return String(x.id) === String(id); });
+    var estadoHist = String((itemHist && itemHist.estado) || '').toUpperCase().trim();
+    // Solo cambiar a ACTIVE en backend si la orden NO está ya en ACTIVE
+    if (estadoHist !== 'ACTIVE') {
+      google.script.run
+        .withSuccessHandler(function() { trasPersistir(); })
+        .withFailureHandler(function(e) { errores++; trasPersistir(); })
+        .ejecutarCambioEstadoDirecto(id, 'ACTIVE');
+    } else {
+      // Ya estaba ACTIVE: no llamar backend, solo contar como procesado
+      trasPersistir();
+    }
   });
 }
 
@@ -7009,27 +7037,22 @@ function planifConfirmarCambioCantidad() {
   planifCerrarModal('planif-modalCantidad');
   showLoader('Actualizando cantidad...');
   var idGuardando = planif_idCantidadEditando;
-  google.script.run.withSuccessHandler(function() {
+  google.script.run.withSuccessHandler(function(resRaw) {
     hideLoader();
+    // Usar valores reales calculados por el backend
+    var resultado = null;
+    try { resultado = JSON.parse(resRaw); } catch(e) { resultado = null; }
     // Actualizar el objeto en memoria
     var o = planif_ordenesVivas.find(function(x){ return String(x.id) === String(idGuardando); });
+    if (!o) {
+      o = planif_ordenesVivas.find(function(x){ return x.id == idGuardando; });
+    }
     if (o) {
-      // Calcular nuevo sol (SOLICITADO en KG) con la misma lógica del backend
-      // o.peso = kg/pza, o.long = string "3.0 mts", o.desc contiene "VARILLA" si aplica
-      var _peso     = parseFloat(o.peso) || 0;
-      var _longStr  = String(o.long || '');
-      var _longM    = _longStr.match(/[\d.]+/);
-      var _longitud = _longM ? parseFloat(_longM[0]) : 0;
-      var _esVar    = String(o.desc || '').toUpperCase().indexOf('VARILLA') > -1;
-      var _nuevoSol;
-      if (_peso > 0) {
-        _nuevoSol = nuevaCantidad * _peso;
-        if (_esVar && _longitud > 0) _nuevoSol = _nuevoSol * _longitud;
-      } else {
-        // Sin peso (KG/ROL): sol = cantidad directa
-        _nuevoSol = nuevaCantidad;
+      // Usar sol y estado que vienen del backend (valores reales guardados en Sheets)
+      if (resultado && resultado.success) {
+        o.sol    = resultado.sol;
+        o.estado = resultado.estado;
       }
-      o.sol = _nuevoSol;
       // Re-renderizar solo la TR afectada (patrón idéntico a planifTablaToggleEstado)
       var tr = document.getElementById('pt-row-' + idGuardando);
       if (tr) {

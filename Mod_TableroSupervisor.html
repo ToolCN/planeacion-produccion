@@ -25,7 +25,10 @@ function loadTableroSup() {
       '#tsup-panel .proc-card svg{width:52px;height:52px;filter:brightness(0) invert(1);opacity:0.85;}',
       '#tsup-panel .proc-card span{font-weight:900;font-size:13px;color:#e6edf3;letter-spacing:0.5px;}',
       '#tsup-panel .proc-card .btn-rpt-proc{margin-top:6px;background:#1565c0;border:1px solid #1976d2;color:white;padding:4px 10px;border-radius:6px;font-weight:900;font-size:10px;cursor:pointer;letter-spacing:0.5px;width:100%;}',
-      '#tsup-panel .proc-card .btn-rpt-proc:active{background:#0d47a1;}',
+      '@keyframes tsup-btn-pulse{0%,100%{box-shadow:0 4px 10px rgba(0,0,0,0.35),0 0 0 0 rgba(255,255,255,0.4);}50%{box-shadow:0 4px 10px rgba(0,0,0,0.35),0 0 0 6px rgba(255,255,255,0);}}',
+      '#tsup-panel .proc-card .btn-rpt-proc{transition:filter 0.15s,transform 0.1s,box-shadow 0.15s;}',
+      '#tsup-panel .proc-card .btn-rpt-proc:hover{filter:brightness(1.2);transform:translateY(-2px);animation:tsup-btn-pulse 0.9s ease-in-out infinite;}',
+      '#tsup-panel .proc-card .btn-rpt-proc:active{filter:brightness(0.9);transform:scale(0.97);box-shadow:none;animation:none;}',
 
       /* Pantalla Órdenes */
       '#tsup-screenOrdenes{display:none;height:calc(100vh - 48px);flex-direction:column;}',
@@ -1255,13 +1258,35 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
 
   function tsupHtmlTurnoEstampadoPantalla(lista) {
     if (!lista || lista.length === 0) return '<p style="padding:20px;text-align:center;color:#777;">No hay órdenes para este proceso.</p>';
+
+    // Máquinas CLAVERAS TOOL con reglas especiales
+    var MAQS_TOOL_2FILAS = ['CLAVERA 23', 'CLAVERA 24', 'CLAVERA 25', 'CLAVERA 26', 'CLAVERA 30', 'CLAVERA 33'];
+    var MAQS_TOOL_3FILAS = ['CLAVERA 29'];
+
     var html = '';
     lista.forEach(function(m) {
+      var grp = (m.grupo || '').toUpperCase().trim();
+      var esTool = grp.includes('TOOL');
+      var nomMaq = (m.nombre || '').toUpperCase().trim();
+
+      var es1FilaTool  = esTool && MAQS_TOOL_2FILAS.some(function(n){ return nomMaq.includes(n); });
+      var es3FilasTool = esTool && MAQS_TOOL_3FILAS.some(function(n){ return nomMaq.includes(n); });
+      var esToolEspecial = es1FilaTool || es3FilasTool;
+
       var ordenes = (m.ordenes || []).filter(function(o) {
         var est = (o.estado || '').toUpperCase();
         return est !== 'TERMINADO' && est !== 'CANCELADO';
-      }).slice(0, 2);
+      });
+
+      // CLAVERAS TOOL especiales: solo mostrar 1 partida
+      if (esToolEspecial) ordenes = ordenes.slice(0, 1);
+      else ordenes = ordenes.slice(0, 2);
+
       if (!ordenes.length) return;
+
+      // Número de filas de inputs
+      var nInputRows = es3FilasTool ? 3 : (es1FilaTool ? 1 : 2);
+
       html += '<div style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.15);">'
             + '<div style="background:#fff9c4;font-weight:900;font-size:12px;padding:6px 10px;border:1px solid #f9a825;text-transform:uppercase;color:#000;">🔧 MÁQUINA: ' + m.nombre + '</div>'
             + '<table style="width:100%;border-collapse:collapse;background:white;font-size:11px;table-layout:fixed;"><thead><tr>'
@@ -1276,27 +1301,57 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
             + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:8%">Avance</th>'
             + '<th style="border:1px solid #bbb;padding:3px 2px;font-weight:900;text-align:center;font-size:9px;color:#000;width:7%">Restan</th>'
             + '</tr></thead><tbody>';
-      ordenes.forEach(function(o) {
+
+      if (esToolEspecial) {
+        // 1 partida con rowspan = nInputRows
+        var o = ordenes[0];
         var pct = Math.round(o.avance || 0), w = Math.min(o.avance || 0, 100);
         var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
         var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
         html += '<tr>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;">' + (o.ordenFull || '') + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;">' + (o.producto || '') + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;">' + diam + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;">' + lon + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;">' + (o.cuerpo || o.detalle || '') + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;">' + (o.acero || '') + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;">'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;vertical-align:middle;">' + (o.ordenFull || '') + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;vertical-align:middle;">' + (o.producto || '') + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;vertical-align:middle;">' + diam + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;vertical-align:middle;">' + lon + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;vertical-align:middle;">' + (function(v){ return (v||'').toUpperCase().includes('PAVON') ? 'C/C' : (v||''); })(o.cuerpo || o.detalle) + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;vertical-align:middle;">' + (o.acero || '') + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;vertical-align:middle;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;vertical-align:middle;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;vertical-align:middle;">'
                 + '<div style="display:flex;flex-direction:column;align-items:center;">'
                 + '<span style="font-size:9px;font-weight:900;">' + pct + '%</span>'
                 + '<div style="width:90%;height:6px;background:#e0e0e0;border:1px solid #777;">'
                 + '<div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></div></td>'
-              + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+              + '<td rowspan="' + nInputRows + '" style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;vertical-align:middle;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
               + '</tr>';
-      });
+        for (var ri = 1; ri < nInputRows; ri++) {
+          html += '<tr style="height:26px;"></tr>';
+        }
+      } else {
+        // Comportamiento normal: hasta 2 órdenes
+        ordenes.forEach(function(o) {
+          var pct = Math.round(o.avance || 0), w = Math.min(o.avance || 0, 100);
+          var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+          var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+          html += '<tr>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#1565c0;font-size:13px;">' + (o.ordenFull || '') + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;font-weight:900;">' + (o.producto || '') + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:13px;font-weight:900;">' + diam + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:12px;font-weight:900;">' + lon + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:9px;font-weight:900;">' + (function(v){ return (v||'').toUpperCase().includes('PAVON') ? 'C/C' : (v||''); })(o.cuerpo || o.detalle) + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-size:10px;">' + (o.acero || '') + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#0000cc;font-size:13px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;">'
+                  + '<div style="display:flex;flex-direction:column;align-items:center;">'
+                  + '<span style="font-size:9px;font-weight:900;">' + pct + '%</span>'
+                  + '<div style="width:90%;height:6px;background:#e0e0e0;border:1px solid #777;">'
+                  + '<div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></div></td>'
+                + '<td style="border:1px solid #ddd;padding:2px;text-align:center;font-weight:900;color:#d32f2f;font-size:13px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+                + '</tr>';
+        });
+      }
+
       html += '</tbody></table></div>';
     });
     return html;
@@ -1395,12 +1450,28 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
         + '</table>'
         + '<hr style="border:2px solid #000;margin:0 0 4px 0;">';
 
+      // Máquinas TOOL especiales (1 orden + filas extra de captura)
+      // Filas totales por máquina TOOL: 23/24/25/26/33=1, 30=2, 29=3, resto=2
+      var MAQS_TOOL_1FILA  = ['CLAVERA 23', 'CLAVERA 24', 'CLAVERA 25', 'CLAVERA 26', 'CLAVERA 33'];
+      var MAQS_TOOL_2FILAS = ['CLAVERA 30'];
+      var MAQS_TOOL_3FILAS = ['CLAVERA 29'];
+      var esTool = grp.includes('TOOL');
+
       // Tabla por máquina
       maqsGrupo.forEach(function(m) {
+        var nombreMaq = (m.nombre || '').toUpperCase().trim();
+        var numExtras = 0;
+        if (esTool) {
+          var es1Fila  = MAQS_TOOL_1FILA.some(function(t){ return nombreMaq.includes(t); });
+          var es2Filas = MAQS_TOOL_2FILAS.some(function(t){ return nombreMaq.includes(t); });
+          var es3Filas = MAQS_TOOL_3FILAS.some(function(t){ return nombreMaq.includes(t); });
+          numExtras = es1Fila ? 0 : (es3Filas ? 2 : 1);
+        }
+        var maxOrdenes = esTool ? 1 : 2;
         var ordenes = (m.ordenes || []).filter(function(o) {
           var est = (o.estado || '').toUpperCase();
           return est !== 'TERMINADO' && est !== 'CANCELADO';
-        }).slice(0, 2);
+        }).slice(0, maxOrdenes);
 
         htmlBody += '<div style="margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;">'
           + '<table style="width:100%;border-collapse:collapse;border:2px solid #f9a825;">'
@@ -1432,21 +1503,25 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
           + '<th style="border:2px solid #000;border-right:3px solid #000;padding:2px;font-size:7px;width:6%">TOTAL</th>'
           + '</tr></thead><tbody>';
 
-        ordenes.forEach(function(o) {
-          var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
-          var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
-          var pct  = Math.round(o.avance || 0);
-          var w    = Math.min(o.avance || 0, 100);
-          htmlBody += '<tr style="height:28px;">'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#1565c0;font-size:10px;">' + (o.ordenFull || '') + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;">' + (o.producto || '') + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + diam + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (o.cuerpo || o.detalle || '') + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
-            + '<td style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;">' + pct + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></td>'
-            + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:10px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+        if (esTool && ordenes.length > 0) {
+          var nInputRows = numExtras + 1;
+          var o0    = ordenes[0];
+          var diam0 = o0.medidas ? o0.medidas.split(' x ')[0] : '';
+          var lon0  = o0.medidas ? o0.medidas.split(' x ')[1] : '';
+          var pct0  = Math.round(o0.avance || 0);
+          var w0    = Math.min(o0.avance || 0, 100);
+          var rs    = nInputRows > 1 ? ' rowspan="' + nInputRows + '"' : '';
+          var celdaDatos = ''
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#1565c0;font-size:10px;vertical-align:middle;">' + (o0.ordenFull || '') + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;vertical-align:middle;">' + (o0.producto || '') + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;vertical-align:middle;">' + diam0 + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;vertical-align:middle;">' + lon0 + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;vertical-align:middle;">' + (function(v){ return (v||'').toUpperCase().includes('PAVON') ? 'C/C' : (v||''); })(o0.cuerpo || o0.detalle) + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;vertical-align:middle;">' + Math.round(o0.sol || 0).toLocaleString() + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;vertical-align:middle;">' + Math.round(o0.prod || 0).toLocaleString() + '</td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;vertical-align:middle;">' + pct0 + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w0 + '%;background:#2196f3;"></div></div></td>'
+            + '<td' + rs + ' style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:10px;vertical-align:middle;">' + Math.round(o0.restan || 0).toLocaleString() + '</td>';
+          var celdaInput = ''
             + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
@@ -1456,14 +1531,49 @@ window.tsupSeleccionarProceso = tsupSeleccionarProceso;
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
             + '<td style="border:2px solid #000;background:#fafafa;"></td>'
-            + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
-            + '</tr>';
-        });
+            + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>';
+          // Primera fila: datos + inputs
+          htmlBody += '<tr style="height:28px;">' + celdaDatos + celdaInput + '</tr>';
+          // Filas adicionales: solo inputs (los datos tienen rowspan)
+          for (var ri = 1; ri < nInputRows; ri++) {
+            htmlBody += '<tr style="height:28px;">' + celdaInput + '</tr>';
+          }
+        } else {
+          ordenes.forEach(function(o) {
+            var diam = o.medidas ? o.medidas.split(' x ')[0] : '';
+            var lon  = o.medidas ? o.medidas.split(' x ')[1] : '';
+            var pct  = Math.round(o.avance || 0);
+            var w    = Math.min(o.avance || 0, 100);
+            htmlBody += '<tr style="height:28px;">'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#1565c0;font-size:10px;">' + (o.ordenFull || '') + '</td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;font-size:9px;font-weight:900;">' + (o.producto || '') + '</td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + diam + '</td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:10px;font-weight:900;">' + lon + '</td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-size:9px;">' + (function(v){ return (v||'').toUpperCase().includes('PAVON') ? 'C/C' : (v||''); })(o.cuerpo || o.detalle) + '</td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.sol || 0).toLocaleString() + '</td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#0000cc;font-size:10px;">' + Math.round(o.prod || 0).toLocaleString() + '</td>'
+              + '<td style="border:2px solid #000;padding:2px;text-align:center;font-size:8px;font-weight:900;">' + pct + '%<br><div style="width:90%;height:5px;background:#e0e0e0;margin:1px auto;"><div style="height:100%;width:' + w + '%;background:#2196f3;"></div></div></td>'
+              + '<td style="border:2px solid #000;padding:2px 4px;text-align:center;font-weight:900;color:#d32f2f;font-size:10px;">' + Math.round(o.restan || 0).toLocaleString() + '</td>'
+              + '<td style="border:2px solid #000;border-left:3px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;border-left:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;background:#fafafa;"></td>'
+              + '<td style="border:2px solid #000;border-right:3px solid #000;background:#fafafa;"></td>'
+              + '</tr>';
+          });
+        }
 
         htmlBody += '</tbody></table></div>';
       });
 
-      htmlBody += '<div style="border:2px solid #000;padding:5px 10px;font-size:10px;font-weight:700;min-height:40px;margin-top:4px;">Observaciones:</div>';
+      if (!grp.includes('TOOL')) {
+        htmlBody += '<div style="border:2px solid #000;padding:5px 10px;font-size:10px;font-weight:700;min-height:40px;margin-top:4px;">Observaciones:</div>';
+      }
       htmlBody += '</div>'; // cierra div del grupo
     });
 

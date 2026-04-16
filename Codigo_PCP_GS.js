@@ -4467,12 +4467,54 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
         if (colPlanPed > -1) {
           shPedidos.getRange(p + 1, colPlanPed + 1).setValue(cantPlanTotal);
         }
+        // Col I (índice 8): si el pedido estaba TERMINADO y se reabrió la orden, pasar a EN PROCESO
+        var colEstPed = headersPed.indexOf("ESTADO");
+        if (colEstPed === -1) colEstPed = 8; // fallback Col I
+        var estadoPedActual = String(dataPed[p][colEstPed] || '').toUpperCase().trim();
+        if (estadoPedActual === 'TERMINADO') {
+          shPedidos.getRange(p + 1, colEstPed + 1).setValue('EN PROCESO');
+        }
         break;
       }
     }
 
     SpreadsheetApp.flush();
-    return true;
+
+    // Leer los valores reales que quedaron escritos para la fila de la orden solicitada (id)
+    var solFinal    = 0;
+    var estadoFinal = 'EN PROCESO';
+    for (var r = 1; r < data.length; r++) {
+      if (String(data[r][idx.ID]) === String(id)) {
+        // nuevoSolicitado se calculó arriba; releerlo del arreglo de memoria no es posible
+        // porque ya hicimos setValue (data[] no se actualiza). Lo recalculamos igual:
+        var _unidad   = String(data[r][idx.UNIDAD]      || '').toUpperCase().trim();
+        var _desc     = String(data[r][idx.DESCRIPCION] || '').toUpperCase();
+        var _peso     = parseFloat(data[r][idx.PESO])   || 0;
+        var _longStr  = String(data[r][idx.LONGITUD]    || '');
+        var _longM    = _longStr.match(/[\d.]+/);
+        var _long     = _longM ? parseFloat(_longM[0]) : 0;
+        var _esVar    = _desc.indexOf('VARILLA') > -1;
+        if (_unidad === 'KG' || _unidad === 'ROL') {
+          solFinal = nuevaCantidad;
+        } else if (_unidad === 'PZA' || _unidad === 'CTO') {
+          solFinal = nuevaCantidad * _peso;
+          if (_esVar && _long > 0) solFinal = solFinal * _long;
+        } else {
+          solFinal = nuevaCantidad;
+        }
+        // Estado: si era TERMINADO/SOBREPRODUCCION y producido < solFinal → EN PROCESO, si no conservar
+        var _prod    = parseFloat(data[r][idx.PRODUCIDO]) || 0;
+        var _estAct  = String(data[r][idx.ESTADO] || '').toUpperCase().trim();
+        var _revert  = ['TERMINADO', 'SOBREPRODUCCION'];
+        if (_revert.indexOf(_estAct) > -1 && _prod < solFinal) {
+          estadoFinal = 'EN PROCESO';
+        } else {
+          estadoFinal = _estAct || 'EN PROCESO';
+        }
+        break;
+      }
+    }
+    return JSON.stringify({ success: true, sol: solFinal, estado: estadoFinal });
   } catch(e) {
     throw new Error("Error actualizando cantidad: " + e.message);
   }
@@ -10982,7 +11024,8 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
     cuerda: getIdxO("CUERDA"), cuerpo: getIdxO("CUERPO"),
     acero: getIdxO("ACERO"), sol: getIdxO("SOLICITADO"),
     prod: getIdxO("PRODUCIDO"), est: getIdxO("ESTADO"),
-    maq: getIdxO("MAQUINA"), proc: getIdxO("PROCESO")
+    maq: getIdxO("MAQUINA"), proc: getIdxO("PROCESO"),
+    prio: getIdxO("PRIORIDAD")
   };
   // Mapa máquina → grupo desde ESTANDARES (col D=idx3:MAQUINA, col J=idx9:GRUPO)
   var maqGrupoMap = {};
@@ -11051,11 +11094,18 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
       cuerpo:    String(row[idxO.cuerpo] || ""),
       acero:     String(row[idxO.acero] || ""),
       sol: sol, prod: prod, avance: pct, restan: sol - prod,
+      prioridad: idxO.prio >= 0 ? (Number(row[idxO.prio]) || 999) : 999,
       ultimoLote: last.lote,
       ultimoPIni: last.pIni,
       ultimoPFin: last.pFin
     });
   }
+  // Ordenar órdenes de cada máquina por prioridad ascendente
+  Object.keys(listaMaquinas).forEach(function(k) {
+    listaMaquinas[k].ordenes.sort(function(a, b) {
+      return (a.prioridad || 999) - (b.prioridad || 999);
+    });
+  });
   return JSON.stringify(
     Object.keys(listaMaquinas).sort().map(function(k){ return listaMaquinas[k]; })
   );
