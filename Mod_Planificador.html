@@ -4710,7 +4710,21 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
         '🏭' +
       '</button>' +
     '</td>' +
-    '<td style="padding:4px 8px;white-space:nowrap;font-size:11px;color:#455a64;">' + (o.codigo||'') + '</td>' +
+    (function(){
+      // Tooltip de Peso Unitario solo para varilla: peso × longitud en metros
+      var tipTxt = '';
+      if (o.invEsVarilla === true) {
+        var pKgM = parseFloat(o.peso) || 0;
+        var lStr = String(o.long || '');
+        var lMatch = lStr.match(/[\d.]+/);
+        var lM = lMatch ? (parseFloat(lMatch[0]) || 0) : 0;
+        var pesoUnit = (pKgM > 0 && lM > 0) ? pKgM * lM : 0;
+        if (pesoUnit > 0) {
+          tipTxt = ' title="Peso Unitario: ' + pesoUnit.toFixed(3) + ' kg"';
+        }
+      }
+      return '<td style="padding:4px 8px;white-space:nowrap;font-size:11px;color:#455a64;"' + tipTxt + '>' + (o.codigo||'') + '</td>';
+    })() +
     '<td style="padding:4px 8px;white-space:nowrap;">' + (o.tipo||'') + '</td>' +
     '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>' +
     '<td style="padding:4px 8px;white-space:nowrap;">' + (o.dia||'') + '</td>' +
@@ -4728,7 +4742,7 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
     (function(){
       var restan = Math.max(0, (Number(o.sol)||0) - (Number(o.prod)||0));
       var restanTitle = '';
-      if (o.invEsVarilla === true) {
+      if (o.invEsVarilla === true || String(o.tipo||'').toUpperCase().indexOf('VARILLA') > -1) {
         var pesoKgM2  = parseFloat(o.peso) || 0;
         var longStr2  = String(o.long || '');
         var longMatch2 = longStr2.match(/[\d.]+/);
@@ -5045,13 +5059,27 @@ function planifInvCeldas(o, tieneC7) {
 
   var pctLabel = pct !== null ? pct + '%' : '—';
 
-  // ── A Max: diferencia MAX - EXIST ──
+  // ── A Max: diferencia MAX - EXIST (con ajustes para varilla C7 con código venta) ──
   // Para VARILLA (invEsVarilla=true): MAX y EXIST están en PIEZAS en el inventario.
+  //   → Si es C7 con código venta diferente (invExistNeg !== null):
+  //       A MAX = MAX - EXIST - BACKORDER - EXIST_NEGRO  (todo en piezas)
+  //   → Si no (código venta = propio):
+  //       A MAX = MAX - EXIST
   //   → Celda muestra kg = aMax_pzas × (peso_kg_metro × longitud_metros)
   //   → Tooltip muestra las piezas originales del inventario
   // Para todo lo demás: MAX y EXIST ya están en kg → celda directa, sin tooltip
-  var invEsVar = o.invEsVarilla === true;
-  var aMaxRaw  = Math.max(0, maxNum - existNum); // en la unidad del inventario (pzas si varilla, kg si no)
+  var invEsVar = o.invEsVarilla === true || String(o.tipo||'').toUpperCase().indexOf('VARILLA') > -1;
+  var backNum    = parseFloat(o.invBack) || 0;
+  var existNegNum = (o.invExistNeg !== null && o.invExistNeg !== undefined) ? (parseFloat(o.invExistNeg) || 0) : 0;
+  var tieneCodVenta = invEsVar && (o.invExistNeg !== null && o.invExistNeg !== undefined);
+  var aMaxRaw;
+  if (tieneCodVenta) {
+    // Varilla C7 con código venta diferente: restar backorder y existencia del código negro
+    aMaxRaw = Math.max(0, maxNum - existNum - backNum - existNegNum);
+  } else {
+    // Varilla sin código venta diferente, o no-varilla: fórmula simple
+    aMaxRaw = Math.max(0, maxNum - existNum);
+  }
   var aMaxKg   = 0;
   var aMaxTooltip = '';
 
