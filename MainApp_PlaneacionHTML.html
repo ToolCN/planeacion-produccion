@@ -3495,7 +3495,7 @@ function loadTracking() {
   // Inject the tracking panel CSS variables and HTML
   var ca = document.getElementById('content-area');
   ca.style.padding = '0';
-  ca.innerHTML = '\n<div id="trk-panel" style="--bg:#0a0e1a;--surface:#111827;--surface2:#1c2537;--surface3:#232f45;--border:#2a3a5c;--accent:#00d4ff;--accent2:#ff6b2b;--accent3:#a855f7;--green:#22c55e;--yellow:#fbbf24;--red:#ef4444;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--glow:0 0 20px rgba(0,212,255,0.3);--glow2:0 0 20px rgba(255,107,43,0.3);min-height:calc(100vh - 48px);background:var(--bg);overflow-x:hidden;">\n<div id="trk-loader" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(10,14,26,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px;backdrop-filter:blur(4px);">\n  <img id="trk-loaderImg" src="https://i.postimg.cc/Jn6BGNgC/images-(2).jpg" style="width:100px;height:100px;border-radius:50%;object-fit:cover;animation:pulse 2s ease-in-out infinite;" alt="">\n  <div id="trk-loaderMsg" style="font-family:Rajdhani,sans-serif;font-size:16px;font-weight:600;color:#00d4ff;letter-spacing:3px;text-transform:uppercase;text-align:center;">Consultando...</div>\n  <div id="trk-loaderDots"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00d4ff;margin:0 4px;animation:bounce 1.4s infinite;"></span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff6b2b;margin:0 4px;animation:bounce 1.4s .2s infinite;"></span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a855f7;margin:0 4px;animation:bounce 1.4s .4s infinite;"></span></div>\n</div>\n<!-- ──────────── TABS ──────────── -->\n<div id="trk-tabsBar">\n  <button class="tab-btn active" id="trk-tab-search" onclick="trkSwitchTab(\'search\')">🔍 BÚSQUEDA</button>\n</div>\n\n<!-- ──────────── PANTALLA BÚSQUEDA ──────────── -->\n<div id="trk-screenSearch">\n  <div class="search-hero">\n    <h1>RASTREO DE PEDIDOS</h1>\n    <p>Consulta el estado de tus pedidos en tiempo real</p>\n  </div>\n\n  <div class="search-box">\n    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2">\n      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>\n    </svg>\n    <input type="text" id="trk-txtBuscar" placeholder="Número de pedido, código, descripción..."\n           onkeydown="if(event.key===\'Enter\')trkBuscar()">\n    <button class="btn-search" onclick="trkBuscar()">CONSULTAR</button>\n  </div>\n  <p class="search-hint">Puedes buscar por: número de pedido · código de producto · descripción · estado</p>\n\n  <div id="trk-exportBlock" style="display:none;width:100%;max-width:700px;margin:0 auto 10px auto;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:18px 22px;">\n    <div style="font-family:\'Exo 2\',sans-serif;font-size:13px;font-weight:900;color:#00d4ff;letter-spacing:2px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">\n      <span>📊</span> EXPORTAR REGISTROS DE PRODUCCIÓN\n    </div>\n    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">\n      <div style="display:flex;flex-direction:column;gap:4px;">\n        <label style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;">FECHA INICIO</label>\n        <input type="date" id="trk-expFechaIni" style="background:#0f1f33;border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:\'Exo 2\',sans-serif;outline:none;">\n      </div>\n      <div style="display:flex;flex-direction:column;gap:4px;">\n        <label style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;">FECHA FIN</label>\n        <input type="date" id="trk-expFechaFin" style="background:#0f1f33;border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:\'Exo 2\',sans-serif;outline:none;">\n      </div>\n      <div style="display:flex;flex-direction:column;gap:4px;padding-top:18px;">\n        <button onclick="trkExportarProduccion()" style="background:linear-gradient(135deg,#00d4ff,#0099bb);border:none;border-radius:8px;color:#0a0e1a;padding:9px 22px;font-family:\'Exo 2\',sans-serif;font-size:13px;font-weight:900;letter-spacing:1.5px;cursor:pointer;transition:opacity .2s;" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">\n          📥 EXPORTAR EXCEL\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <div class="results-container" id="trk-resultsContainer"></div>\n</div>\n\n<!-- ──────────── PANTALLA DETALLE ──────────── -->\n<div id="trk-screenDetail"></div>\n</div>';
+  ca.innerHTML = '\n<div id="trk-panel" style="--bg:#0a0e1a;--surface:#111827;--surface2:#1c2537;--surface3:#232f45;--border:#2a3a5c;--accent:#00d4ff;--accent2:#ff6b2b;--accent3:#a855f7;--green:#22c55e;--yellow:#fbbf24;--red:#ef4444;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--glow:0 0 20px rgba(0,212,255,0.3);--glow2:0 0 20px rgba(255,107,43,0.3);min-height:calc(100vh - 48px);background:var(--bg);overflow-x:hidden;">\n<div id="trk-loader" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(10,14,26,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px;backdrop-filter:blur(4px);">\n  <img id="trk-loaderImg" src="https://i.postimg.cc/Jn6BGNgC/images-(2).jpg" style="width:100px;height:100px;border-radius:50%;object-fit:cover;animation:pulse 2s ease-in-out infinite;" alt="">\n  <div id="trk-loaderMsg" style="font-family:Rajdhani,sans-serif;font-size:16px;font-weight:600;color:#00d4ff;letter-spacing:3px;text-transform:uppercase;text-align:center;">Consultando...</div>\n  <div id="trk-loaderDots"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00d4ff;margin:0 4px;animation:bounce 1.4s infinite;"></span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff6b2b;margin:0 4px;animation:bounce 1.4s .2s infinite;"></span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a855f7;margin:0 4px;animation:bounce 1.4s .4s infinite;"></span></div>\n</div>\n<!-- ──────────── TABS ──────────── -->\n<div id="trk-tabsBar">\n  <button class="tab-btn active" id="trk-tab-search" onclick="trkSwitchTab(\'search\')">🔍 BÚSQUEDA</button>\n  <button class="tab-btn" id="trk-tab-planColatado" onclick="trkAbrirPlanColatado()">🏭 PLAN COLATADO</button>\n  <button class="tab-btn" id="trk-tab-enviado" onclick="trkAbrirMaterialEnviado()">🚚 MATERIAL ENVIADO</button>\n</div>\n\n<!-- ──────────── PANTALLA BÚSQUEDA ──────────── -->\n<div id="trk-screenSearch">\n  <div class="search-hero">\n    <h1>RASTREO DE PEDIDOS</h1>\n    <p>Consulta el estado de tus pedidos en tiempo real</p>\n  </div>\n\n  <div class="search-box">\n    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2">\n      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>\n    </svg>\n    <input type="text" id="trk-txtBuscar" placeholder="Número de pedido, código, descripción..."\n           onkeydown="if(event.key===\'Enter\')trkBuscar()">\n    <button class="btn-search" onclick="trkBuscar()">CONSULTAR</button>\n  </div>\n  <p class="search-hint">Puedes buscar por: número de pedido · código de producto · descripción · estado</p>\n\n  <div id="trk-exportBlock" style="display:none;width:100%;max-width:700px;margin:0 auto 10px auto;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:14px;padding:18px 22px;">\n    <div style="font-family:\'Exo 2\',sans-serif;font-size:13px;font-weight:900;color:#00d4ff;letter-spacing:2px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">\n      <span>📊</span> EXPORTAR REGISTROS DE PRODUCCIÓN\n    </div>\n    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">\n      <div style="display:flex;flex-direction:column;gap:4px;">\n        <label style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;">FECHA INICIO</label>\n        <input type="date" id="trk-expFechaIni" style="background:#0f1f33;border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:\'Exo 2\',sans-serif;outline:none;">\n      </div>\n      <div style="display:flex;flex-direction:column;gap:4px;">\n        <label style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:1px;">FECHA FIN</label>\n        <input type="date" id="trk-expFechaFin" style="background:#0f1f33;border:1px solid rgba(0,212,255,0.3);border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;font-family:\'Exo 2\',sans-serif;outline:none;">\n      </div>\n      <div style="display:flex;flex-direction:column;gap:4px;padding-top:18px;">\n        <button onclick="trkExportarProduccion()" style="background:linear-gradient(135deg,#00d4ff,#0099bb);border:none;border-radius:8px;color:#0a0e1a;padding:9px 22px;font-family:\'Exo 2\',sans-serif;font-size:13px;font-weight:900;letter-spacing:1.5px;cursor:pointer;transition:opacity .2s;" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">\n          📥 EXPORTAR EXCEL\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <div class="results-container" id="trk-resultsContainer"></div>\n</div>\n\n<!-- ──────────── PANTALLA DETALLE ──────────── -->\n<div id="trk-screenDetail"></div>\n</div>';
   // Initialize tracking state
   _trkTabs = {};
   _trkActiveTab = 'search';
@@ -3505,12 +3505,19 @@ function loadTracking() {
   if(ss) ss.style.display = 'flex';
   var sd = document.getElementById('trk-screenDetail');
   if(sd) sd.style.display = 'none';
-  // Remove old tabs
+  // Remove only dynamic tabs (pedido detail tabs), keep fixed tabs
   var bar = document.getElementById('trk-tabsBar');
   if(bar) {
-    var btns = bar.querySelectorAll('.tab-btn:not(#trk-tab-search)');
+    var btns = bar.querySelectorAll('.tab-btn:not(#trk-tab-search):not(#trk-tab-planColatado):not(#trk-tab-enviado)');
     btns.forEach(function(b){ b.remove(); });
   }
+  // Reset panel state for fixed tabs
+  trkPC_activo = false;
+  trkEnv_activo = false;
+  var pcPanel = document.getElementById('trk-screenPlanColatado');
+  if (pcPanel) pcPanel.remove();
+  var envPanel = document.getElementById('trk-screenMaterialEnviado');
+  if (envPanel) envPanel.remove();
   var tb = document.getElementById('trk-tab-search');
   if(tb) tb.classList.add('active');
   var inp = document.getElementById('trk-txtBuscar');
@@ -21178,6 +21185,718 @@ function trkBuildProductSVG(tipo, size) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  PLAN COLATADO — prefijo: trkPC_
+// ══════════════════════════════════════════════════════════════════════════════
+var trkPC_activo  = false;
+var trkPC_grupos  = [];
+var trkPC_fechaCalculo = '';
+
+async function trkAbrirPlanColatado() {
+  // Siempre ocultar otros paneles primero
+  var envPanel = document.getElementById('trk-screenMaterialEnviado');
+  if (envPanel) envPanel.style.display = 'none';
+  var ss = document.getElementById('trk-screenSearch');
+  if (ss) ss.style.display = 'none';
+  var sd = document.getElementById('trk-screenDetail');
+  if (sd) sd.style.display = 'none';
+
+  if (trkPC_activo) {
+    var existing = document.getElementById('trk-screenPlanColatado');
+    if (existing) { existing.style.display = 'block'; }
+    document.querySelectorAll('#trk-panel .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    var btn = document.getElementById('trk-tab-planColatado');
+    if (btn) btn.classList.add('active');
+    return;
+  }
+
+  trkShowLoader();
+  try {
+    var res = await new Promise(function(resolve, reject) {
+      google.script.run
+        .withSuccessHandler(function(r){ resolve(typeof r === 'string' ? JSON.parse(r) : r); })
+        .withFailureHandler(function(e){ reject(new Error(e.message || String(e))); })
+        .trkGetPlanColatado();
+    });
+    if (!res.success) { trkHideLoader(); sAlert('Error: ' + (res.msg || 'Sin datos'), 'error'); return; }
+    trkPC_activo = true;
+    trkRenderPlanColatado(res.grupos || []);
+    document.querySelectorAll('#trk-panel .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    var btn = document.getElementById('trk-tab-planColatado');
+    if (btn) btn.classList.add('active');
+  } catch(err) {
+    trkHideLoader();
+    sAlert('Error cargando Plan Colatado: ' + err.message, 'error');
+  }
+  trkHideLoader();
+}
+
+function trkRenderPlanColatado(grupos) {
+  var ss = document.getElementById('trk-screenSearch');
+  if (ss) ss.style.display = 'none';
+  var sd = document.getElementById('trk-screenDetail');
+  if (sd) sd.style.display = 'none';
+  var envPanel = document.getElementById('trk-screenMaterialEnviado');
+  if (envPanel) envPanel.style.display = 'none';
+
+  var panel = document.getElementById('trk-screenPlanColatado');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'trk-screenPlanColatado';
+    document.getElementById('trk-panel').appendChild(panel);
+  }
+  panel.style.display = 'block';
+  panel.style.cssText = 'padding:24px;max-width:1500px;margin:0 auto;';
+
+  if (!grupos.length) {
+    panel.innerHTML = '<div style="text-align:center;padding:60px;color:#64748b;font-family:Rajdhani,sans-serif;font-size:18px;">Sin órdenes activas de COLATADO</div>';
+    return;
+  }
+
+  trkPC_grupos = grupos; // guardar referencia para exportar
+  trkPC_fechaCalculo = new Date().toLocaleString('es-MX');
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px;">';
+  html += '<div style="font-family:Rajdhani,sans-serif;font-size:26px;font-weight:900;color:#00d4ff;letter-spacing:3px;text-transform:uppercase;">🏭 Plan de Producción — COLATADO</div>';
+  html += '<div style="display:flex;gap:10px;">';
+  html += '<button onclick="trkPC_exportarPDF()" style="background:linear-gradient(135deg,#ef4444,#b91c1c);border:none;border-radius:8px;color:#fff;padding:9px 18px;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">📄 PDF</button>';
+  html += '<button onclick="trkPC_exportarExcel()" style="background:linear-gradient(135deg,#22c55e,#15803d);border:none;border-radius:8px;color:#fff;padding:9px 18px;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.opacity=\'0.85\'" onmouseout="this.style.opacity=\'1\'">📊 EXCEL</button>';
+  html += '</div></div>';
+  html += '<div style="font-size:12px;color:#64748b;margin-bottom:24px;letter-spacing:1px;">Vista de carga por máquina · Calculado al ' + trkPC_fechaCalculo + '</div>';
+
+  grupos.forEach(function(g) {
+    var ordenes = g.ordenes || [];
+    html += '<div style="background:#111827;border:1px solid #2a3a5c;border-radius:14px;margin-bottom:22px;overflow:hidden;">';
+    html += '<div style="background:linear-gradient(90deg,rgba(0,212,255,0.15),rgba(0,212,255,0.04));border-bottom:1px solid #2a3a5c;padding:14px 20px;display:flex;align-items:center;gap:12px;">';
+    html += '<div style="width:10px;height:10px;background:#00d4ff;border-radius:50%;box-shadow:0 0 8px #00d4ff;"></div>';
+    html += '<div style="font-size:18px;font-weight:900;color:#00d4ff;letter-spacing:2px;">' + g.maquina + '</div>';
+    html += '<div style="font-size:12px;color:#64748b;margin-left:8px;">' + ordenes.length + ' orden(es)</div>';
+    html += '</div>';
+    html += '<div style="overflow-x:auto;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    html += '<thead><tr style="background:#0d1b2e;">';
+    var cols = ['#','PEDIDO','CÓDIGO','TIPO','DIÁMETRO','LONGITUD','ACABADO','CAJA','SOLICITADO','PRODUCIDO','PENDIENTE','FECHA INICIO','FECHA FIN'];
+    cols.forEach(function(c) {
+      html += '<th style="padding:10px 12px;text-align:left;color:#00d4ff;font-family:Rajdhani,sans-serif;font-weight:700;letter-spacing:1px;border-bottom:1px solid #2a3a5c;white-space:nowrap;">' + c + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    ordenes.forEach(function(o, idx) {
+      var bg = idx % 2 === 0 ? '#0f1c2e' : '#0a1420';
+      html += '<tr style="background:' + bg + ';border-bottom:1px solid rgba(42,58,92,0.5);">';
+      html += '<td style="padding:9px 12px;color:#64748b;font-weight:700;">' + (idx + 1) + '</td>';
+      html += '<td style="padding:9px 12px;color:#e2e8f0;font-weight:700;">' + o.pedido + '</td>';
+      html += '<td style="padding:9px 12px;color:#a78bfa;font-weight:600;">' + o.codigo + '</td>';
+      html += '<td style="padding:9px 12px;color:#c7d6f0;">' + (o.tipo || '—') + '</td>';
+      html += '<td style="padding:9px 12px;color:#c7d6f0;text-align:right;">' + (o.dia || '—') + '</td>';
+      html += '<td style="padding:9px 12px;color:#c7d6f0;text-align:right;">' + (o.long || '—') + '</td>';
+      html += '<td style="padding:9px 12px;color:#c7d6f0;">' + (o.cuerda || '—') + '</td>';
+      html += '<td style="padding:9px 12px;color:#c7d6f0;">' + (o.cuerpo || '—') + '</td>';
+      html += '<td style="padding:9px 12px;color:#e2e8f0;text-align:right;">' + o.sol.toLocaleString('es-MX') + ' rol</td>';
+      html += '<td style="padding:9px 12px;color:#22c55e;text-align:right;font-weight:700;">' + o.prod.toLocaleString('es-MX') + ' rol</td>';
+      html += '<td style="padding:9px 12px;color:#fbbf24;text-align:right;font-weight:700;">' + o.pendiente.toLocaleString('es-MX') + ' rol</td>';
+      html += '<td style="padding:9px 12px;color:#34d399;white-space:nowrap;">' + o.fechaInicio + '</td>';
+      html += '<td style="padding:9px 12px;color:#fb923c;white-space:nowrap;">' + o.fechaFin + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '</div>';
+  });
+
+  panel.innerHTML = html;
+}
+
+// ── PLAN COLATADO: Exportar PDF ──
+function trkPC_exportarPDF() {
+  var grupos = trkPC_grupos;
+  if (!grupos || !grupos.length) { sAlert('Sin datos para exportar','warning'); return; }
+
+  var fechaCalculo = trkPC_fechaCalculo || new Date().toLocaleString('es-MX');
+  var cols = ['#','PEDIDO','CÓDIGO','TIPO','DIÁMETRO','LONGITUD','ACABADO','CAJA','SOLICITADO','PRODUCIDO','PENDIENTE','FECHA INICIO','FECHA FIN'];
+
+  // Construir HTML limpio optimizado para impresión
+  var estilos = '<style>' +
+    'body{margin:0;padding:0;font-family:Arial,sans-serif;background:#fff;color:#1a1a2e;}' +
+    '.portada{padding:32px 40px 16px;border-bottom:3px solid #00d4ff;}' +
+    '.titulo{font-size:22px;font-weight:900;color:#0099bb;letter-spacing:2px;text-transform:uppercase;}' +
+    '.subtitulo{font-size:11px;color:#555;margin-top:4px;}' +
+    '.bloque{margin:20px 40px;page-break-inside:avoid;}' +
+    '.maq-header{background:#0d1b2e;color:#00d4ff;padding:10px 14px;font-size:14px;font-weight:900;letter-spacing:2px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:8px;}' +
+    '.maq-dot{width:8px;height:8px;background:#00d4ff;border-radius:50%;display:inline-block;}' +
+    'table{width:100%;border-collapse:collapse;font-size:10px;}' +
+    'thead tr{background:#0d1b2e;}' +
+    'th{padding:7px 8px;text-align:left;color:#00d4ff;font-weight:700;letter-spacing:0.5px;border-bottom:2px solid #00d4ff;white-space:nowrap;}' +
+    'tr.odd{background:#f0f7ff;}' +
+    'tr.even{background:#ffffff;}' +
+    'td{padding:6px 8px;border-bottom:1px solid #dde8f5;white-space:nowrap;}' +
+    '.num{text-align:right;}' +
+    '.sol{color:#1a1a2e;}' +
+    '.prod{color:#16a34a;font-weight:700;}' +
+    '.pend{color:#b45309;font-weight:700;}' +
+    '.fi{color:#0d9488;}' +
+    '.ff{color:#c2410c;}' +
+    '.cod{color:#7c3aed;font-weight:600;}' +
+    '.ped{font-weight:700;}' +
+    '.total-row td{background:#e0f2fe;font-weight:700;color:#0369a1;border-top:2px solid #0099bb;}' +
+    '@media print{@page{margin:15mm;size:A4 landscape;}.bloque{page-break-inside:avoid;}}' +
+    '</style>';
+
+  var cuerpo = '<div class="portada">' +
+    '<div class="titulo">🏭 Plan de Producción — Colatado</div>' +
+    '<div class="subtitulo">Generado: ' + fechaCalculo + ' &nbsp;|&nbsp; ' + grupos.length + ' máquina(s)</div>' +
+    '</div>';
+
+  grupos.forEach(function(g) {
+    var ordenes = g.ordenes || [];
+    var totalSol  = ordenes.reduce(function(s,o){return s+o.sol;},0);
+    var totalProd = ordenes.reduce(function(s,o){return s+o.prod;},0);
+    var totalPend = ordenes.reduce(function(s,o){return s+o.pendiente;},0);
+
+    cuerpo += '<div class="bloque">';
+    cuerpo += '<div class="maq-header"><span class="maq-dot"></span>' + g.maquina + ' &nbsp;·&nbsp; ' + ordenes.length + ' orden(es)</div>';
+    cuerpo += '<table><thead><tr>';
+    cols.forEach(function(c){ cuerpo += '<th>' + c + '</th>'; });
+    cuerpo += '</tr></thead><tbody>';
+
+    ordenes.forEach(function(o, idx) {
+      var rowClass = idx % 2 === 0 ? 'odd' : 'even';
+      cuerpo += '<tr class="' + rowClass + '">' +
+        '<td>' + (idx+1) + '</td>' +
+        '<td class="ped">' + o.pedido + '</td>' +
+        '<td class="cod">' + o.codigo + '</td>' +
+        '<td>' + (o.tipo||'—') + '</td>' +
+        '<td class="num">' + (o.dia||'—') + '</td>' +
+        '<td class="num">' + (o.long||'—') + '</td>' +
+        '<td>' + (o.cuerda||'—') + '</td>' +
+        '<td>' + (o.cuerpo||'—') + '</td>' +
+        '<td class="num sol">' + o.sol.toLocaleString('es-MX') + ' rol</td>' +
+        '<td class="num prod">' + o.prod.toLocaleString('es-MX') + ' rol</td>' +
+        '<td class="num pend">' + o.pendiente.toLocaleString('es-MX') + ' rol</td>' +
+        '<td class="fi">' + o.fechaInicio + '</td>' +
+        '<td class="ff">' + o.fechaFin + '</td>' +
+        '</tr>';
+    });
+    // Fila de totales
+    cuerpo += '<tr class="total-row">' +
+      '<td colspan="8" style="text-align:right;">TOTALES:</td>' +
+      '<td class="num">' + totalSol.toLocaleString('es-MX') + ' rol</td>' +
+      '<td class="num">' + totalProd.toLocaleString('es-MX') + ' rol</td>' +
+      '<td class="num">' + totalPend.toLocaleString('es-MX') + ' rol</td>' +
+      '<td colspan="2"></td></tr>';
+
+    cuerpo += '</tbody></table></div>';
+  });
+
+  var ventana = window.open('', '_blank', 'width=1100,height=800');
+  ventana.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Plan Colatado</title>' + estilos + '</head><body>' + cuerpo + '</body></html>');
+  ventana.document.close();
+  ventana.focus();
+  setTimeout(function(){ ventana.print(); }, 600);
+}
+
+// ── PLAN COLATADO: Exportar Excel ──
+async function trkPC_exportarExcel() {
+  var grupos = trkPC_grupos;
+  if (!grupos || !grupos.length) { sAlert('Sin datos para exportar','warning'); return; }
+
+  if (typeof ExcelJS === 'undefined') {
+    trkShowLoader();
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    trkHideLoader();
+  }
+
+  trkShowLoader();
+  try {
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'ToolCN PCP';
+    wb.created = new Date();
+
+    grupos.forEach(function(g) {
+      var ordenes = g.ordenes || [];
+      // Nombre de hoja: máximo 31 chars (límite Excel)
+      var nombreHoja = g.maquina.substring(0, 31);
+      var ws = wb.addWorksheet(nombreHoja, { views:[{state:'frozen',ySplit:2}] });
+
+      // ── Fila 1: título de la máquina ──
+      ws.mergeCells('A1:M1');
+      var tituloCell = ws.getCell('A1');
+      tituloCell.value = '🏭 PLAN COLATADO — ' + g.maquina + '   |   Calculado: ' + (trkPC_fechaCalculo || '');
+      tituloCell.font      = {name:'Calibri', bold:true, size:13, color:{argb:'FF00D4FF'}};
+      tituloCell.fill      = {type:'pattern', pattern:'solid', fgColor:{argb:'FF0D1B2E'}};
+      tituloCell.alignment = {vertical:'middle', horizontal:'left'};
+      ws.getRow(1).height  = 26;
+
+      // ── Fila 2: encabezados ──
+      ws.columns = [
+        {key:'num',   width:5},
+        {key:'ped',   width:16},
+        {key:'cod',   width:14},
+        {key:'tipo',  width:18},
+        {key:'dia',   width:10},
+        {key:'long',  width:10},
+        {key:'acab',  width:16},
+        {key:'caja',  width:14},
+        {key:'sol',   width:13},
+        {key:'prod',  width:13},
+        {key:'pend',  width:13},
+        {key:'fi',    width:18},
+        {key:'ff',    width:18}
+      ];
+      var headers = ['#','PEDIDO','CÓDIGO','TIPO','DIÁMETRO','LONGITUD','ACABADO','CAJA','SOLICITADO','PRODUCIDO','PENDIENTE','FECHA INICIO','FECHA FIN'];
+      var hRow = ws.getRow(2);
+      hRow.height = 20;
+      headers.forEach(function(h, i) {
+        var cell = hRow.getCell(i+1);
+        cell.value = h;
+        cell.font      = {name:'Calibri', bold:true, size:10, color:{argb:'FF00D4FF'}};
+        cell.fill      = {type:'pattern', pattern:'solid', fgColor:{argb:'FF0D1B2E'}};
+        cell.border    = {top:{style:'thin',color:{argb:'FF00D4FF'}}, bottom:{style:'medium',color:{argb:'FF00D4FF'}}, left:{style:'thin',color:{argb:'FF1E3A5F'}}, right:{style:'thin',color:{argb:'FF1E3A5F'}}};
+        cell.alignment = {vertical:'middle', horizontal: i >= 8 && i <= 10 ? 'right' : 'center', wrapText:false};
+      });
+
+      // ── Filas de datos ──
+      ordenes.forEach(function(o, idx) {
+        var rn  = idx + 3; // fila real (1=titulo, 2=header, 3+)
+        var row = ws.getRow(rn);
+        row.height = 17;
+        var isOdd = idx % 2 === 0;
+        var bgArgb = isOdd ? 'FF0F1C2E' : 'FF142033';
+        var vals = [idx+1, o.pedido, o.codigo, o.tipo||'', o.dia||'', o.long||'', o.cuerda||'', o.cuerpo||'',
+                    o.sol, o.prod, o.pendiente, o.fechaInicio, o.fechaFin];
+        vals.forEach(function(v, ci) {
+          var cell = row.getCell(ci+1);
+          cell.value = v;
+          cell.fill   = {type:'pattern', pattern:'solid', fgColor:{argb: bgArgb}};
+          cell.border = {top:{style:'hair',color:{argb:'FF1E3A5F'}}, bottom:{style:'hair',color:{argb:'FF1E3A5F'}}, left:{style:'thin',color:{argb:'FF1E3A5F'}}, right:{style:'thin',color:{argb:'FF1E3A5F'}}};
+          cell.alignment = {vertical:'middle', horizontal: ci >= 8 && ci <= 10 ? 'right' : 'left', wrapText:false};
+          // Colores especiales por columna
+          if (ci === 1) { cell.font = {name:'Calibri',size:10,bold:true,color:{argb:'FFE2E8F0'}}; }
+          else if (ci === 2) { cell.font = {name:'Calibri',size:10,bold:true,color:{argb:'FFA78BFA'}}; }
+          else if (ci === 8) { cell.font = {name:'Calibri',size:10,color:{argb:'FFE2E8F0'}}; cell.numFmt = '#,##0'; }
+          else if (ci === 9) { cell.font = {name:'Calibri',size:10,bold:true,color:{argb:'FF22C55E'}}; cell.numFmt = '#,##0'; }
+          else if (ci === 10){ cell.font = {name:'Calibri',size:10,bold:true,color:{argb:'FFFBBF24'}}; cell.numFmt = '#,##0'; }
+          else if (ci === 11){ cell.font = {name:'Calibri',size:10,color:{argb:'FF34D399'}}; }
+          else if (ci === 12){ cell.font = {name:'Calibri',size:10,color:{argb:'FFFB923C'}}; }
+          else { cell.font = {name:'Calibri',size:10,color:{argb:'FFC7D6F0'}}; }
+        });
+      });
+
+      // ── Fila de totales ──
+      var totalSol  = ordenes.reduce(function(s,o){return s+o.sol;},0);
+      var totalProd = ordenes.reduce(function(s,o){return s+o.prod;},0);
+      var totalPend = ordenes.reduce(function(s,o){return s+o.pendiente;},0);
+      var tRowN = ordenes.length + 3;
+      var tRow  = ws.getRow(tRowN);
+      tRow.height = 20;
+      var totVals = ['','','','','','','','TOTALES', totalSol, totalProd, totalPend, '', ''];
+      totVals.forEach(function(v, ci) {
+        var cell = tRow.getCell(ci+1);
+        cell.value = v;
+        cell.fill   = {type:'pattern', pattern:'solid', fgColor:{argb:'FF1E3A5F'}};
+        cell.font   = {name:'Calibri', bold:true, size:11, color:{argb:'FFFBBF24'}};
+        cell.border = {top:{style:'medium',color:{argb:'FF00D4FF'}}, bottom:{style:'medium',color:{argb:'FF00D4FF'}}, left:{style:'thin',color:{argb:'FF1E3A5F'}}, right:{style:'thin',color:{argb:'FF1E3A5F'}}};
+        cell.alignment = {vertical:'middle', horizontal: ci >= 8 && ci <= 10 ? 'right' : ci === 7 ? 'right' : 'center'};
+        if (ci >= 8 && ci <= 10) cell.numFmt = '#,##0';
+      });
+
+      // Autofilter en fila 2
+      ws.autoFilter = {from:{row:2,column:1}, to:{row:2,column:13}};
+    });
+
+    var buffer = await wb.xlsx.writeBuffer();
+    var blob   = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url    = URL.createObjectURL(blob);
+    var a      = document.createElement('a');
+    a.href     = url;
+    a.download = 'PlanColatado_' + new Date().toISOString().substring(0,10) + '.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    trkHideLoader();
+    sAlert('Excel generado con ' + grupos.length + ' hoja(s)', 'success');
+  } catch(err) {
+    trkHideLoader();
+    sAlert('Error al generar Excel: ' + err.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MATERIAL ENVIADO — prefijo: trkEnv_  (filtros tipo Excel en cascada)
+// ══════════════════════════════════════════════════════════════════════════════
+var trkEnv_activo    = false;
+var trkEnv_datos     = [];
+var trkEnv_filtros   = {};
+var trkEnv_colActual = '';
+var trkEnv_anio      = new Date().getFullYear();
+var trkEnv_mes       = new Date().getMonth() + 1; // 1-12
+
+var trkEnv_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+async function trkAbrirMaterialEnviado(anio, mes) {
+  // Ocultar otros paneles
+  var pcPanel = document.getElementById('trk-screenPlanColatado');
+  if (pcPanel) pcPanel.style.display = 'none';
+  var ss2 = document.getElementById('trk-screenSearch');
+  if (ss2) ss2.style.display = 'none';
+  var sd2 = document.getElementById('trk-screenDetail');
+  if (sd2) sd2.style.display = 'none';
+
+  if (anio) trkEnv_anio = anio;
+  if (mes)  trkEnv_mes  = mes;
+
+  trkShowLoader();
+  try {
+    var res = await new Promise(function(resolve, reject) {
+      google.script.run
+        .withSuccessHandler(function(r){ resolve(typeof r === 'string' ? JSON.parse(r) : r); })
+        .withFailureHandler(function(e){ reject(new Error(e.message || String(e))); })
+        .trkGetMaterialEnviado(trkEnv_anio, trkEnv_mes);
+    });
+    if (!res.success) { trkHideLoader(); sAlert('Error: ' + (res.msg || 'Sin datos'), 'error'); return; }
+    trkEnv_datos   = res.filas || [];
+    trkEnv_filtros = {};
+    trkEnv_activo  = true;
+    trkEnvRenderPanel();
+    document.querySelectorAll('#trk-panel .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    var btn = document.getElementById('trk-tab-enviado');
+    if (btn) btn.classList.add('active');
+  } catch(err) {
+    trkHideLoader();
+    sAlert('Error cargando Material Enviado: ' + err.message, 'error');
+  }
+  trkHideLoader();
+}
+
+function trkEnvCambiarMes(delta) {
+  trkEnv_mes += delta;
+  if (trkEnv_mes > 12) { trkEnv_mes = 1;  trkEnv_anio++; }
+  if (trkEnv_mes < 1)  { trkEnv_mes = 12; trkEnv_anio--; }
+  trkAbrirMaterialEnviado();
+}
+
+function trkEnvRenderPanel() {
+  var pcPanel = document.getElementById('trk-screenPlanColatado');
+  if (pcPanel) pcPanel.style.display = 'none';
+  var ss2 = document.getElementById('trk-screenSearch');
+  if (ss2) ss2.style.display = 'none';
+  var sd2 = document.getElementById('trk-screenDetail');
+  if (sd2) sd2.style.display = 'none';
+
+  var panel = document.getElementById('trk-screenMaterialEnviado');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'trk-screenMaterialEnviado';
+    document.getElementById('trk-panel').appendChild(panel);
+  }
+  panel.style.display = 'block';
+  panel.style.cssText = 'padding:24px;max-width:1600px;margin:0 auto;';
+
+  // Calcular totales
+  var visibles = trkEnvGetVisibles();
+  var totalKilos  = visibles.reduce(function(s,f){ return s + (parseFloat(f.kilos)  || 0); }, 0);
+  var totalPiezas = visibles.reduce(function(s,f){ return s + (parseFloat(f.piezas) || 0); }, 0);
+
+  var html = '';
+  html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">';
+  html += '<div>';
+  html += '<div style="font-family:Rajdhani,sans-serif;font-size:26px;font-weight:900;color:#00d4ff;letter-spacing:3px;text-transform:uppercase;">🚚 Material Enviado</div>';
+  html += '<div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap;">';
+  html += '<div style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:10px;padding:8px 16px;text-align:center;">';
+  html += '<div style="font-size:11px;color:#64748b;font-family:Rajdhani,sans-serif;letter-spacing:1px;">REGISTROS</div>';
+  html += '<div style="font-size:20px;font-weight:900;color:#00d4ff;font-family:Rajdhani,sans-serif;" id="trkEnv-statReg">' + visibles.length + '</div></div>';
+  html += '<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:8px 16px;text-align:center;">';
+  html += '<div style="font-size:11px;color:#64748b;font-family:Rajdhani,sans-serif;letter-spacing:1px;">TOTAL KG</div>';
+  html += '<div style="font-size:20px;font-weight:900;color:#22c55e;font-family:Rajdhani,sans-serif;" id="trkEnv-statKg">' + totalKilos.toLocaleString('es-MX',{maximumFractionDigits:1}) + '</div></div>';
+  html += '<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:8px 16px;text-align:center;">';
+  html += '<div style="font-size:11px;color:#64748b;font-family:Rajdhani,sans-serif;letter-spacing:1px;">TOTAL PIEZAS</div>';
+  html += '<div style="font-size:20px;font-weight:900;color:#fbbf24;font-family:Rajdhani,sans-serif;" id="trkEnv-statPzs">' + totalPiezas.toLocaleString('es-MX',{maximumFractionDigits:0}) + '</div></div>';
+  html += '</div></div>';
+  html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">';
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<button onclick="trkEnvCambiarMes(-1)" style="background:#1c2537;border:1px solid #2a3a5c;color:#00d4ff;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">‹</button>';
+  html += '<div style="background:#1c2537;border:1px solid #2a3a5c;border-radius:8px;padding:6px 18px;font-family:Rajdhani,sans-serif;font-size:15px;font-weight:700;color:#e2e8f0;min-width:160px;text-align:center;" id="trkEnv-lblMes">' + trkEnv_MESES[trkEnv_mes-1] + ' ' + trkEnv_anio + '</div>';
+  html += '<button onclick="trkEnvCambiarMes(1)" style="background:#1c2537;border:1px solid #2a3a5c;color:#00d4ff;width:32px;height:32px;border-radius:6px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">›</button>';
+  html += '</div>';
+  html += '<button onclick="trkEnvExportarExcel()" style="background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:8px;color:#fff;padding:8px 18px;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:900;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:6px;">📥 EXPORTAR EXCEL</button>';
+  html += '</div></div>';
+
+  html += '<div id="trkEnv-filterPopup" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:9000;display:none;justify-content:center;align-items:center;background:rgba(0,0,0,0.5);">';
+  html += '<div style="background:#111827;border:1px solid #2a3a5c;border-radius:8px;width:300px;max-height:420px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.6);">';
+  html += '<div style="padding:12px 14px;border-bottom:1px solid #2a3a5c;font-weight:bold;font-family:Rajdhani,sans-serif;color:#00d4ff;font-size:15px;display:flex;justify-content:space-between;align-items:center;">Filtrar: <span id="trkEnv-lblCol" style="color:#e2e8f0;"></span><button onclick="document.getElementById(\'trkEnv-filterPopup\').style.display=\'none\'" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;line-height:1;">✕</button></div>';
+  html += '<div style="padding:8px;display:flex;gap:6px;">';
+  html += '<button onclick="trkEnvSortCol(\'asc\')" style="padding:4px 10px;border-radius:4px;border:none;background:#1c2537;color:#94a3b8;font-weight:bold;cursor:pointer;font-size:12px;">⬆ Asc</button>';
+  html += '<button onclick="trkEnvSortCol(\'desc\')" style="padding:4px 10px;border-radius:4px;border:none;background:#1c2537;color:#94a3b8;font-weight:bold;cursor:pointer;font-size:12px;">⬇ Desc</button>';
+  html += '</div>';
+  html += '<div style="padding:0 8px 6px;"><input type="text" id="trkEnv-txtBuscarF" oninput="trkEnvFiltrarOpciones(this.value)" placeholder="Buscar..." style="width:100%;box-sizing:border-box;padding:6px 10px;background:#1c2537;border:1px solid #2a3a5c;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;"></div>';
+  html += '<div style="padding:4px 8px;display:flex;gap:8px;justify-content:center;">';
+  html += '<button onclick="trkEnvToggleF(true)" style="background:#1c2537;border:1px solid #2a3a5c;font-size:11px;padding:4px 10px;border-radius:4px;color:#94a3b8;font-weight:bold;cursor:pointer;">Todas</button>';
+  html += '<button onclick="trkEnvToggleF(false)" style="background:#1c2537;border:1px solid #2a3a5c;font-size:11px;padding:4px 10px;border-radius:4px;color:#94a3b8;font-weight:bold;cursor:pointer;">Ninguna</button>';
+  html += '</div>';
+  html += '<div style="flex:1;overflow-y:auto;padding:8px;" id="trkEnv-listaOpciones"></div>';
+  html += '<div style="padding:10px;text-align:right;background:#0d1b2e;border-top:1px solid #2a3a5c;border-radius:0 0 8px 8px;">';
+  html += '<button onclick="trkEnvAplicarFiltro()" style="padding:8px 20px;border-radius:6px;border:none;background:#00d4ff;color:#0a0e1a;font-weight:bold;cursor:pointer;font-size:13px;">Aplicar</button>';
+  html += '</div></div></div>';
+
+  html += '<div style="overflow:auto;max-height:65vh;background:#111827;border-radius:12px;border:1px solid #2a3a5c;">';
+  html += '<table id="trkEnv-tbl" style="width:100%;border-collapse:separate;border-spacing:0;font-size:13px;font-family:Rajdhani,sans-serif;white-space:nowrap;">';
+  html += trkEnvBuildHead();
+  html += '<tbody id="trkEnv-tbody">';
+  html += trkEnvBuildRows(visibles);
+  html += '</tbody></table></div>';
+
+  panel.innerHTML = html;
+}
+
+var trkEnv_cols = [
+  {k:'sem',         label:'SEM'},
+  {k:'fecha',       label:'FECHA'},
+  {k:'pedido',      label:'PEDIDO'},
+  {k:'codigo',      label:'CÓDIGO'},
+  {k:'descripcion', label:'DESCRIPCIÓN'},
+  {k:'familia',     label:'FAMILIA'},
+  {k:'kilos',       label:'KILOS',   num:true},
+  {k:'piezas',      label:'PIEZAS',  num:true},
+  {k:'comentarios', label:'COMENTARIOS'},
+  {k:'envio',       label:'ENVÍO'},
+  {k:'chofer',      label:'CHOFER'},
+  {k:'url',         label:'URL'}
+];
+
+function trkEnvBuildHead() {
+  var html = '<thead><tr>';
+  html += '<th style="position:sticky;top:0;z-index:10;background:#0d1b2e;padding:10px 10px;border-bottom:2px solid #2a3a5c;color:#00d4ff;text-align:center;width:36px;"><input type="checkbox" id="trkEnv-chkAll" onchange="trkEnvToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#00d4ff;cursor:pointer;"></th>';
+  trkEnv_cols.forEach(function(c) {
+    var activo = trkEnv_filtros[c.k] ? ' color:#fbbf24;' : ' color:#00d4ff;';
+    var icono  = trkEnv_filtros[c.k] ? ' ▼' : ' ⬇';
+    html += '<th onclick="trkEnvOpenFilter(\'' + c.k + '\')" style="position:sticky;top:0;z-index:10;background:#0d1b2e;padding:10px 12px;border-bottom:2px solid #2a3a5c;' + activo + 'font-weight:700;letter-spacing:1px;cursor:pointer;user-select:none;border-right:1px solid #1c2537;">';
+    html += c.label + '<span style="font-size:10px;opacity:0.7;">' + icono + '</span></th>';
+  });
+  html += '</tr></thead>';
+  return html;
+}
+
+function trkEnvBuildRows(filas) {
+  if (!filas.length) return '<tr><td colspan="13" style="text-align:center;padding:40px;color:#64748b;">Sin registros para este mes</td></tr>';
+  var html = '';
+  filas.forEach(function(f, idx) {
+    var bg = idx % 2 === 0 ? '#0f1c2e' : '#0a1420';
+    html += '<tr style="background:' + bg + ';border-bottom:1px solid rgba(42,58,92,0.4);">';
+    html += '<td style="padding:7px 10px;text-align:center;border-right:1px solid rgba(42,58,92,0.3);"><input type="checkbox" class="trkEnv-rowChk" style="width:14px;height:14px;accent-color:#00d4ff;cursor:pointer;"></td>';
+    trkEnv_cols.forEach(function(c) {
+      var val = f[c.k];
+      var cell = '';
+      if (c.k === 'url' && val) {
+        cell = '<a href="' + val + '" target="_blank" style="color:#00d4ff;text-decoration:underline;font-weight:600;">Ver 🔗</a>';
+      } else if (c.k === 'kilos') {
+        cell = '<span style="color:#22c55e;font-weight:700;">' + (val ? trkFmt(val) : '—') + '</span>';
+      } else if (c.k === 'piezas') {
+        cell = '<span style="color:#fbbf24;font-weight:600;">' + (val ? trkFmt(val) : '—') + '</span>';
+      } else if (c.k === 'pedido') {
+        cell = '<span style="color:#a78bfa;font-weight:700;">' + (val || '—') + '</span>';
+      } else if (c.k === 'codigo') {
+        cell = '<span style="color:#00d4ff;font-weight:600;">' + (val || '—') + '</span>';
+      } else if (c.k === 'envio') {
+        cell = '<span style="background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3);border-radius:5px;padding:2px 7px;font-size:12px;">' + (val || '—') + '</span>';
+      } else {
+        cell = '<span style="color:#c7d6f0;">' + (val || '—') + '</span>';
+      }
+      html += '<td style="padding:8px 12px;border-right:1px solid rgba(42,58,92,0.2);">' + cell + '</td>';
+    });
+    html += '</tr>';
+  });
+  return html;
+}
+
+function trkEnvGetVisibles() {
+  return trkEnv_datos.filter(function(r) {
+    for (var col in trkEnv_filtros) {
+      var v = (r[col] == null) ? '' : String(r[col]);
+      if (trkEnv_filtros[col].indexOf(v) < 0) return false;
+    }
+    return true;
+  });
+}
+
+function trkEnvGetRowsParaFiltro(ignorarCol) {
+  return trkEnv_datos.filter(function(r) {
+    for (var col in trkEnv_filtros) {
+      if (col === ignorarCol) continue;
+      var v = (r[col] == null) ? '' : String(r[col]);
+      if (trkEnv_filtros[col].indexOf(v) < 0) return false;
+    }
+    return true;
+  });
+}
+
+function trkEnvOpenFilter(col) {
+  trkEnv_colActual = col;
+  var disponibles = trkEnvGetRowsParaFiltro(col);
+  var vals = [], seen = {};
+  disponibles.forEach(function(r) { var v = (r[col]==null)?'':String(r[col]); if(!seen[v]){seen[v]=1;vals.push(v);} });
+  vals.sort();
+  var sel = trkEnv_filtros[col] || vals;
+  var html = '';
+  vals.forEach(function(v) {
+    var chk = sel.indexOf(v) >= 0 ? 'checked' : '';
+    var txt = v === '' ? '(Vacío)' : v;
+    html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;cursor:pointer;font-size:13px;font-family:Rajdhani,sans-serif;color:#e2e8f0;border-radius:4px;" onmouseover="this.style.background=\'rgba(0,212,255,0.05)\'" onmouseout="this.style.background=\'\' "><input type="checkbox" value="' + v + '" ' + chk + ' style="width:14px;height:14px;accent-color:#00d4ff;"> ' + txt + '</label>';
+  });
+  document.getElementById('trkEnv-listaOpciones').innerHTML = html;
+  var colDef = trkEnv_cols.find(function(c){ return c.k === col; });
+  document.getElementById('trkEnv-lblCol').innerText = colDef ? colDef.label : col;
+  document.getElementById('trkEnv-filterPopup').style.display = 'flex';
+  var txt = document.getElementById('trkEnv-txtBuscarF');
+  if (txt) { txt.value = ''; txt.focus(); }
+}
+
+function trkEnvToggleF(estado) {
+  document.querySelectorAll('#trkEnv-listaOpciones input').forEach(function(i){ i.checked = estado; });
+}
+
+function trkEnvFiltrarOpciones(t) {
+  t = t.toLowerCase();
+  document.querySelectorAll('#trkEnv-listaOpciones label').forEach(function(el) {
+    el.style.display = el.innerText.toLowerCase().indexOf(t) >= 0 ? 'flex' : 'none';
+  });
+}
+
+function trkEnvAplicarFiltro() {
+  var chks = document.querySelectorAll('#trkEnv-listaOpciones input:checked');
+  var arr = [];
+  chks.forEach(function(c){ arr.push(c.value); });
+  var total = document.querySelectorAll('#trkEnv-listaOpciones input').length;
+  if (arr.length >= total) {
+    delete trkEnv_filtros[trkEnv_colActual];
+  } else {
+    trkEnv_filtros[trkEnv_colActual] = arr;
+  }
+  document.getElementById('trkEnv-filterPopup').style.display = 'none';
+  trkEnvRefrescarTabla();
+}
+
+function trkEnvSortCol(dir) {
+  var col = trkEnv_colActual;
+  trkEnv_datos.sort(function(a, b) {
+    var va = (a[col] == null) ? '' : String(a[col]);
+    var vb = (b[col] == null) ? '' : String(b[col]);
+    var na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return dir === 'asc' ? na - nb : nb - na;
+    return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  document.getElementById('trkEnv-filterPopup').style.display = 'none';
+  trkEnvRefrescarTabla();
+}
+
+function trkEnvRefrescarTabla() {
+  var visibles = trkEnvGetVisibles();
+  var thead = document.querySelector('#trkEnv-tbl thead');
+  if (thead) thead.innerHTML = trkEnvBuildHead().replace('<thead>','').replace('</thead>','');
+  var tbody = document.getElementById('trkEnv-tbody');
+  if (tbody) tbody.innerHTML = trkEnvBuildRows(visibles);
+  var totalKilos  = visibles.reduce(function(s,f){ return s+(parseFloat(f.kilos)||0);},0);
+  var totalPiezas = visibles.reduce(function(s,f){ return s+(parseFloat(f.piezas)||0);},0);
+  var eReg = document.getElementById('trkEnv-statReg');
+  var eKg  = document.getElementById('trkEnv-statKg');
+  var ePzs = document.getElementById('trkEnv-statPzs');
+  if (eReg) eReg.textContent = visibles.length;
+  if (eKg)  eKg.textContent  = totalKilos.toLocaleString('es-MX',{maximumFractionDigits:1});
+  if (ePzs) ePzs.textContent = totalPiezas.toLocaleString('es-MX',{maximumFractionDigits:0});
+}
+
+function trkEnvToggleAll(checked) {
+  document.querySelectorAll('.trkEnv-rowChk').forEach(function(c){ c.checked = checked; });
+}
+
+async function trkEnvExportarExcel() {
+  if (typeof ExcelJS === 'undefined') {
+    trkShowLoader();
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    trkHideLoader();
+  }
+  var visibles = trkEnvGetVisibles();
+  if (!visibles.length) { sAlert('No hay registros para exportar', 'warning'); return; }
+  trkShowLoader();
+  try {
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'ToolCN PCP';
+    wb.created = new Date();
+    var nombreMes = trkEnv_MESES[trkEnv_mes-1] + ' ' + trkEnv_anio;
+    var ws = wb.addWorksheet('Enviado ' + nombreMes, { views:[{state:'frozen',ySplit:1}] });
+    ws.columns = [
+      {header:'SEM',          key:'sem',         width:8},
+      {header:'FECHA',        key:'fecha',        width:14},
+      {header:'PEDIDO',       key:'pedido',       width:16},
+      {header:'CÓDIGO',       key:'codigo',       width:14},
+      {header:'DESCRIPCIÓN',  key:'descripcion',  width:40},
+      {header:'FAMILIA',      key:'familia',      width:18},
+      {header:'KILOS',        key:'kilos',        width:12},
+      {header:'PIEZAS',       key:'piezas',       width:12},
+      {header:'COMENTARIOS',  key:'comentarios',  width:30},
+      {header:'ENVÍO',        key:'envio',        width:14},
+      {header:'CHOFER',       key:'chofer',       width:22},
+      {header:'URL',          key:'url',          width:40}
+    ];
+    var hRow = ws.getRow(1);
+    hRow.height = 22;
+    hRow.eachCell(function(cell) {
+      cell.fill      = {type:'pattern',pattern:'solid',fgColor:{argb:'FF0D2137'}};
+      cell.font      = {name:'Calibri',bold:true,size:11,color:{argb:'FF00D4FF'}};
+      cell.border    = {top:{style:'thin',color:{argb:'FF00D4FF'}},bottom:{style:'medium',color:{argb:'FF00D4FF'}},left:{style:'thin',color:{argb:'FF1E3A5F'}},right:{style:'thin',color:{argb:'FF1E3A5F'}}};
+      cell.alignment = {vertical:'middle',horizontal:'center',wrapText:false};
+    });
+    var colsNum = ['kilos','piezas'];
+    visibles.forEach(function(f, idx) {
+      var row = ws.addRow(f);
+      row.height = 18;
+      var isOdd = idx % 2 === 0;
+      row.eachCell({includeEmpty:true}, function(cell, cn) {
+        var key = ws.columns[cn-1] ? ws.columns[cn-1].key : '';
+        var isNum = colsNum.indexOf(key) >= 0;
+        cell.fill      = {type:'pattern',pattern:'solid',fgColor:{argb: isOdd ? 'FF0F1C2E' : 'FF142033'}};
+        cell.font      = {name:'Calibri',size:10,color:{argb:'FFE2E8F0'}};
+        cell.border    = {top:{style:'hair',color:{argb:'FF1E3A5F'}},bottom:{style:'hair',color:{argb:'FF1E3A5F'}},left:{style:'thin',color:{argb:'FF1E3A5F'}},right:{style:'thin',color:{argb:'FF1E3A5F'}}};
+        cell.alignment = {vertical:'middle',horizontal: isNum ? 'right' : 'left',wrapText:false};
+        if (isNum && cell.value) cell.numFmt = '#,##0.00';
+      });
+      var kCol = ws.columns.findIndex(function(c){return c.key==='kilos';})+1;
+      if (kCol > 0) row.getCell(kCol).font = {name:'Calibri',size:10,color:{argb:'FF22C55E'},bold:true};
+    });
+    var totalKilos  = visibles.reduce(function(s,f){return s+(parseFloat(f.kilos)||0);},0);
+    var totalPiezas = visibles.reduce(function(s,f){return s+(parseFloat(f.piezas)||0);},0);
+    var tRow = ws.addRow({sem:'',fecha:'TOTALES',pedido:'',codigo:'',descripcion:'',familia:'',kilos:totalKilos,piezas:totalPiezas,comentarios:'',envio:'',chofer:'',url:''});
+    tRow.height = 20;
+    tRow.eachCell({includeEmpty:true}, function(cell) {
+      cell.fill   = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};
+      cell.font   = {name:'Calibri',bold:true,size:11,color:{argb:'FFFBBF24'}};
+      cell.border = {top:{style:'medium',color:{argb:'FF00D4FF'}},bottom:{style:'medium',color:{argb:'FF00D4FF'}},left:{style:'thin',color:{argb:'FF1E3A5F'}},right:{style:'thin',color:{argb:'FF1E3A5F'}}};
+      cell.alignment = {vertical:'middle',horizontal:'center'};
+    });
+    ws.autoFilter = {from:{row:1,column:1},to:{row:1,column:12}};
+    var buffer = await wb.xlsx.writeBuffer();
+    var blob   = new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url    = URL.createObjectURL(blob);
+    var a      = document.createElement('a');
+    a.href = url;
+    a.download = 'MaterialEnviado_' + trkEnv_MESES[trkEnv_mes-1] + trkEnv_anio + '.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    trkHideLoader();
+    sAlert('Exportado: ' + visibles.length + ' registros', 'success');
+  } catch(e) {
+    trkHideLoader();
+    sAlert('Error al exportar: ' + e.message, 'error');
+  }
+}
+
+function trkRenderMaterialEnviado(filas) { trkEnvRenderPanel(); }
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  MÓDULO MRP MATERIA PRIMA  —  prefijo: mrpmp_
 // ══════════════════════════════════════════════════════════════════════════════
 var mrpmp_datos = null;
@@ -23022,6 +23741,54 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
 
 </script>
 </body>
