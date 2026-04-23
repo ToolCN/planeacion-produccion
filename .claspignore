@@ -19,6 +19,7 @@ node_modules/
 # Scripts temporales
 *.py
 *.sh
+_tmp_line.js
 
 # Archivos de sistema
 .DS_Store

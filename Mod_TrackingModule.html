@@ -150,16 +150,22 @@ function trkHideLoader() { document.getElementById('trk-loader').style.display='
 // GAS FETCH — llama al web app con action + params
 // ══════════════════════════════════════════════════════
 async function trkGasCall(action, params) {
-  if (!TRK_GAS_URL) {
-    sAlert('⚠️ Configura la URL del Web App primero.');
-    throw new Error('Sin URL');
-  }
-  var url = TRK_GAS_URL + (TRK_GAS_URL.includes('?')?'&':'?') + 'action=' + action;
-  for (var k in params) url += '&' + k + '=' + encodeURIComponent(params[k]);
-  var resp = await fetch(url);
-  var text = await resp.text();
-  try { return JSON.parse(text); }
-  catch(e) { return { error: text }; }
+  return new Promise(function(resolve, reject) {
+    var p = params || {};
+    if (action === 'rastreo_buscar') {
+      google.script.run
+        .withSuccessHandler(function(r){ resolve(typeof r==='string'?JSON.parse(r):r); })
+        .withFailureHandler(function(e){ reject(new Error(e.message||String(e))); })
+        .rastreoBuscar(p.q);
+    } else if (action === 'rastreo_detalle') {
+      google.script.run
+        .withSuccessHandler(function(r){ resolve(typeof r==='string'?JSON.parse(r):r); })
+        .withFailureHandler(function(e){ reject(new Error(e.message||String(e))); })
+        .rastreoDetalle(p.pedido, p.partida||1);
+    } else {
+      reject(new Error('Acción no reconocida: ' + action));
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -205,11 +211,19 @@ function trkRenderResults(pedidos) {
     html += '<div class="rc-body">';
     html += '<div class="rc-pedido">' + (p.pedido||'—') + '</div>';
     html += '<div class="rc-desc">' + (p.descripcion||p.codigo||'—') + '</div>';
+    var uni = String(p.unidad||'').toUpperCase().trim();
+    var prodConv = trkCalcUnidades(p.producidoKg||0, { unidad: uni, tipo: p.tipo||'', peso: p.peso||0, longitud: p.longitud||0 });
+    var envConv  = trkCalcUnidades(p.enviadoKg||0,   { unidad: uni, tipo: p.tipo||'', peso: p.peso||0, longitud: p.longitud||0 });
     html += '<div class="rc-meta">';
     html += '<span class="rc-chip ' + chipClass + '">' + est + '</span>';
     html += '<span class="rc-chip chip-neutral">📦 ' + trkFmt(p.cantidad) + ' ' + (p.unidad||'') + '</span>';
     if (p.partida) html += '<span class="rc-chip chip-neutral">P.' + p.partida + '</span>';
-    html += '</div></div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:14px;margin-top:5px;flex-wrap:wrap;">';
+    html += '<span style="font-size:12px;color:#22c55e;font-weight:700;">⚙️ Producido: ' + trkFmt(prodConv) + ' ' + (p.unidad||'KG') + '</span>';
+    html += '<span style="font-size:12px;color:#00d4ff;font-weight:700;">🚚 Enviado: '   + trkFmt(envConv)  + ' ' + (p.unidad||'KG') + '</span>';
+    html += '</div>';
+    html += '</div>';
     html += '<div class="rc-right"><div class="rc-fecha">' + trkFmtFecha(p.fecha) + '</div>';
     if (p.fechaEntrega) html += '<div style="font-size:11px;color:#fbbf24;margin-top:3px;font-weight:700;">📅 ' + trkFmtFecha(p.fechaEntrega) + '</div>';
     html += '<div class="rc-fecha" style="margin-top:4px;color:#64748b">' + (p.codigo||'') + '</div><div class="rc-arrow">→</div></div>';
@@ -300,10 +314,14 @@ function trkRenderDetalle(key) {
   // Tomamos la unidad del primer proceso con maxSec para saber peso/tipo/longitud
   var refOrden = ordenes.find(function(o){ return o.sec == o.maxSec; }) || ordenes[0] || {};
   var totalSolConv = 0, totalProdConv = 0;
+  var totalSolKg = 0, totalProdKg = 0;
   ordenes.forEach(function(o) {
     if (o.sec == o.maxSec) {
       totalSolConv  += trkCalcUnidades(o.solicitado, o);
       totalProdConv += trkCalcUnidades(o.producido, o);
+      totalSolKg    += parseFloat(o.solicitado) || 0;
+      totalProdKg   += parseFloat(o.producido)  || 0;
+      console.log('DEBUG orden:', o.codigo, 'unidad:', o.unidad, 'tipo:', o.tipo, 'peso:', o.peso, 'longitud:', o.longitud, 'solicitado:', o.solicitado, 'producido:', o.producido, 'DBG:', o._dbg);
     }
   });
   var uniGlobal = trkFmtUnidad(refOrden);
@@ -402,8 +420,10 @@ function trkRenderDetalle(key) {
   // Stats — valores ya convertidos a unidad del pedido
   html += '<div class="pedido-stats">';
   html += trkStatBox(pctGlobal + '%', 'AVANCE');
-  html += trkStatBox(trkFmt(totalProdConv) + ' ' + uniGlobal, 'PRODUCIDO');
-  html += trkStatBox(trkFmt(totalSolConv)  + ' ' + uniGlobal, 'SOLICITADO');
+  var prodLabel = trkFmt(totalProdConv) + ' ' + uniGlobal + (uniGlobal !== 'KG' && uniGlobal !== 'ROL' ? '<br><span style="font-size:12px;font-weight:400;color:#64748b;">(' + trkFmt(totalProdKg) + ' kg)</span>' : '');
+  var solLabel  = trkFmt(totalSolConv)  + ' ' + uniGlobal + (uniGlobal !== 'KG' && uniGlobal !== 'ROL' ? '<br><span style="font-size:12px;font-weight:400;color:#64748b;">(' + trkFmt(totalSolKg)  + ' kg)</span>' : '');
+  html += trkStatBox(prodLabel, 'PRODUCIDO');
+  html += trkStatBox(solLabel,  'SOLICITADO');
   html += trkStatBox(enviados.length, 'ENVÍOS');
   html += '</div></div>';
 
@@ -442,12 +462,6 @@ function trkRenderDetalle(key) {
     var fiGrupo = fechasMap[firstId] ? fechasMap[firstId].fi : null;
     var ffGrupo = fechasMap[lastId]  ? fechasMap[lastId].ff  : null;
     var rangoFechas = '';
-    if (fiGrupo || ffGrupo) {
-      rangoFechas = ' · ';
-      if (fiGrupo) rangoFechas += '<span style="color:#34d399">▶ ' + trkFmtFecha(fiGrupo) + '</span>';
-      if (fiGrupo && ffGrupo) rangoFechas += ' → ';
-      if (ffGrupo) rangoFechas += '<span style="color:#fb923c">⏹ ' + trkFmtFecha(ffGrupo) + '</span>';
-    }
 
     html += '<div class="orden-card">';
     html += '<div class="orden-head" onclick="toggleOrden(this)">';
@@ -492,8 +506,6 @@ function trkRenderDetalle(key) {
       var solConv  = trkCalcUnidades(o.solicitado, o);
       var uniLabel = trkFmtUnidad(o);
       html += '<span class="dt-kg">📊 ' + trkFmt(prodConv) + '/' + trkFmt(solConv) + ' ' + uniLabel + '</span>';
-      if (oFi) html += '<span class="dt-inicio">▶ INICIO: ' + trkFmtFecha(oFi) + '</span>';
-      if (oFf) html += '<span class="dt-fin">⏹ FIN: ' + trkFmtFecha(oFf) + '</span>';
       html += '</div>';
       // Produccion registros — FECHA, TURNO, LOTE, OPERADOR, PRODUCIDO (convertido), SELLO
       if (o.produccion && o.produccion.length) {
@@ -520,26 +532,37 @@ function trkRenderDetalle(key) {
   html += '</div>';
 
   // Enviados
-  html += '<div class="section-title">🚚 MATERIAL ENVIADO</div>';
+  var totalEnvKg  = enviados.reduce(function(s,e){ return s + (parseFloat(e.kilos)||0); }, 0);
+  var totalEnvPza = enviados.reduce(function(s,e){ return s + (parseFloat(e.piezas)||0); }, 0);
+  html += '<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'+
+    '<span>🚚 MATERIAL ENVIADO</span>'+
+    '<span style="display:flex;align-items:center;gap:14px;">'+
+      '<span style="font-size:15px;font-weight:700;color:#22c55e;">⚖️ ' + trkFmt(totalEnvKg) + ' kg</span>'+
+      '<span style="color:#2a3a5c;font-size:16px;">|</span>'+
+      '<span style="font-size:15px;font-weight:700;color:#fbbf24;">📦 ' + trkFmt(totalEnvPza) + ' pzas</span>'+
+    '</span>'+
+  '</div>';
   if (enviados.length) {
     html += '<div class="enviado-section">';
     enviados.forEach(function(env) {
-      html += '<div class="enviado-item" style="flex-direction:column;gap:6px;">';
-      // Encabezado: código + descripción
-      html += '<div style="display:flex;align-items:center;gap:10px;width:100%;">';
-      html += '<div class="enviado-icon">📦</div>';
-      html += '<div style="flex:1;">';
-      html += '<div style="font-weight:900;font-size:15px;color:#00d4ff;letter-spacing:1px;">' + (env.codigo||'—') + '</div>';
-      html += '<div style="font-size:13px;color:#c7d6f0;margin-top:2px;">' + (env.descripcion||'—') + '</div>';
+      html += '<div class="enviado-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:nowrap;">';
+      // Icono
+      html += '<div class="enviado-icon" style="flex-shrink:0;">📦</div>';
+      // Código + descripción
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-weight:900;font-size:14px;color:#00d4ff;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (env.codigo||'—') + '</div>';
+      html += '<div style="font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (env.descripcion||'—') + '</div>';
       html += '</div>';
-      // Folio envío
-      if (env.envio) html += '<span class="rc-chip" style="background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3);font-size:12px;">' + env.envio + '</span>';
-      html += '</div>';
-      // Datos: fecha, kilos, piezas
-      html += '<div style="display:flex;gap:20px;flex-wrap:wrap;padding-left:46px;">';
-      html += '<span style="font-size:13px;color:#94a3b8;">📅 ' + trkFmtFecha(env.fecha) + '</span>';
-      html += '<span style="font-size:14px;color:#22c55e;font-weight:700;">⚖️ ' + trkFmt(env.kilos) + ' kg</span>';
-      if (env.piezas) html += '<span style="font-size:13px;color:#fbbf24;font-weight:600;">📦 ' + trkFmt(env.piezas) + ' pzas</span>';
+      // Fecha
+      html += '<span style="font-size:12px;color:#94a3b8;white-space:nowrap;flex-shrink:0;">📅 ' + trkFmtFecha(env.fecha) + '</span>';
+      // Kilos
+      html += '<span style="font-size:13px;color:#22c55e;font-weight:700;white-space:nowrap;flex-shrink:0;">⚖️ ' + trkFmt(env.kilos) + ' kg</span>';
+      // Piezas
+      if (env.piezas) html += '<span style="font-size:13px;color:#fbbf24;font-weight:600;white-space:nowrap;flex-shrink:0;">📦 ' + trkFmt(env.piezas) + ' pzas</span>';
+      // Folio + clip — siempre a la derecha
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto;">';
+      if (env.envio) html += '<span style="background:rgba(168,85,247,.2);color:#a855f7;border:1px solid rgba(168,85,247,.4);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap;">📋 ' + env.envio + '</span>';
+      if (env.url)   html += '<a href="' + env.url + '" target="_blank" title="Ver documento" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:rgba(34,197,94,0.15);border:2px solid #22c55e;color:#22c55e;font-size:15px;text-decoration:none;animation:trkPulse 1.8s ease-in-out infinite;flex-shrink:0;">📎</a>';
       html += '</div>';
       html += '</div>';
     });
@@ -673,7 +696,10 @@ function trkDonutCard(pr) {
     '<svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>' +
     '<circle cx="36" cy="36" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="8" stroke-dasharray="' + dash + ' ' + (circ-dash) + '" stroke-linecap="round"/></svg>' +
     '<div class="donut-pct" style="color:' + color + '">' + pct + '%</div></div>' +
-    '<div class="donut-info"><h4>' + pr.proceso + '</h4><p>' + trkFmt(pr.prod) + ' / ' + trkFmt(pr.sol) + ' ' + (pr.uni||'') + '</p></div>' +
+    '<div class="donut-info"><h4>' + pr.proceso + '</h4>' +
+    '<p style="font-size:16px;font-weight:700;color:#e2e8f0;margin:2px 0;">' + trkFmt(pr.prod) + ' / ' + trkFmt(pr.sol) + ' ' + (pr.uni||'') + '</p>' +
+    (pr.uni !== 'KG' && pr.uni !== 'ROL' ? '<p style="font-size:12px;color:#64748b;margin:0;">(' + trkFmt(pr.prodKg) + ' / ' + trkFmt(pr.solKg) + ' kg)</p>' : '') +
+    '</div>' +
     '</div>';
 }
 
@@ -681,10 +707,11 @@ function trkCalcProcResumen(ordenes) {
   var map = {};
   ordenes.forEach(function(o) {
     var k = o.proceso || 'SIN PROCESO';
-    if (!map[k]) map[k] = { proceso:k, sol:0, prod:0, _ref:o };
-    // Convertir a unidad del pedido para que los donuts sean comparables
-    map[k].sol  += trkCalcUnidades(o.solicitado, o);
-    map[k].prod += trkCalcUnidades(o.producido, o);
+    if (!map[k]) map[k] = { proceso:k, sol:0, prod:0, solKg:0, prodKg:0, _ref:o };
+    map[k].sol    += trkCalcUnidades(o.solicitado, o);
+    map[k].prod   += trkCalcUnidades(o.producido, o);
+    map[k].solKg  += parseFloat(o.solicitado) || 0;
+    map[k].prodKg += parseFloat(o.producido)  || 0;
   });
   return Object.values(map).map(function(v) {
     v.pct = v.sol > 0 ? (v.prod/v.sol)*100 : 0;
@@ -734,7 +761,7 @@ function trkFmtUnidad(orden) {
 
 function trkFmt(n) {
   var num = parseFloat(n) || 0;
-  return num.toLocaleString('es-MX', {maximumFractionDigits:1});
+  return Math.round(num).toLocaleString('es-MX');
 }
 
 function trkFmtFecha(f) {
@@ -1247,7 +1274,6 @@ var trkEnv_cols = [
 
 function trkEnvBuildHead() {
   var html = '<thead><tr>';
-  html += '<th style="position:sticky;top:0;z-index:10;background:#0d1b2e;padding:10px 10px;border-bottom:2px solid #2a3a5c;color:#00d4ff;text-align:center;width:36px;"><input type="checkbox" id="trkEnv-chkAll" onchange="trkEnvToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#00d4ff;cursor:pointer;"></th>';
   trkEnv_cols.forEach(function(c) {
     var activo = trkEnv_filtros[c.k] ? ' color:#fbbf24;' : ' color:#00d4ff;';
     var icono  = trkEnv_filtros[c.k] ? ' ▼' : ' ⬇';
@@ -1264,7 +1290,6 @@ function trkEnvBuildRows(filas) {
   filas.forEach(function(f, idx) {
     var bg = idx % 2 === 0 ? '#0f1c2e' : '#0a1420';
     html += '<tr style="background:' + bg + ';border-bottom:1px solid rgba(42,58,92,0.4);">';
-    html += '<td style="padding:7px 10px;text-align:center;border-right:1px solid rgba(42,58,92,0.3);"><input type="checkbox" class="trkEnv-rowChk" style="width:14px;height:14px;accent-color:#00d4ff;cursor:pointer;"></td>';
     trkEnv_cols.forEach(function(c) {
       var val = f[c.k];
       var cell = '';
@@ -1333,7 +1358,12 @@ function trkEnvOpenFilter(col) {
 }
 
 function trkEnvToggleF(estado) {
-  document.querySelectorAll('#trkEnv-listaOpciones input').forEach(function(i){ i.checked = estado; });
+  document.querySelectorAll('#trkEnv-listaOpciones label').forEach(function(el) {
+    if (el.style.display !== 'none') {
+      var chk = el.querySelector('input');
+      if (chk) chk.checked = estado;
+    }
+  });
 }
 
 function trkEnvFiltrarOpciones(t) {
@@ -1387,7 +1417,9 @@ function trkEnvRefrescarTabla() {
 }
 
 function trkEnvToggleAll(checked) {
-  document.querySelectorAll('.trkEnv-rowChk').forEach(function(c){ c.checked = checked; });
+  var tbody = document.getElementById('trkEnv-tbody');
+  if (!tbody) return;
+  tbody.querySelectorAll('.trkEnv-rowChk').forEach(function(c){ c.checked = checked; });
 }
 
 async function trkEnvExportarExcel() {

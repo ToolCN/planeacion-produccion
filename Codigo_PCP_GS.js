@@ -1662,42 +1662,105 @@ function recalcularEstadoOrdenMaestro(idOrdenInput) {
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 function rastreoBuscar(q) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
-  var shPed = ss.getSheetByName('PEDIDOS');
-  var shOrd = ss.getSheetByName('ORDENES');
-  var dataPed = shPed.getDataRange().getValues();
-  var dataOrd = shOrd.getDataRange().getValues();
-  var qU = String(q).toUpperCase().trim();
+  try {
+    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shPed = ss.getSheetByName('PEDIDOS');
+    var shOrd = ss.getSheetByName('ORDENES');
+    if (!shPed) return JSON.stringify({ pedidos: [], _err: 'Hoja PEDIDOS no encontrada' });
+    if (!shOrd) return JSON.stringify({ pedidos: [], _err: 'Hoja ORDENES no encontrada' });
+    var dataPed = shPed.getDataRange().getValues();
+    var dataOrd = shOrd.getDataRange().getValues();
+    var qU = String(q || '').toUpperCase().trim();
+    if (!qU) return JSON.stringify({ pedidos: [] });
 
-  // Mapa: codigo → tipo (desde ORDENES col D=codigo idx6, col T=tipo idx19)
-  var mapaCodigoTipo = {};
-  for (var o = 1; o < dataOrd.length; o++) {
-    var cod = String(dataOrd[o][6]).trim();
-    var tip = String(dataOrd[o][19]).trim();
-    if (cod && tip && !mapaCodigoTipo[cod]) mapaCodigoTipo[cod] = tip;
-  }
+    var tz = ss.getSpreadsheetTimeZone();
 
-  var resultados = [];
-  for (var i = 1; i < dataPed.length; i++) {
-    var row = dataPed[i];
-    var pedido = String(row[1]).toUpperCase();
-    var codigo = String(row[3]).toUpperCase();
-    var desc   = String(row[4]).toUpperCase();
-    var estado = String(row[8]).toUpperCase();
-    if (pedido.includes(qU) || codigo.includes(qU) || desc.includes(qU) || estado.includes(qU)) {
-      // Buscar tipo real desde ordenes usando el código del pedido
-      var tipoReal = mapaCodigoTipo[String(row[3]).trim()] || '';
-      resultados.push({
-        id: row[0], pedido: row[1], fecha: row[2],
-        codigo: row[3], descripcion: row[4],
-        partida: row[5], cantidad: row[6],
-        unidad: row[7], estado: row[8],
-        fechaEntrega: row[11],
-        svgIcono: obtenerIconoSVG(tipoReal)  // ← ahora con el tipo correcto
-      });
+    // Mapa: codigo → tipo
+    var mapaCodigoTipo = {};
+    for (var o = 1; o < dataOrd.length; o++) {
+      var cod = String(dataOrd[o][6]).trim();
+      var tip = String(dataOrd[o][19]).trim();
+      if (cod && tip && !mapaCodigoTipo[cod]) mapaCodigoTipo[cod] = tip;
     }
+
+    // Mapa: pedido → { producidoKg, peso, tipo, longitud } — último proceso (maxSec) de ORDENES
+    // Col B=idx1:pedido, G=idx6:codigo, K=idx10:sec, O=idx14:producido, S=idx18:peso, T=idx19:tipo, V=idx21:longitud
+    var mapaPedidoProducido = {};
+    for (var o2 = 1; o2 < dataOrd.length; o2++) {
+      var rO = dataOrd[o2];
+      var ped2 = String(rO[1] || '').trim();
+      var sec2 = Number(rO[10]) || 0;
+      var prod2 = Number(rO[14]) || 0;
+      var peso2 = parseFloat(rO[18]) || 0;
+      var tipo2 = String(rO[19] || '');
+      var long2 = parseFloat(String(rO[21] || '').replace(/[^\d.]/g,'')) || 0;
+      if (!ped2) continue;
+      if (!mapaPedidoProducido[ped2] || sec2 > mapaPedidoProducido[ped2].sec) {
+        mapaPedidoProducido[ped2] = { producidoKg: prod2, peso: peso2, tipo: tipo2, longitud: long2, sec: sec2 };
+      }
+    }
+
+    // Mapa: pedido → enviadoKg — suma de col J=idx9 de ENVIADO
+    var shEnv2 = ss.getSheetByName('ENVIADO');
+    var mapaEnviado = {};
+    if (shEnv2) {
+      var dataEnv2 = shEnv2.getDataRange().getValues();
+      for (var e2 = 1; e2 < dataEnv2.length; e2++) {
+        var pedEnv = String(dataEnv2[e2][5] || '').trim(); // col F=idx5: pedido
+        var kgEnv  = Number(dataEnv2[e2][9]) || 0;        // col J=idx9: kilos
+        if (!pedEnv) continue;
+        mapaEnviado[pedEnv] = (mapaEnviado[pedEnv] || 0) + kgEnv;
+      }
+    }
+
+    var resultados = [];
+    for (var i = 1; i < dataPed.length; i++) {
+      var row = dataPed[i];
+      var pedido = String(row[1] || '').toUpperCase();
+      var codigo = String(row[3] || '').toUpperCase();
+      var desc   = String(row[4] || '').toUpperCase();
+      var estado = String(row[8] || '').toUpperCase();
+      if (pedido.includes(qU) || codigo.includes(qU) || desc.includes(qU) || estado.includes(qU)) {
+        var tipoReal = mapaCodigoTipo[String(row[3]).trim()] || '';
+        // Serializar fechas a string para evitar problemas de serialización GAS
+        var fechaStr = '';
+        if (row[2] instanceof Date) {
+          fechaStr = Utilities.formatDate(row[2], tz, 'yyyy-MM-dd');
+        } else {
+          fechaStr = String(row[2] || '');
+        }
+        var fechaEntStr = '';
+        if (row[11] instanceof Date) {
+          fechaEntStr = Utilities.formatDate(row[11], tz, 'yyyy-MM-dd');
+        } else {
+          fechaEntStr = String(row[11] || '');
+        }
+        var pedNom = String(row[1] || '');
+        var infoOrd = mapaPedidoProducido[pedNom] || { producidoKg:0, peso:0, tipo:'', longitud:0 };
+        resultados.push({
+          id: String(row[0] || ''),
+          pedido: pedNom,
+          fecha: fechaStr,
+          codigo: String(row[3] || ''),
+          descripcion: String(row[4] || ''),
+          partida: String(row[5] || ''),
+          cantidad: String(row[6] || ''),
+          unidad: String(row[7] || ''),
+          estado: String(row[8] || ''),
+          fechaEntrega: fechaEntStr,
+          svgIcono: obtenerIconoSVG(tipoReal),
+          producidoKg: infoOrd.producidoKg,
+          enviadoKg:   mapaEnviado[pedNom] || 0,
+          peso:        infoOrd.peso,
+          tipo:        infoOrd.tipo,
+          longitud:    infoOrd.longitud
+        });
+      }
+    }
+    return JSON.stringify({ pedidos: resultados });
+  } catch(e) {
+    return JSON.stringify({ pedidos: [], _err: e.message + ' | stack: ' + (e.stack||'').substring(0, 200) });
   }
-  return { pedidos: resultados };
 }
 
 function rastreoDetalle(pedidoNom, partida) {
@@ -1727,8 +1790,12 @@ function rastreoDetalle(pedidoNom, partida) {
       unidad: r[9], sec: r[10], proceso: r[11],
       maquina: r[12], solicitado: r[13], producido: r[14],
       estado: r[15], pt: r[16],
+      peso: parseFloat(r[18]) || 0,
+      tipo: String(r[19] || ''),
+      longitud: parseFloat(String(r[21]).replace(/[^\d.]/g,'')) || 0,
       fechaInicio: r[27], fechaFin: r[28],
-      produccion: []
+      produccion: [],
+      _dbg: 'r18=' + r[18] + ' r19=' + r[19] + ' r21=' + r[21]
     });
   }
   ordenes.forEach(function(o) {
@@ -1748,7 +1815,7 @@ function rastreoDetalle(pedidoNom, partida) {
         operador: pr[17]||pr[7],
         producido: pr[10],
         comentario: pr[15],
-        sello: pr[16]||''
+        sello: pr[14]||''
       });
     }
   }
@@ -1760,13 +1827,40 @@ function rastreoDetalle(pedidoNom, partida) {
     if (String(ev[5]).trim() === String(pedidoNom).trim()) {
       enviados.push({
         fecha: ev[2], remision: ev[3],
-        kg: ev[4], codigo: ev[6],
-        descripcion: ev[7], piezas: ev[10]
+        kilos: ev[9], codigo: ev[6],
+        descripcion: ev[7], piezas: ev[10],
+        envio: String(ev[12] || ''),
+        url:   String(ev[16] || '')
       });
     }
   }
 
-  return { ordenes: ordenes, enviados: enviados };
+  // Serializar fechas en ordenes para evitar problemas de transferencia GAS→cliente
+  ordenes = ordenes.map(function(o) {
+    return {
+      id: String(o.id||''), pedido: String(o.pedido||''), partida: String(o.partida||''),
+      serie: String(o.serie||''), orden: String(o.orden||''), codigo: String(o.codigo||''),
+      descripcion: String(o.descripcion||''), cantidad: String(o.cantidad||''),
+      unidad: String(o.unidad||''), sec: Number(o.sec)||0, proceso: String(o.proceso||''),
+      maquina: String(o.maquina||''), solicitado: Number(o.solicitado)||0, producido: Number(o.producido)||0,
+      estado: String(o.estado||''), pt: String(o.pt||''),
+      peso: Number(o.peso)||0,
+      tipo: String(o.tipo||''),
+      longitud: Number(o.longitud)||0,
+      fechaInicio: o.fechaInicio instanceof Date ? Utilities.formatDate(o.fechaInicio, tz, 'yyyy-MM-dd') : String(o.fechaInicio||''),
+      fechaFin:    o.fechaFin    instanceof Date ? Utilities.formatDate(o.fechaFin,    tz, 'yyyy-MM-dd') : String(o.fechaFin||''),
+      maxSec: Number(o.maxSec)||0,
+      produccion: (o.produccion||[]).map(function(pr){
+        return {
+          fecha: pr.fecha instanceof Date ? Utilities.formatDate(pr.fecha, tz, 'yyyy-MM-dd') : String(pr.fecha||''),
+          turno: String(pr.turno||''), lote: String(pr.lote||''),
+          operador: String(pr.operador||''), producido: Number(pr.producido)||0,
+          comentario: String(pr.comentario||''), sello: String(pr.sello||'')
+        };
+      })
+    };
+  });
+  return JSON.stringify({ ordenes: ordenes, enviados: enviados });
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

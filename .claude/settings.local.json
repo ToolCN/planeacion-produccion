@@ -33,7 +33,13 @@
       "Bash(grep -n '<\\\\\\\\/' MainApp_PlaneacionHTML.html)",
       "Bash(grep -n '^<script>$\\\\|^</script>$\\\\|^</body>$\\\\|^</html>$' MainApp_PlaneacionHTML.html)",
       "Bash(npm run *)",
-      "Bash(curl -s \"https://raw.githubusercontent.com/ToolCN/planeacion-produccion/main/Mod_TableroSupervisor.html\")"
+      "Bash(curl -s \"https://raw.githubusercontent.com/ToolCN/planeacion-produccion/main/Mod_TableroSupervisor.html\")",
+      "Bash(grep -o 'Grupos:.\\\\{0,500\\\\}fpd-grupo-btns[^\"]*\"[^>]*>' Mod_Planificador.html)",
+      "Bash(grep -o 'white-space:nowrap;\">Grupos:.\\\\{0,600\\\\}flex-wrap:wrap;\"></div>' Mod_Planificador.html)",
+      "Bash(grep -o 'color:#94a3b8;.\\\\{0,700\\\\}flex-wrap:wrap;\"></div>' Mod_Planificador.html)",
+      "Bash(grep -o '<span style=\"color:#94a3b8;.\\\\{0,800\\\\}flex-wrap:wrap;\"></div>' Mod_Planificador.html)",
+      "Bash(grep -o 'fpd-filtros-bar.\\\\{0,200\\\\}' Mod_Planificador.html)",
+      "Bash(grep -o 'fpd-filtros-bar.\\\\{0,600\\\\}fpd-grupo-btns.\\\\{0,100\\\\}</div>\\\\\\\\\\\\\\\\n' Mod_Planificador.html)"
     ]
   }
 }
