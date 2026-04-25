@@ -12833,6 +12833,521 @@ function trkGetPlanColatado() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// TRACKING — PLAN CLAVO (ESTAMPADO)
+// Igual que trkGetPlanColatado pero para ESTAMPADO, unidad KG
+// velocidad en ESTANDARES está en kg/min para ESTAMPADO
+// ══════════════════════════════════════════════════════════════════
+function trkGetPlanClavo() {
+  try {
+    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd    = ss.getSheetByName('ORDENES');
+    var shEst    = ss.getSheetByName('ESTANDARES');
+    var dataOrd  = shOrd.getDataRange().getValues();
+    var dataEst  = shEst.getDataRange().getValues();
+    var tz       = ss.getSpreadsheetTimeZone();
+
+    var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var oID   = hOrd.indexOf('ID');
+    var oPED  = hOrd.indexOf('PEDIDO');
+    var oORD  = hOrd.indexOf('ORDEN');
+    var oSERIE= hOrd.indexOf('SERIE');
+    var oCOD  = hOrd.indexOf('CODIGO');
+    var oDESC = hOrd.indexOf('DESCRIPCION');
+    var oSOL  = hOrd.indexOf('SOLICITADO');
+    var oPROD = hOrd.indexOf('PRODUCIDO');
+    var oMAQ  = hOrd.indexOf('MAQUINA');
+    var oPROC = hOrd.indexOf('PROCESO');
+    var oEST  = hOrd.indexOf('ESTADO');
+    var oPRIO = hOrd.indexOf('PRIORIDAD');
+    var oFI   = hOrd.indexOf('FECHA_INICIO_PROG');
+    var oFF   = hOrd.indexOf('FECHA_FIN_PROG');
+    var oTIPO = hOrd.indexOf('TIPO');
+    var oDIA  = hOrd.indexOf('DIAMETRO');
+    var oLONG = hOrd.indexOf('LONGITUD');
+    var oCUERDA = hOrd.indexOf('CUERDA');
+    var oCUERPO = hOrd.indexOf('CUERPO');
+    var oPESO = hOrd.indexOf('PESO');
+    var oUNID = hOrd.indexOf('UNIDAD');
+
+    var hEst   = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var ePROC  = hEst.indexOf('PROCESO');
+    var eMAQ   = hEst.indexOf('MAQUINA');
+    var eVEL   = hEst.indexOf('VELOCIDAD');
+    var eEFIC  = hEst.indexOf('EFICIENCIA');
+    var eTURNOS= hEst.indexOf('TURNOS');
+
+    // Mapa maquina → { vel, efic, hrsXdia } solo para ESTAMPADO
+    var mapaEst = {};
+    for (var e = 1; e < dataEst.length; e++) {
+      var proc = String(dataEst[e][ePROC] || '').toUpperCase().trim();
+      if (proc !== 'ESTAMPADO') continue;
+      var maq  = String(dataEst[e][eMAQ]  || '').trim().toUpperCase();
+      if (!maq) continue;
+      var turnos = parseInt(dataEst[e][eTURNOS]) || 1;
+      var hrsXdia = turnos === 3 ? 22.5 : turnos === 2 ? 14.5 : 7.5;
+      var eUNID = hEst.indexOf('UNIDAD');
+      mapaEst[maq] = {
+        vel:     parseFloat(dataEst[e][eVEL])  || 0,
+        efic:    parseFloat(dataEst[e][eEFIC]) || 1,
+        hrsXdia: hrsXdia,
+        unid:    eUNID >= 0 ? String(dataEst[e][eUNID] || '').toUpperCase() : ''
+      };
+    }
+
+    var ahora = new Date();
+    var hora  = ahora.getHours() + ahora.getMinutes() / 60;
+    var fechaBase;
+    if (hora < 15) {
+      fechaBase = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 6, 30, 0);
+    } else if (hora < 24) {
+      fechaBase = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 14, 30, 0);
+    } else {
+      var ayer = new Date(ahora);
+      ayer.setDate(ayer.getDate() - 1);
+      fechaBase = new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate(), 22, 0, 0);
+    }
+
+    function saltarFinSemana(d) {
+      var result = new Date(d);
+      var maxIter = 100;
+      while (maxIter-- > 0) {
+        var dow  = result.getDay();
+        var hh   = result.getHours() + result.getMinutes() / 60 + result.getSeconds() / 3600;
+        var bloqueado = false;
+        if (dow === 6 && hh >= 22) bloqueado = true;
+        if (dow === 0) bloqueado = true;
+        if (dow === 1 && hh < 6.5) bloqueado = true;
+        if (!bloqueado) break;
+        var lunesTarget = new Date(result);
+        var diasHastaLunes = (8 - dow) % 7;
+        if (dow === 1) diasHastaLunes = 0;
+        if (diasHastaLunes === 0 && hh < 6.5) {
+          lunesTarget.setHours(6, 30, 0, 0);
+        } else {
+          lunesTarget.setDate(lunesTarget.getDate() + diasHastaLunes);
+          lunesTarget.setHours(6, 30, 0, 0);
+        }
+        result = lunesTarget;
+      }
+      return result;
+    }
+
+    function sumarHorasLaborables(fechaInicio, horasMaquina, hrsXdia) {
+      if (horasMaquina <= 0) return new Date(fechaInicio);
+      var MS_HR      = 3600000;
+      var factorMaq  = hrsXdia > 0 ? hrsXdia / 24 : 1;
+      var cursor     = saltarFinSemana(new Date(fechaInicio));
+      var restMaq    = horasMaquina;
+      var iter = 0;
+      while (restMaq > 0.0001 && iter < 500) {
+        iter++;
+        var d  = cursor.getDay();
+        var hh = cursor.getHours() + cursor.getMinutes() / 60 + cursor.getSeconds() / 3600;
+        if (d === 6 && hh >= 22) { cursor = saltarFinSemana(cursor); continue; }
+        if (d === 0)              { cursor = saltarFinSemana(cursor); continue; }
+        if (d === 1 && hh < 6.5) { cursor = saltarFinSemana(cursor); continue; }
+        var sabTarget = new Date(cursor);
+        var diasHastaSab = d === 6 ? 0 : (6 - d + 7) % 7 || 7;
+        sabTarget.setDate(sabTarget.getDate() + diasHastaSab);
+        sabTarget.setHours(22, 0, 0, 0);
+        var horasRelojHastaSab = (sabTarget - cursor) / MS_HR;
+        var horasMaqEnBloque = horasRelojHastaSab * factorMaq;
+        if (restMaq <= horasMaqEnBloque) {
+          var horasRelojAvanzar = restMaq / factorMaq;
+          cursor = new Date(cursor.getTime() + horasRelojAvanzar * MS_HR);
+          restMaq = 0;
+        } else {
+          restMaq -= horasMaqEnBloque;
+          var lunesTarget = new Date(cursor);
+          var diasHastaLun = (8 - d) % 7;
+          if (diasHastaLun === 0) diasHastaLun = 7;
+          lunesTarget.setDate(lunesTarget.getDate() + diasHastaLun);
+          lunesTarget.setHours(6, 30, 0, 0);
+          cursor = lunesTarget;
+        }
+      }
+      return cursor;
+    }
+
+    // Recoger filas de ESTAMPADO activas
+    var filas = [];
+    for (var i = 1; i < dataOrd.length; i++) {
+      var row  = dataOrd[i];
+      var proc = String(row[oPROC] || '').toUpperCase().trim();
+      if (proc !== 'ESTAMPADO') continue;
+      var est  = String(row[oEST]  || '').toUpperCase().trim();
+      if (est === 'TERMINADO' || est === 'CANCELADO') continue;
+
+      var sol  = parseFloat(row[oSOL])  || 0;
+      var prod = parseFloat(row[oPROD]) || 0;
+      var prio = parseInt(row[oPRIO])   || 999;
+      var maq  = String(row[oMAQ] || '').trim().toUpperCase();
+
+      // ESTAMPADO: SOLICITADO y PRODUCIDO ya están en KG
+      var pendiente = Math.max(sol - prod, 0);
+
+      // ESTAMPADO: vel en PZA/MIN, pendiente en KG → convertir via peso unitario de la orden
+      var horas = 0;
+      var std   = mapaEst[maq];
+      if (std && std.vel > 0 && pendiente > 0) {
+        var pesoUnit = oPESO >= 0 ? (parseFloat(row[oPESO]) || 0) : 0;
+        if (pesoUnit > 0) {
+          var pendPza = pendiente / pesoUnit;
+          horas = pendPza / (std.vel * std.efic * 60);
+        } else {
+          horas = pendiente / (std.vel * std.efic * 60);
+        }
+      }
+
+      filas.push({
+        rowIdx:    i,
+        id:        String(row[oID]    || ''),
+        pedido:    String(row[oPED]   || ''),
+        orden:     String(row[oORD]   || ''),
+        serie:     String(row[oSERIE] || ''),
+        codigo:    String(row[oCOD]   || ''),
+        desc:      String(row[oDESC]  || ''),
+        sol:       sol,
+        prod:      prod,
+        pendiente: pendiente,
+        maq:       maq,
+        prio:      prio,
+        est:       est,
+        horas:     horas,
+        tipo:      String(row[oTIPO]   || ''),
+        dia:       String(row[oDIA]    || ''),
+        long:      String(row[oLONG]   || ''),
+        cuerda:    String(row[oCUERDA] || ''),
+        cuerpo:    String(row[oCUERPO] || '')
+      });
+    }
+
+    var grupos = {};
+    filas.forEach(function(f) {
+      if (!grupos[f.maq]) grupos[f.maq] = [];
+      grupos[f.maq].push(f);
+    });
+    Object.keys(grupos).forEach(function(maq) {
+      grupos[maq].sort(function(a, b) { return a.prio - b.prio; });
+    });
+
+    var resultado = [];
+    Object.keys(grupos).sort().forEach(function(maq) {
+      var lista  = grupos[maq];
+      var std    = mapaEst[maq] || { vel: 0, efic: 1, hrsXdia: 7.5 };
+      var cursor = saltarFinSemana(new Date(fechaBase));
+
+      var ordenesConFechas = [];
+      lista.forEach(function(f, idxF) {
+        var fi = new Date(cursor);
+        var ff;
+        if (f.pendiente <= 0) {
+          ff = new Date(cursor);
+        } else {
+          ff = sumarHorasLaborables(fi, f.horas, std.hrsXdia);
+          var siguiente = lista[idxF + 1];
+          var horasMuertas = 2;
+          if (siguiente) {
+            var cambioLong = String(f.long).trim() !== String(siguiente.long).trim();
+            horasMuertas = cambioLong ? 6 : 2;
+          }
+          cursor = new Date(ff.getTime() + horasMuertas * 3600000);
+          cursor = saltarFinSemana(cursor);
+        }
+
+        var fiStr = Utilities.formatDate(fi, tz, 'dd/MM/yyyy HH:mm');
+        var ffStr = Utilities.formatDate(ff, tz, 'dd/MM/yyyy HH:mm');
+        if (oFI >= 0) shOrd.getRange(f.rowIdx + 1, oFI + 1).setValue(fiStr);
+        if (oFF >= 0) shOrd.getRange(f.rowIdx + 1, oFF + 1).setValue(ffStr);
+
+        ordenesConFechas.push({
+          id:          f.id,
+          pedido:      f.pedido,
+          orden:       f.orden,
+          serie:       f.serie,
+          codigo:      f.codigo,
+          desc:        f.desc,
+          sol:         Math.round(f.sol),
+          prod:        Math.round(f.prod),
+          pendiente:   Math.round(f.pendiente),
+          prio:        f.prio,
+          est:         f.est,
+          horas:       Math.round(f.horas * 100) / 100,
+          fechaInicio: fiStr,
+          fechaFin:    ffStr,
+          tipo:        f.tipo,
+          dia:         f.dia,
+          long:        f.long,
+          cuerda:      f.cuerda,
+          cuerpo:      f.cuerpo
+        });
+      });
+
+      resultado.push({ maquina: maq, ordenes: ordenesConFechas });
+    });
+
+    return JSON.stringify({ success: true, grupos: resultado });
+  } catch(err) {
+    return JSON.stringify({ success: false, msg: err.message });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TRACKING — PLAN VARILLA (ROSCADO)
+// vel en MTS/MIN, pendiente en KG, PESO = kg/metro
+// horas = (pendiente / peso_por_metro) / (vel * efic * 60)
+// ══════════════════════════════════════════════════════════════════
+function trkGetPlanVarilla() {
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd   = ss.getSheetByName('ORDENES');
+    var shEst   = ss.getSheetByName('ESTANDARES');
+    var dataOrd = shOrd.getDataRange().getValues();
+    var dataEst = shEst.getDataRange().getValues();
+    var tz      = ss.getSpreadsheetTimeZone();
+
+    var hOrd  = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var oID     = hOrd.indexOf('ID');
+    var oPED    = hOrd.indexOf('PEDIDO');
+    var oORD    = hOrd.indexOf('ORDEN');
+    var oSERIE  = hOrd.indexOf('SERIE');
+    var oCOD    = hOrd.indexOf('CODIGO');
+    var oDESC   = hOrd.indexOf('DESCRIPCION');
+    var oSOL    = hOrd.indexOf('SOLICITADO');
+    var oPROD   = hOrd.indexOf('PRODUCIDO');
+    var oMAQ    = hOrd.indexOf('MAQUINA');
+    var oPROC   = hOrd.indexOf('PROCESO');
+    var oEST    = hOrd.indexOf('ESTADO');
+    var oPRIO   = hOrd.indexOf('PRIORIDAD');
+    var oFI     = hOrd.indexOf('FECHA_INICIO_PROG');
+    var oFF     = hOrd.indexOf('FECHA_FIN_PROG');
+    var oTIPO   = hOrd.indexOf('TIPO');
+    var oDIA    = hOrd.indexOf('DIAMETRO');
+    var oLONG   = hOrd.indexOf('LONGITUD');
+    var oCUERDA = hOrd.indexOf('CUERDA');
+    var oCUERPO = hOrd.indexOf('CUERPO');
+    var oPESO   = hOrd.indexOf('PESO');
+
+    var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var ePROC   = hEst.indexOf('PROCESO');
+    var eMAQ    = hEst.indexOf('MAQUINA');
+    var eVEL    = hEst.indexOf('VELOCIDAD');
+    var eEFIC   = hEst.indexOf('EFICIENCIA');
+    var eTURNOS = hEst.indexOf('TURNOS');
+
+    var mapaEst = {};
+    for (var e = 1; e < dataEst.length; e++) {
+      var proc = String(dataEst[e][ePROC] || '').toUpperCase().trim();
+      if (proc !== 'ROSCADO') continue;
+      var maq  = String(dataEst[e][eMAQ] || '').trim().toUpperCase();
+      if (!maq) continue;
+      var turnos  = parseInt(dataEst[e][eTURNOS]) || 1;
+      var hrsXdia = turnos === 3 ? 22.5 : turnos === 2 ? 14.5 : 7.5;
+      mapaEst[maq] = {
+        vel:     parseFloat(dataEst[e][eVEL])  || 0,
+        efic:    parseFloat(dataEst[e][eEFIC]) || 1,
+        hrsXdia: hrsXdia
+      };
+    }
+
+    var ahora = new Date();
+    var hora  = ahora.getHours() + ahora.getMinutes() / 60;
+    var fechaBase;
+    if (hora < 15) {
+      fechaBase = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 6, 30, 0);
+    } else if (hora < 24) {
+      fechaBase = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 14, 30, 0);
+    } else {
+      var ayer = new Date(ahora);
+      ayer.setDate(ayer.getDate() - 1);
+      fechaBase = new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate(), 22, 0, 0);
+    }
+
+    function saltarFinSemana(d) {
+      var result = new Date(d);
+      var maxIter = 100;
+      while (maxIter-- > 0) {
+        var dow = result.getDay();
+        var hh  = result.getHours() + result.getMinutes() / 60 + result.getSeconds() / 3600;
+        var bloqueado = false;
+        if (dow === 6 && hh >= 22) bloqueado = true;
+        if (dow === 0)              bloqueado = true;
+        if (dow === 1 && hh < 6.5) bloqueado = true;
+        if (!bloqueado) break;
+        var lunesTarget = new Date(result);
+        var diasHastaLunes = (8 - dow) % 7;
+        if (dow === 1) diasHastaLunes = 0;
+        if (diasHastaLunes === 0 && hh < 6.5) {
+          lunesTarget.setHours(6, 30, 0, 0);
+        } else {
+          lunesTarget.setDate(lunesTarget.getDate() + diasHastaLunes);
+          lunesTarget.setHours(6, 30, 0, 0);
+        }
+        result = lunesTarget;
+      }
+      return result;
+    }
+
+    function sumarHorasLaborables(fechaInicio, horasMaquina, hrsXdia) {
+      if (horasMaquina <= 0) return new Date(fechaInicio);
+      var MS_HR     = 3600000;
+      var factorMaq = hrsXdia > 0 ? hrsXdia / 24 : 1;
+      var cursor    = saltarFinSemana(new Date(fechaInicio));
+      var restMaq   = horasMaquina;
+      var iter = 0;
+      while (restMaq > 0.0001 && iter < 500) {
+        iter++;
+        var d  = cursor.getDay();
+        var hh = cursor.getHours() + cursor.getMinutes() / 60 + cursor.getSeconds() / 3600;
+        if (d === 6 && hh >= 22) { cursor = saltarFinSemana(cursor); continue; }
+        if (d === 0)              { cursor = saltarFinSemana(cursor); continue; }
+        if (d === 1 && hh < 6.5) { cursor = saltarFinSemana(cursor); continue; }
+        var sabTarget = new Date(cursor);
+        var diasHastaSab = d === 6 ? 0 : (6 - d + 7) % 7 || 7;
+        sabTarget.setDate(sabTarget.getDate() + diasHastaSab);
+        sabTarget.setHours(22, 0, 0, 0);
+        var horasRelojHastaSab  = (sabTarget - cursor) / MS_HR;
+        var horasMaqEnBloque    = horasRelojHastaSab * factorMaq;
+        if (restMaq <= horasMaqEnBloque) {
+          var horasRelojAvanzar = restMaq / factorMaq;
+          cursor  = new Date(cursor.getTime() + horasRelojAvanzar * MS_HR);
+          restMaq = 0;
+        } else {
+          restMaq -= horasMaqEnBloque;
+          var lunesTarget = new Date(cursor);
+          var diasHastaLun = (8 - d) % 7;
+          if (diasHastaLun === 0) diasHastaLun = 7;
+          lunesTarget.setDate(lunesTarget.getDate() + diasHastaLun);
+          lunesTarget.setHours(6, 30, 0, 0);
+          cursor = lunesTarget;
+        }
+      }
+      return cursor;
+    }
+
+    var filas = [];
+    for (var i = 1; i < dataOrd.length; i++) {
+      var row  = dataOrd[i];
+      var proc = String(row[oPROC] || '').toUpperCase().trim();
+      if (proc !== 'ROSCADO') continue;
+      var est  = String(row[oEST]  || '').toUpperCase().trim();
+      if (est === 'TERMINADO' || est === 'CANCELADO') continue;
+
+      var sol       = parseFloat(row[oSOL])  || 0;
+      var prod      = parseFloat(row[oPROD]) || 0;
+      var prio      = parseInt(row[oPRIO])   || 999;
+      var maq       = String(row[oMAQ] || '').trim().toUpperCase();
+      var pendiente = Math.max(sol - prod, 0);
+
+      // ROSCADO: vel en MTS/MIN, pendiente en KG, PESO = kg/metro
+      // metros_pendientes = pendiente / peso_por_metro
+      // horas = metros_pendientes / (vel * efic * 60)
+      var horas = 0;
+      var std   = mapaEst[maq];
+      if (std && std.vel > 0 && pendiente > 0) {
+        var pesoXmetro = oPESO >= 0 ? (parseFloat(row[oPESO]) || 0) : 0;
+        if (pesoXmetro > 0) {
+          var pendMetros = pendiente / pesoXmetro;
+          horas = pendMetros / (std.vel * std.efic * 60);
+        } else {
+          horas = pendiente / (std.vel * std.efic * 60);
+        }
+      }
+
+      filas.push({
+        rowIdx:    i,
+        id:        String(row[oID]    || ''),
+        pedido:    String(row[oPED]   || ''),
+        orden:     String(row[oORD]   || ''),
+        serie:     String(row[oSERIE] || ''),
+        codigo:    String(row[oCOD]   || ''),
+        desc:      String(row[oDESC]  || ''),
+        sol:       sol,
+        prod:      prod,
+        pendiente: pendiente,
+        maq:       maq,
+        prio:      prio,
+        est:       est,
+        horas:     horas,
+        tipo:      String(row[oTIPO]   || ''),
+        dia:       String(row[oDIA]    || ''),
+        long:      String(row[oLONG]   || ''),
+        cuerda:    String(row[oCUERDA] || ''),
+        cuerpo:    String(row[oCUERPO] || '')
+      });
+    }
+
+    var grupos = {};
+    filas.forEach(function(f) {
+      if (!grupos[f.maq]) grupos[f.maq] = [];
+      grupos[f.maq].push(f);
+    });
+    Object.keys(grupos).forEach(function(maq) {
+      grupos[maq].sort(function(a, b) { return a.prio - b.prio; });
+    });
+
+    var resultado = [];
+    Object.keys(grupos).sort().forEach(function(maq) {
+      var lista  = grupos[maq];
+      var std    = mapaEst[maq] || { vel: 0, efic: 1, hrsXdia: 7.5 };
+      var cursor = saltarFinSemana(new Date(fechaBase));
+
+      var ordenesConFechas = [];
+      lista.forEach(function(f, idxF) {
+        var fi = new Date(cursor);
+        var ff;
+        if (f.pendiente <= 0) {
+          ff = new Date(cursor);
+        } else {
+          ff = sumarHorasLaborables(fi, f.horas, std.hrsXdia);
+          var siguiente    = lista[idxF + 1];
+          var horasMuertas = 2;
+          if (siguiente) {
+            var cambioLong = String(f.long).trim() !== String(siguiente.long).trim();
+            horasMuertas   = cambioLong ? 6 : 2;
+          }
+          cursor = new Date(ff.getTime() + horasMuertas * 3600000);
+          cursor = saltarFinSemana(cursor);
+        }
+
+        var fiStr = Utilities.formatDate(fi, tz, 'dd/MM/yyyy HH:mm');
+        var ffStr = Utilities.formatDate(ff, tz, 'dd/MM/yyyy HH:mm');
+        if (oFI >= 0) shOrd.getRange(f.rowIdx + 1, oFI + 1).setValue(fiStr);
+        if (oFF >= 0) shOrd.getRange(f.rowIdx + 1, oFF + 1).setValue(ffStr);
+
+        ordenesConFechas.push({
+          id:          f.id,
+          pedido:      f.pedido,
+          orden:       f.orden,
+          serie:       f.serie,
+          codigo:      f.codigo,
+          desc:        f.desc,
+          sol:         Math.round(f.sol),
+          prod:        Math.round(f.prod),
+          pendiente:   Math.round(f.pendiente),
+          prio:        f.prio,
+          est:         f.est,
+          horas:       Math.round(f.horas * 100) / 100,
+          fechaInicio: fiStr,
+          fechaFin:    ffStr,
+          tipo:        f.tipo,
+          dia:         f.dia,
+          long:        f.long,
+          cuerda:      f.cuerda,
+          cuerpo:      f.cuerpo
+        });
+      });
+
+      resultado.push({ maquina: maq, ordenes: ordenesConFechas });
+    });
+
+    return JSON.stringify({ success: true, grupos: resultado });
+  } catch(err) {
+    return JSON.stringify({ success: false, msg: err.message });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
 // TRACKING — MATERIAL ENVIADO (tabla ENVIADO completa filtrable)
 // Columnas: B=SEM, C=FECHA, F=PEDIDO, G=CODIGO, H=DESCRIPCION,
 //           I=FAMILIA, J=KILOS, K=PIEZAS, L=COMENTARIOS, M=ENVIO,

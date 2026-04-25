@@ -39,7 +39,10 @@
       "Bash(grep -o 'color:#94a3b8;.\\\\{0,700\\\\}flex-wrap:wrap;\"></div>' Mod_Planificador.html)",
       "Bash(grep -o '<span style=\"color:#94a3b8;.\\\\{0,800\\\\}flex-wrap:wrap;\"></div>' Mod_Planificador.html)",
       "Bash(grep -o 'fpd-filtros-bar.\\\\{0,200\\\\}' Mod_Planificador.html)",
-      "Bash(grep -o 'fpd-filtros-bar.\\\\{0,600\\\\}fpd-grupo-btns.\\\\{0,100\\\\}</div>\\\\\\\\\\\\\\\\n' Mod_Planificador.html)"
+      "Bash(grep -o 'fpd-filtros-bar.\\\\{0,600\\\\}fpd-grupo-btns.\\\\{0,100\\\\}</div>\\\\\\\\\\\\\\\\n' Mod_Planificador.html)",
+      "Bash(grep -o 'trkAbrirMaterialEnviado\\(\\).\\\\{0,30\\\\}' MainApp_PlaneacionHTML.html)",
+      "Bash(grep -o 'button onclick=\"trkAbrirPlanClavo\\(\\).\\\\{0,300\\\\}' C:/Users/rcdga/planeacion-produccion/Mod_Tracking.html)",
+      "Bash(grep -o 'button onclick=\"trkAbrirPlanClavo\\(\\).\\\\{0,600\\\\}' C:/Users/rcdga/planeacion-produccion/Mod_Tracking.html)"
     ]
   }
 }

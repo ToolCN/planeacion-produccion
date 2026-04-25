@@ -1,5 +1,6 @@
 # Scripts de utilidad Node.js
 rebuild_main.js
+fix_planclavo.js
 fix_backticks.js
 fix_script_tags.js
 wrap_modules.js
@@ -20,6 +21,8 @@ node_modules/
 *.py
 *.sh
 _tmp_line.js
+_fix_*.js
+_*.js
 
 # Archivos de sistema
 .DS_Store
