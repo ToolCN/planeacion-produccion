@@ -21,6 +21,14 @@ var CHAT_ID_AVISOS = "625827165";
 // doGet — Sirve el MainApp_PlaneacionHTML como Web App
 // =================================================================================
 function doGet(e) {
+  var params = e && e.parameter ? e.parameter : {};
+  if (params.lote || params.page === 'lotemaster') {
+    var tmpl = HtmlService.createTemplateFromFile('LoteMaster');
+    tmpl.loteParam = params.lote || '';
+    return tmpl.evaluate()
+      .setTitle('Trazabilidad — ToolCN')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   return HtmlService
     .createHtmlOutputFromFile("MainApp_PlaneacionHTML")
     .setTitle("PCP — ToolCN")
@@ -13390,6 +13398,263 @@ function trkGetMaterialEnviado(anio, mes) {
       });
     }
     return JSON.stringify({ success: true, filas: filas, anio: filtAnio, mes: filtMes });
+  } catch(err) {
+    return JSON.stringify({ success: false, msg: err.message });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOTE MASTER — Buscar lotes por texto (para LoteMaster.html)
+// ══════════════════════════════════════════════════════════════
+function lmBuscarLote(q) {
+  try {
+    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shLotes = ss.getSheetByName('LOTES');
+    var shOrd   = ss.getSheetByName('ORDENES');
+    if (!shLotes) return JSON.stringify({ success: false, msg: 'Hoja LOTES no encontrada' });
+    var tz = ss.getSpreadsheetTimeZone();
+    var qUpper = String(q || '').toUpperCase().trim();
+    if (!qUpper) return JSON.stringify({ success: true, lotes: [] });
+
+    var dataLotes = shLotes.getDataRange().getValues();
+    var dataOrd   = shOrd ? shOrd.getDataRange().getValues() : [];
+
+    // Mapa idOrden → datos
+    var mapaOrd = {};
+    if (dataOrd.length > 1) {
+      var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var iID  = hOrd.indexOf('ID');
+      var iCOD = hOrd.indexOf('CODIGO');
+      var iDES = hOrd.indexOf('DESCRIPCION');
+      var iPED = hOrd.indexOf('PEDIDO');
+      var iPRO = hOrd.indexOf('PROCESO');
+      var iMAQ = hOrd.indexOf('MAQUINA');
+      var iSER = hOrd.indexOf('SERIE');
+      var iORD = hOrd.indexOf('ORDEN');
+      var iTIP = hOrd.indexOf('TIPO');
+      var iDIA = hOrd.indexOf('DIAMETRO');
+      var iLON = hOrd.indexOf('LONGITUD');
+      var iACE = hOrd.indexOf('ACERO');
+      var iEST = hOrd.indexOf('ESTADO');
+      for (var o = 1; o < dataOrd.length; o++) {
+        var oid = String(dataOrd[o][iID] || '').trim();
+        if (!oid) continue;
+        mapaOrd[oid] = {
+          codigo:      String(dataOrd[o][iCOD] || ''),
+          descripcion: String(dataOrd[o][iDES] || ''),
+          pedido:      String(dataOrd[o][iPED] || ''),
+          proceso:     String(dataOrd[o][iPRO] || ''),
+          maquina:     String(dataOrd[o][iMAQ] || ''),
+          serie:       String(dataOrd[o][iSER] || ''),
+          orden:       String(dataOrd[o][iORD] || ''),
+          tipo:        String(dataOrd[o][iTIP] || ''),
+          diametro:    String(dataOrd[o][iDIA] || ''),
+          longitud:    String(dataOrd[o][iLON] || ''),
+          acero:       String(dataOrd[o][iACE] || ''),
+          estadoOrden: String(dataOrd[o][iEST] || '')
+        };
+      }
+    }
+
+    var resultados = [];
+    for (var i = 1; i < dataLotes.length; i++) {
+      var lote  = String(dataLotes[i][4] || '').trim();
+      var idOrd = String(dataLotes[i][2] || '').trim();
+      if (!lote) continue;
+      var ord = mapaOrd[idOrd] || {};
+      // Buscar en lote, idOrden, pedido, codigo, descripcion
+      var haystack = [lote, idOrd, ord.pedido||'', ord.codigo||'', ord.descripcion||''].join(' ').toUpperCase();
+      if (haystack.indexOf(qUpper) < 0) continue;
+      var fechaReg = dataLotes[i][8];
+      var fechaTxt = '';
+      if (fechaReg instanceof Date && !isNaN(fechaReg)) {
+        fechaTxt = Utilities.formatDate(fechaReg, tz, 'dd/MM/yyyy');
+      }
+      resultados.push({
+        lote:        lote,
+        idOrden:     idOrd,
+        consecutivo: parseInt(dataLotes[i][3]) || 0,
+        solicitado:  parseFloat(dataLotes[i][5]) || 0,
+        producido:   parseFloat(dataLotes[i][6]) || 0,
+        estado:      String(dataLotes[i][7] || ''),
+        fecha:       fechaTxt,
+        sello:       String(dataLotes[i][9]  || ''),
+        qrCode:      String(dataLotes[i][10] || ''),
+        codigo:      ord.codigo      || '',
+        descripcion: ord.descripcion || '',
+        pedido:      ord.pedido      || '',
+        proceso:     ord.proceso     || '',
+        maquina:     ord.maquina     || '',
+        serie:       ord.serie       || '',
+        orden:       ord.orden       || '',
+        tipo:        ord.tipo        || '',
+        diametro:    ord.diametro    || '',
+        longitud:    ord.longitud    || '',
+        acero:       ord.acero       || '',
+        estadoOrden: ord.estadoOrden || ''
+      });
+      if (resultados.length >= 40) break;
+    }
+    return JSON.stringify({ success: true, lotes: resultados });
+  } catch(err) {
+    return JSON.stringify({ success: false, msg: err.message });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOTE MASTER — Obtener detalle de un lote exacto
+// ══════════════════════════════════════════════════════════════
+function lmObtenerDetalleLote(loteNombre) {
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shLotes = ss.getSheetByName('LOTES');
+    var shOrd   = ss.getSheetByName('ORDENES');
+    var shProd  = ss.getSheetByName('PRODUCCION');
+    var shRutas = ss.getSheetByName('RUTAS');
+    if (!shLotes) return JSON.stringify({ success: false, msg: 'Hoja LOTES no encontrada' });
+
+    var tz       = ss.getSpreadsheetTimeZone();
+    var loteNorm = String(loteNombre || '').trim().toUpperCase();
+    var dataLotes = shLotes.getDataRange().getValues();
+
+    // ── Encontrar fila del lote ──
+    var filaLote = null;
+    for (var i = 1; i < dataLotes.length; i++) {
+      if (String(dataLotes[i][4] || '').trim().toUpperCase() === loteNorm) {
+        filaLote = dataLotes[i];
+        break;
+      }
+    }
+    if (!filaLote) return JSON.stringify({ success: false, msg: 'Lote no encontrado: ' + loteNombre });
+
+    var idOrden = String(filaLote[2] || '').trim();
+    var fechaReg = filaLote[8];
+    var fechaTxt = (fechaReg instanceof Date && !isNaN(fechaReg))
+      ? Utilities.formatDate(fechaReg, tz, 'dd/MM/yyyy HH:mm') : '';
+
+    // ── Datos de la orden ──
+    var ordInfo = {};
+    var rutaOrden = []; // procesos en orden
+    if (shOrd && idOrden) {
+      var dataOrd = shOrd.getDataRange().getValues();
+      var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var iID  = hOrd.indexOf('ID');
+      var iCOD = hOrd.indexOf('CODIGO');
+      var iDES = hOrd.indexOf('DESCRIPCION');
+      var iPED = hOrd.indexOf('PEDIDO');
+      var iPRO = hOrd.indexOf('PROCESO');
+      var iMAQ = hOrd.indexOf('MAQUINA');
+      var iSER = hOrd.indexOf('SERIE');
+      var iORD = hOrd.indexOf('ORDEN');
+      var iTIP = hOrd.indexOf('TIPO');
+      var iDIA = hOrd.indexOf('DIAMETRO');
+      var iLON = hOrd.indexOf('LONGITUD');
+      var iCUE = hOrd.indexOf('CUERDA');
+      var iCUP = hOrd.indexOf('CUERPO');
+      var iACE = hOrd.indexOf('ACERO');
+      var iPES = hOrd.indexOf('PESO');
+      var iEST = hOrd.indexOf('ESTADO');
+      var iSOL = hOrd.indexOf('SOLICITADO');
+      var iPRD = hOrd.indexOf('PRODUCIDO');
+      var iSEC = hOrd.indexOf('SECUENCIA');
+
+      for (var o = 1; o < dataOrd.length; o++) {
+        var oid = String(dataOrd[o][iID] || '').trim();
+        if (oid !== idOrden) continue;
+        if (!ordInfo.codigo) {
+          ordInfo = {
+            codigo:      String(dataOrd[o][iCOD] || ''),
+            descripcion: String(dataOrd[o][iDES] || ''),
+            pedido:      String(dataOrd[o][iPED] || ''),
+            serie:       String(dataOrd[o][iSER] || ''),
+            orden:       String(dataOrd[o][iORD] || ''),
+            tipo:        String(dataOrd[o][iTIP] || ''),
+            diametro:    String(dataOrd[o][iDIA] || ''),
+            longitud:    String(dataOrd[o][iLON] || ''),
+            cuerda:      String(dataOrd[o][iCUE] || ''),
+            cuerpo:      String(dataOrd[o][iCUP] || ''),
+            acero:       String(dataOrd[o][iACE] || ''),
+            peso:        parseFloat(dataOrd[o][iPES]) || 0
+          };
+        }
+        rutaOrden.push({
+          proceso:    String(dataOrd[o][iPRO] || ''),
+          maquina:    String(dataOrd[o][iMAQ] || ''),
+          estado:     String(dataOrd[o][iEST] || ''),
+          solicitado: parseFloat(dataOrd[o][iSOL]) || 0,
+          producido:  parseFloat(dataOrd[o][iPRD]) || 0,
+          secuencia:  parseInt(dataOrd[o][iSEC]) || 0
+        });
+      }
+      rutaOrden.sort(function(a, b){ return a.secuencia - b.secuencia; });
+    }
+
+    // ── Registros de producción de este lote ──
+    var registrosProd = [];
+    if (shProd) {
+      var dataProd = shProd.getDataRange().getValues();
+      var hProd = dataProd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var ipLOTE  = hProd.indexOf('LOTE');
+      var ipFECHA = hProd.indexOf('FECHA');
+      var ipTURNO = hProd.indexOf('TURNO');
+      var ipMAQ   = hProd.indexOf('MAQUINA');
+      var ipPROD  = hProd.indexOf('PRODUCIDO');
+      var ipOP    = hProd.indexOf('OPERADOR');
+      var ipSELLO = hProd.indexOf('SELLO');
+      var ipPROC  = hProd.indexOf('PROCESO');
+      for (var p = 1; p < dataProd.length; p++) {
+        if (String(dataProd[p][ipLOTE] || '').trim().toUpperCase() !== loteNorm) continue;
+        var fProd = dataProd[p][ipFECHA];
+        var fProdTxt = (fProd instanceof Date && !isNaN(fProd))
+          ? Utilities.formatDate(fProd, tz, 'dd/MM/yyyy') : String(fProd || '');
+        registrosProd.push({
+          fecha:     fProdTxt,
+          turno:     String(dataProd[p][ipTURNO] || ''),
+          maquina:   String(dataProd[p][ipMAQ]   || ''),
+          producido: parseFloat(dataProd[p][ipPROD]) || 0,
+          operador:  String(dataProd[p][ipOP]    || ''),
+          sello:     String(dataProd[p][ipSELLO] || ''),
+          proceso:   String(dataProd[p][ipPROC]  || '')
+        });
+      }
+    }
+
+    // ── Todos los lotes hermanos (misma orden) ──
+    var lotesHermanos = [];
+    for (var h = 1; h < dataLotes.length; h++) {
+      if (String(dataLotes[h][2] || '').trim() !== idOrden) continue;
+      var fh = dataLotes[h][8];
+      var fhTxt = (fh instanceof Date && !isNaN(fh))
+        ? Utilities.formatDate(fh, tz, 'dd/MM/yyyy') : '';
+      lotesHermanos.push({
+        lote:        String(dataLotes[h][4] || ''),
+        consecutivo: parseInt(dataLotes[h][3]) || 0,
+        estado:      String(dataLotes[h][7] || ''),
+        producido:   parseFloat(dataLotes[h][6]) || 0,
+        fecha:       fhTxt,
+        esteEsActual: String(dataLotes[h][4] || '').trim().toUpperCase() === loteNorm
+      });
+    }
+    lotesHermanos.sort(function(a,b){ return a.consecutivo - b.consecutivo; });
+
+    return JSON.stringify({
+      success: true,
+      lote: {
+        nombre:      String(filaLote[4] || ''),
+        idOrden:     idOrden,
+        consecutivo: parseInt(filaLote[3]) || 0,
+        solicitado:  parseFloat(filaLote[5]) || 0,
+        producido:   parseFloat(filaLote[6]) || 0,
+        estado:      String(filaLote[7] || ''),
+        fecha:       fechaTxt,
+        sello:       String(filaLote[9]  || ''),
+        qrCode:      String(filaLote[10] || '')
+      },
+      orden:           ordInfo,
+      rutaFabricacion: rutaOrden,
+      registrosProd:   registrosProd,
+      lotesHermanos:   lotesHermanos
+    });
   } catch(err) {
     return JSON.stringify({ success: false, msg: err.message });
   }
