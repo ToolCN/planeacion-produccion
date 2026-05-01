@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    @media print {
+      @page { size: letter; margin: 0mm; }
+      body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; }
+      .no-print { display: none !important; }
+      .page-break { page-break-after: always; height: 0; display: block; clear: both; }
+    }
+    body { font-family: 'Arial', sans-serif; background-color: #f0f0f0; margin: 0; }
+    .hoja-carta {
+      width: 215.9mm; height: 279.4mm;
+      background: white; margin: 0 auto;
+      display: grid; grid-template-rows: 1fr 1fr 1fr;
+      overflow: hidden; position: relative;
+    }
+    .hoja-carta.salto { page-break-after: always; }
+    .ticket {
+      border-bottom: 1px dashed #ccc;
+      padding: 5mm 6mm;
+      display: flex; flex-direction: column; justify-content: space-between;
+      position: relative; overflow: hidden;
+    }
+    .ticket:last-child { border-bottom: none; }
+    .header {
+      display: flex; align-items: flex-end;
+      border-bottom: 3px solid #000;
+      padding-bottom: 2px; margin-bottom: 3px;
+      height: 40px; padding-top: 4px;
+    }
+    .h-col-izq { width: 20%; }
+    .logo-img { width: 100px; display: block; }
+    .h-col-cen { flex: 1; text-align: center; padding: 0 5px; }
+    .lbl-titulo { font-size: 14pt; font-weight: 900; color: #000; text-transform: uppercase; line-height: 1; margin-bottom: 1px; }
+    .lbl-pedido { font-size: 20pt; font-weight: 900; color: #1565c0; line-height: 0.9; }
+    .h-col-der { width: 30%; text-align: right; }
+    .txt-lote { font-size: 30pt; font-weight: 900; color: #333; line-height: 0.9; }
+    .body-area { display: flex; flex: 1; overflow: hidden; }
+    .b-col-izq { width: 50%; display: flex; flex-direction: column; justify-content: space-between; padding-right: 2px; }
+    .b-col-cen { width: 20%; display: flex; align-items: center; justify-content: center; }
+    .info-top { display: flex; flex-direction: column; }
+    .prod-tipo { font-size: 20pt; font-weight: 900; color: #000; text-transform: uppercase; line-height: 0.9; margin-bottom: 3px; }
+    .prod-desc { font-size: 12pt; font-weight: bold; color: #333; line-height: 1.1; margin-bottom: 3px; }
+    .prod-meta { border-left: 4px solid #000; padding-left: 8px; margin: 3px 0; }
+    .meta-cod  { font-size: 16pt; font-weight: 900; color: #1565c0; }
+    .meta-txt  { font-size: 9pt; color: #555; text-transform: uppercase; font-weight: bold; white-space: nowrap; }
+    .svg-center-box { width: 100%; display: flex; justify-content: center; align-items: center; }
+    .svg-center-box svg { width: 100%; height: auto; max-height: 100px; }
+    .medidas-wrapper { margin-top: 3px; margin-bottom: 10px; display: flex; align-items: flex-end; gap: 12px; white-space: nowrap; }
+    .medida-box { display: flex; flex-direction: column; }
+    .m-lbl { font-size: 8pt; font-weight: bold; text-transform: uppercase; color: #555; margin-bottom: -3px; }
+    .m-val { font-size: 32pt; font-weight: 900; color: #000; line-height: 1; letter-spacing: -1px; }
+    .m-x { font-size: 18pt; font-weight: bold; color: #999; margin-bottom: 5px; }
+    .b-col-der { width: 30%; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; text-align: right; }
+    .acero-box { margin-bottom: 2px; margin-top: 5px; }
+    .acero-lbl { font-size: 9pt; font-weight: bold; color: #555; text-transform: uppercase; }
+    .acero-val { font-size: 24pt; font-weight: 900; color: #333; line-height: 1; }
+    .qr-box { flex: 1; display: flex; justify-content: flex-end; align-items: center; width: 100%; }
+    .qr-img { width: 150px; height: 150px; border: 1px solid #eee; }
+    .peso-val { font-size: 10pt; font-weight: bold; margin-top: 2px; }
+    .footer-micro { font-size: 6pt; color: #999; }
+    /* REVERSO */
+    .bloque-reverso { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .rev-lote-header { text-align: right; font-size: 20pt; font-weight: 900; border-bottom: 2px solid #000; margin-bottom: 5px; }
+    .tables-container { display: flex; gap: 8px; flex: 1; align-items: flex-start; }
+    .box-sellos { width: 35%; display: flex; flex-direction: column; }
+    .sellos-grid { border: 1px solid #000; display: flex; flex-direction: column; }
+    .sellos-row { display: flex; height: 24px; border-bottom: 1px solid #000; }
+    .sellos-row:last-child { border-bottom: none; }
+    .s-cell { flex: 1; border-right: 1px solid #000; }
+    .s-cell:last-child { border-right: none; }
+    .box-ops { width: 65%; }
+    table.ops-tbl { width: 100%; border-collapse: collapse; font-size: 8px; }
+    table.ops-tbl th { border: 1px solid #000; background: #ddd; padding: 0; height: 18px; font-size: 7px; }
+    table.ops-tbl td { border: 1px solid #000; text-align: center; vertical-align: middle; height: 24px; padding: 0; }
+    .t-grid { display: flex; height: 100%; width: 100%; }
+    .t-sub { flex: 1; border-right: 1px solid #000; display: flex; align-items: center; justify-content: center; }
+    .t-sub:last-child { border-right: none; }
+    .ruta-container { margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; display: flex; min-height: 60px; position: relative; }
+    .ruta-lbls { width: 70px; text-align: right; font-weight: bold; font-size: 8pt; margin-right: 10px; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 2px; gap: 15px; }
+    .ruta-scroll { flex: 1; display: flex; flex-wrap: wrap; gap: 20px; align-content: flex-start; padding-right: 120px; }
+    .ruta-item { text-align: center; min-width: 60px; display: flex; flex-direction: column; align-items: center; }
+    .r-proc { font-weight: 900; font-size: 9pt; color: #000; width: 100%; margin-bottom: 2px; white-space: nowrap; }
+    .r-maq  { font-size: 7pt; color: #555; font-weight: bold; margin-bottom: 4px; white-space: nowrap; }
+    .r-check { width: 14px; height: 14px; border: 1px solid #000; background: #fff; margin-top: 2px; }
+    .tbl-title { font-weight: bold; font-size: 7pt; margin-bottom: 2px; text-transform: uppercase; }
+    .qr-back-pos { position: absolute; bottom: 0; right: 0; z-index: 10; background: white; }
+  </style>
+</head>
+<body>
+
+  <div class="no-print" style="position:fixed;top:10px;right:10px;z-index:999;">
+    <button onclick="window.print()" style="background:#000;color:#fff;padding:12px 24px;font-weight:bold;border:none;cursor:pointer;border-radius:4px;">
+      🖨️ IMPRIMIR
+    </button>
+  </div>
+
+  <? for (var i = 0; i < etiquetas.length; i += 3) { ?>
+
+    <!-- HOJA FRENTE -->
+    <div class="hoja-carta salto">
+      <? for (var j = i; j < i + 3; j++) { ?>
+        <? if (j < etiquetas.length) {
+             var e = etiquetas[j];
+             var puFormat = parseFloat(e.peso || 0).toFixed(5);
+        ?>
+        <div class="ticket">
+          <div class="header">
+            <div class="h-col-izq">
+              <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" class="logo-img">
+            </div>
+            <div class="h-col-cen">
+              <div class="lbl-titulo">TARJETA DE IDENTIFICACIÓN</div>
+              <div class="lbl-pedido"><?= e.pedido ?></div>
+            </div>
+            <div class="h-col-der">
+              <div class="txt-lote"><?= e.lote ?></div>
+            </div>
+          </div>
+          <div class="body-area">
+            <div class="b-col-izq">
+              <div class="info-top">
+                <div class="prod-tipo"><?= e.tipo ?></div>
+                <div class="prod-desc"><?= e.cuerpo ?> <?= e.cuerda ?> (<?= e.desc ?>)</div>
+                <div class="prod-meta">
+                  <div class="meta-cod"><?= e.codigo ?></div>
+                  <div class="meta-txt"><?= e.desc ?></div>
+                  <div style="font-size:24pt;font-weight:900;color:#000;margin-top:5px;text-transform:uppercase;"><?= e.maquina ?></div>
+                </div>
+              </div>
+              <div class="medidas-wrapper">
+                <div class="medida-box"><span class="m-lbl">DIÁMETRO</span><span class="m-val"><?= e.diametro ?></span></div>
+                <div class="m-x">X</div>
+                <div class="medida-box"><span class="m-lbl">LONGITUD</span><span class="m-val"><?= e.longitud ?></span></div>
+              </div>
+            </div>
+            <div class="b-col-cen">
+              <div class="svg-center-box"><?!= e.iconoTipo ?></div>
+            </div>
+            <div class="b-col-der">
+              <div class="acero-box">
+                <span class="acero-lbl">ACERO: </span>
+                <span class="acero-val"><?= e.acero ?></span>
+              </div>
+              <div class="qr-box">
+                <img src="<?= e.qrUrl ?>" class="qr-img">
+              </div>
+              <div>
+                <div class="peso-val">P.U: <?= puFormat ?></div>
+                <div class="footer-micro">FO-MF-004-001 rev 0.0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <? } else { ?>
+          <div class="ticket" style="border:none;"></div>
+        <? } ?>
+      <? } ?>
+    </div>
+
+    <!-- HOJA REVERSO -->
+    <div class="hoja-carta salto">
+      <? for (var j = i; j < i + 3; j++) { ?>
+        <? if (j < etiquetas.length) {
+             var e = etiquetas[j];
+        ?>
+        <div class="ticket">
+          <div class="bloque-reverso">
+            <div class="rev-lote-header"><?= e.lote ?></div>
+            <div class="tables-container">
+              <div class="box-sellos">
+                <div class="tbl-title">SELLOS DE MP</div>
+                <div class="sellos-grid">
+                  <div class="sellos-row"><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div></div>
+                  <div class="sellos-row"><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div></div>
+                </div>
+              </div>
+              <div class="box-ops">
+                <div class="tbl-title">CONTROL DE OPERADORES</div>
+                <table class="ops-tbl">
+                  <tr>
+                    <th style="width:15%">Fecha</th><th style="width:10%">Tur</th><th style="width:25%">Nombre</th>
+                    <th>P. Inicial</th><th>P. Final</th><th>P. Tina</th><th>Prod</th>
+                  </tr>
+                  <tr>
+                    <td>&nbsp;</td>
+                    <td><div class="t-grid"><div class="t-sub">1</div><div class="t-sub">2</div><div class="t-sub">3</div></div></td>
+                    <td></td><td>0</td><td></td><td></td><td></td>
+                  </tr>
+                  <? for (var k=0; k<3; k++) { ?>
+                  <tr>
+                    <td>&nbsp;</td>
+                    <td><div class="t-grid"><div class="t-sub">1</div><div class="t-sub">2</div><div class="t-sub">3</div></div></td>
+                    <td></td><td></td><td></td><td>0</td><td></td>
+                  </tr>
+                  <? } ?>
+                </table>
+              </div>
+            </div>
+            <div class="ruta-container">
+              <div class="ruta-lbls"><div>PROCESO</div><div>MÁQUINA</div></div>
+              <div class="ruta-scroll">
+                <? if (e.ruta && e.ruta.length > 0) { ?>
+                  <? for (var r = 0; r < e.ruta.length; r++) { ?>
+                    <div class="ruta-item">
+                      <div class="r-proc"><?= e.ruta[r].proceso ?></div>
+                      <div class="r-maq"><?= e.ruta[r].maquina ?></div>
+                      <div class="r-check"></div>
+                    </div>
+                  <? } ?>
+                <? } else { ?>
+                  <div style="color:#999;font-size:10px;margin-top:5px;">Ruta estándar</div>
+                <? } ?>
+              </div>
+              <div class="qr-back-pos">
+                <img src="<?= e.qrUrl ?>" style="width:120px;height:120px;">
+              </div>
+            </div>
+          </div>
+        </div>
+        <? } else { ?>
+          <div class="ticket" style="border:none;"></div>
+        <? } ?>
+      <? } ?>
+    </div>
+
+  <? } ?>
+
+  <script>
+    window.onload = function() { setTimeout(function(){ window.print(); }, 1500); }
+  </script>
+</body>
+</html>

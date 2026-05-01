@@ -1773,7 +1773,7 @@ window.tsupToggleHistoricas = tsupToggleHistoricas;
 // ── Abrir Formulario de Producción del Proceso ──
 function tsupAbrirFormProd() {
   if (!tsup_procesoActual) { alert('Selecciona un proceso primero'); return; }
-  var APP_URL = 'https://script.google.com/macros/s/AKfycbyUE_d2XeLxNMzx94J40FmpLnhCbvYumvMVewc5nQNPYO4ezSnZKNsAg55gtSau_uN9/exec';
+  var APP_URL = 'https://script.google.com/macros/s/AKfycbyDxTSHPygL1Ba93kHFisiInmZZf6zHM63jOHfqPGv45bdbOJ1Av2lg-DigAGjH50Co1w/exec';
   var url = APP_URL + '?tipo=REPORTE_TURNO&procesos=' + encodeURIComponent(tsup_procesoActual);
   window.open(url, '_blank');
 }
@@ -1915,7 +1915,7 @@ function tsupImprimir(tipoReporte) {
   if (!ini || !fin) { alert('Define Lote Inicial y Final'); return; }
   var o = tsup_ordenSeleccionada;
   var idOrd = o.idPrimerProc || o.id;
-  var APP_URL = 'https://script.google.com/macros/s/AKfycbyUE_d2XeLxNMzx94J40FmpLnhCbvYumvMVewc5nQNPYO4ezSnZKNsAg55gtSau_uN9/exec';
+  var APP_URL = 'https://script.google.com/macros/s/AKfycbyDxTSHPygL1Ba93kHFisiInmZZf6zHM63jOHfqPGv45bdbOJ1Av2lg-DigAGjH50Co1w/exec';
   var url = APP_URL + '?tipo=' + tipoReporte + '&idOrden=' + idOrd + '&inicio=' + ini + '&fin=' + fin;
   window.open(url, '_blank');
   // fire-and-forget para guardar rango

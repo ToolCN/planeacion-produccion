@@ -6,741 +6,699 @@
 <title>Trazabilidad — ToolCN</title>
 <style>
   :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --surface2: #21262d;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text2: #8b949e;
-    --accent: #00d4ff;
-    --green: #22c55e;
-    --orange: #f97316;
-    --red: #ef4444;
-    --yellow: #fbbf24;
-    --purple: #a78bfa;
-    --radius: 16px;
+    --bg:#0a0e14; --surface:#13181f; --surface2:#1c2330; --border:#2a3444;
+    --text:#f0f4f8; --text2:#7a8fa6;
+    --accent:#00c8f0; --green:#1fd670; --orange:#ff7a2f;
+    --red:#ff4757; --yellow:#ffca28; --purple:#b39ddb;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI', Arial, sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:16px;background:var(--bg);-webkit-text-size-adjust:100%;}
+  body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;}
 
-  /* ── HEADER ── */
-  .lm-header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .lm-header-logo { display: flex; align-items: center; gap: 10px; }
-  .lm-header-logo img { height: 36px; }
-  .lm-header-title { font-size: 17px; font-weight: 800; color: var(--accent); letter-spacing: 0.05em; }
-  .lm-header-sub { font-size: 11px; color: var(--text2); }
+  /* HEADER */
+  .hdr{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:14px 20px;min-height:68px;}
+  .hdr-left{display:flex;align-items:center;gap:14px;}
+  .hdr-logo{height:40px;}
+  .hdr-title{font-size:20px;font-weight:900;color:var(--accent);letter-spacing:.06em;line-height:1.1;}
+  .hdr-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+  .hdr-homebtn{width:64px;height:64px;border-radius:18px;background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:34px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-appearance:none;font-family:inherit;}
+  .hdr-homebtn:active{background:var(--accent);color:#000;border-color:var(--accent);}
 
-  /* Botón home — grande y visible */
-  .lm-home-btn {
-    background: var(--surface2);
-    border: 2px solid var(--border);
-    border-radius: 14px;
-    color: var(--text);
-    cursor: pointer;
-    padding: 10px 14px;
-    font-size: 28px;
-    line-height: 1;
-    transition: background 0.15s, border-color 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 54px;
-    min-height: 54px;
-  }
-  .lm-home-btn:active { background: var(--accent); color: #000; border-color: var(--accent); }
+  /* LOADER */
+  #lm-loader{display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,14,20,.93);flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+  .lm-spin{width:60px;height:60px;border:6px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #lm-loader span{color:var(--accent);font-size:16px;font-weight:800;letter-spacing:.08em;}
 
-  /* ── LOADER ── */
-  #lm-loader {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(13,17,23,0.9);
-    z-index: 999;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .lm-spinner {
-    width: 52px; height: 52px;
-    border: 5px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: lm-spin 0.7s linear infinite;
-  }
-  @keyframes lm-spin { to { transform: rotate(360deg); } }
-  #lm-loader span { color: var(--accent); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; }
+  /* PANTALLAS */
+  .screen{display:none;width:100%;}
+  .screen.active{display:block;}
 
-  /* ── PANTALLAS ── */
-  .lm-screen { display: none; padding: 20px 16px; max-width: 560px; margin: 0 auto; }
-  .lm-screen.active { display: block; }
+  /* HOME búsqueda */
+  .home-wrap{padding:0 20px 32px;}
+  .home-hero{text-align:center;padding:48px 20px 36px;}
+  .home-hero .icon{font-size:96px;line-height:1;display:block;margin-bottom:20px;}
+  .home-hero h1{font-size:32px;font-weight:900;color:var(--text);margin-bottom:12px;line-height:1.15;}
+  .home-hero p{font-size:17px;color:var(--text2);line-height:1.6;}
+  .home-search{margin-top:28px;}
+  .home-search-row{display:flex;gap:12px;margin-bottom:0;}
+  .home-search-row input{flex:1;background:var(--surface);border:2.5px solid var(--border);border-radius:18px;color:var(--text);font-size:19px;padding:20px 22px;outline:none;-webkit-appearance:none;font-family:inherit;}
+  .home-search-row input::placeholder{color:var(--text2);}
+  .home-search-row input:focus{border-color:var(--accent);}
+  .home-search-row button{background:var(--accent);border:none;border-radius:18px;color:#000;font-weight:900;font-size:18px;padding:0 28px;min-height:64px;cursor:pointer;font-family:inherit;flex-shrink:0;}
+  .home-search-row button:active{opacity:.8;}
+  .home-hint{display:flex;align-items:center;gap:10px;margin-top:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 18px;}
+  .home-hint-icon{font-size:28px;flex-shrink:0;}
+  .home-hint-txt{font-size:14px;color:var(--text2);line-height:1.5;}
+  .home-hint-txt b{color:var(--text);font-weight:800;}
 
-  /* ── PANTALLA HOME ── */
-  .lm-home-hero {
-    text-align: center;
-    padding: 36px 0 28px;
-  }
-  .lm-home-hero .hero-icon { font-size: 80px; margin-bottom: 16px; line-height: 1; }
-  .lm-home-hero h1 { font-size: 26px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
-  .lm-home-hero p { font-size: 14px; color: var(--text2); line-height: 1.5; }
+  /* Resultados */
+  .res-wrap{padding:0 20px 32px;}
+  .res-title{font-size:18px;font-weight:900;color:var(--text2);margin-bottom:16px;letter-spacing:.04em;}
+  .res-card{background:var(--surface);border:2.5px solid var(--border);border-radius:20px;padding:20px;margin-bottom:14px;cursor:pointer;}
+  .res-card:active{border-color:var(--accent);background:rgba(0,200,240,.04);}
+  .res-lote{font-size:22px;font-weight:900;color:var(--accent);}
+  .res-desc{font-size:15px;color:var(--text2);margin-top:6px;line-height:1.4;}
+  .res-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
 
-  .lm-options {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 28px;
-  }
-  .lm-option-card {
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px 20px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s, transform 0.1s;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .lm-option-card:active {
-    border-color: var(--accent);
-    background: rgba(0,212,255,0.07);
-    transform: scale(0.98);
-  }
-  .lm-option-icon {
-    font-size: 56px;
-    line-height: 1;
-    flex-shrink: 0;
-    width: 72px;
-    text-align: center;
-  }
-  .lm-option-text { text-align: left; }
-  .lm-option-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-  .lm-option-desc  { font-size: 13px; color: var(--text2); line-height: 1.4; }
-  .lm-option-arrow { margin-left: auto; font-size: 24px; color: var(--text2); flex-shrink: 0; }
+  /* Chips */
+  .chip{display:inline-block;font-size:13px;font-weight:700;padding:5px 14px;border-radius:20px;background:var(--surface2);color:var(--text2);}
+  .chip-g{background:rgba(31,214,112,.14);color:var(--green);}
+  .chip-o{background:rgba(255,122,47,.14);color:var(--orange);}
+  .chip-b{background:rgba(0,200,240,.12);color:var(--accent);}
+  .chip-x{background:var(--surface2);color:var(--text2);}
+  .est-ABIERTO{background:rgba(0,200,240,.1);color:var(--accent);}
+  .est-IMPRESO{background:rgba(179,157,219,.1);color:var(--purple);}
+  .est-TERMINADO{background:rgba(31,214,112,.1);color:var(--green);}
+  .est-CANCELADO{background:rgba(255,71,87,.1);color:var(--red);}
+  .est-EN_PROCESO{background:rgba(255,122,47,.1);color:var(--orange);}
 
-  /* ── PANTALLA BÚSQUEDA ── */
-  .lm-screen-title {
-    font-size: 18px;
-    font-weight: 800;
-    margin-bottom: 16px;
-    color: var(--text);
-  }
-  .lm-search-box {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 18px;
-  }
-  .lm-search-box input {
-    flex: 1;
-    background: var(--surface2);
-    border: 2px solid var(--border);
-    border-radius: 12px;
-    color: var(--text);
-    font-size: 16px;
-    padding: 14px 16px;
-    outline: none;
-    -webkit-appearance: none;
-  }
-  .lm-search-box input:focus { border-color: var(--accent); }
-  .lm-search-box button {
-    background: var(--accent);
-    border: none;
-    border-radius: 12px;
-    color: #000;
-    cursor: pointer;
-    font-weight: 800;
-    font-size: 15px;
-    padding: 0 20px;
-    min-height: 52px;
-  }
-  .lm-search-box button:active { opacity: 0.8; }
+  .empty{text-align:center;padding:56px 24px;color:var(--text2);}
+  .empty-ico{font-size:52px;margin-bottom:14px;display:block;}
+  .empty p{font-size:17px;line-height:1.5;}
 
-  .lm-result-item {
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .lm-result-item:active { border-color: var(--accent); background: rgba(0,212,255,0.05); }
-  .lm-result-lote { font-size: 18px; font-weight: 800; color: var(--accent); }
-  .lm-result-desc { font-size: 13px; color: var(--text2); margin-top: 4px; }
-  .lm-result-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .lm-chip {
-    font-size: 12px; font-weight: 600;
-    padding: 3px 10px; border-radius: 20px;
-    background: var(--surface2); color: var(--text2);
-  }
-  .lm-chip-green  { background: rgba(34,197,94,0.15);  color: var(--green);  }
-  .lm-chip-orange { background: rgba(249,115,22,0.15); color: var(--orange); }
-  .lm-chip-blue   { background: rgba(0,212,255,0.12);  color: var(--accent); }
-  .lm-chip-gray   { background: var(--surface2); color: var(--text2); }
-  .lm-empty {
-    text-align: center; padding: 50px 0; color: var(--text2); font-size: 15px;
-  }
-  .lm-empty-icon { font-size: 48px; margin-bottom: 12px; }
+  /* ── HUB ── */
+  .hub-wrap{padding:0 0 40px;}
 
-  /* ── PANTALLA ESCÁNER ── */
-  .lm-scan-msg {
-    text-align: center; color: var(--text2); font-size: 14px;
-    margin-bottom: 16px; line-height: 1.5;
-  }
-  #lm-scanContainer {
-    position: relative; width: 100%; max-width: 420px;
-    margin: 0 auto; border-radius: var(--radius);
-    overflow: hidden; background: #000; aspect-ratio: 1;
-  }
-  #lm-scanVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .lm-scan-overlay {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
-  }
-  .lm-scan-frame {
-    width: 60%; height: 60%;
-    border: 4px solid var(--accent);
-    border-radius: 14px;
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
-    animation: lm-pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes lm-pulse {
-    0%,100% { border-color: var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,0.5), 0 0 20px rgba(0,212,255,0.4); }
-    50%      { border-color: var(--orange); box-shadow: 0 0 0 9999px rgba(0,0,0,0.5), 0 0 20px rgba(249,115,22,0.4); }
-  }
-  #lm-scanError {
-    color: var(--red); font-size: 13px; text-align: center;
-    margin-top: 12px; display: none;
-    background: rgba(239,68,68,0.1); padding: 12px; border-radius: 10px;
-  }
-  .lm-scan-no-support {
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px 20px;
-    text-align: center;
-    margin-top: 16px;
-  }
-  .lm-scan-no-support p { color: var(--text2); font-size: 14px; margin-bottom: 16px; line-height: 1.5; }
-  .lm-btn-primary {
-    display: block; width: 100%; max-width: 420px; margin: 14px auto 0;
-    background: var(--accent); border: none; border-radius: 12px;
-    color: #000; cursor: pointer; font-size: 15px; font-weight: 800;
-    padding: 16px; text-align: center;
-  }
-  .lm-btn-primary:active { opacity: 0.8; }
-  .lm-btn-sec {
-    display: block; width: 100%; max-width: 420px; margin: 10px auto 0;
-    background: var(--surface2); border: 2px solid var(--border); border-radius: 12px;
-    color: var(--text); cursor: pointer; font-size: 14px; font-weight: 700;
-    padding: 14px; text-align: center;
-  }
-  .lm-btn-sec:active { background: var(--border); }
-  #lm-fileInput { display: none; }
+  /* Hero del lote */
+  .hub-hero{background:linear-gradient(135deg,var(--surface),var(--surface2));border-bottom:2px solid var(--border);padding:24px 20px 20px;}
+  .hub-lote-nom{font-size:32px;font-weight:900;color:var(--accent);letter-spacing:.05em;line-height:1;}
+  .hub-desc{font-size:15px;color:var(--text2);margin-top:6px;line-height:1.4;}
+  .hub-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .hub-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px 0;}
+  .hub-kpi{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:16px 8px;text-align:center;}
+  .hub-kpi-val{font-size:22px;font-weight:900;line-height:1;}
+  .hub-kpi-lbl{font-size:10px;color:var(--text2);margin-top:5px;text-transform:uppercase;letter-spacing:.07em;}
 
-  /* ── PANTALLA DASHBOARD ── */
-  .lm-dash-hero {
-    background: var(--surface); border: 2px solid var(--border);
-    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
-  }
-  .lm-dash-lote { font-size: 26px; font-weight: 900; color: var(--accent); letter-spacing: 0.04em; }
-  .lm-dash-desc { font-size: 14px; color: var(--text2); margin-top: 6px; line-height: 1.4; }
-  .lm-dash-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  /* Loading strip (mientras carga en background) */
+  .hub-loading-strip{height:3px;background:linear-gradient(90deg,var(--accent),var(--purple),var(--accent));background-size:200% 100%;animation:loadstrip 1.5s linear infinite;margin:0;}
+  @keyframes loadstrip{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .hub-loading-strip.hidden{display:none;}
 
-  .lm-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
-  .lm-kpi {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px 10px; text-align: center;
-  }
-  .lm-kpi-val { font-size: 22px; font-weight: 900; }
-  .lm-kpi-lbl { font-size: 10px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  /* Grid de botones */
+  .hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px;}
+  .hub-btn{background:var(--surface);border:2px solid var(--border);border-radius:22px;padding:28px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s;user-select:none;-webkit-user-select:none;position:relative;}
+  .hub-btn:active{transform:scale(.97);border-color:var(--accent);background:rgba(0,200,240,.06);}
+  .hub-btn.loading-btn::after{content:'';position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:24px;height:3px;background:var(--accent);border-radius:2px;animation:loadstrip 1s linear infinite;background-size:200% 100%;}
+  .hub-btn-icon{font-size:46px;line-height:1;}
+  .hub-btn-title{font-size:15px;font-weight:900;color:var(--text);text-align:center;line-height:1.2;}
+  .hub-btn-sub{font-size:12px;color:var(--text2);text-align:center;line-height:1.3;}
+  .hub-btn.ready .hub-btn-title::after{content:' ✓';color:var(--green);font-size:12px;}
+  .hub-btn.pending-impl{opacity:.5;}
 
-  .lm-section {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); margin-bottom: 16px; overflow: hidden;
-  }
-  .lm-section-hdr {
-    background: var(--surface2); padding: 12px 16px;
-    font-size: 12px; font-weight: 800; color: var(--text2);
-    letter-spacing: 0.08em; text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
-  }
-  .lm-section-body { padding: 16px; }
+  /* ── SUBPANTALLAS ── */
+  .sub-wrap{padding:20px 20px 40px;}
+  .sub-back{display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer;color:var(--accent);font-size:16px;font-weight:800;}
+  .sub-back-ico{font-size:24px;}
+  .sub-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;}
+  .sub-subtitle{font-size:14px;color:var(--text2);margin-bottom:20px;}
 
-  .lm-ruta { display: flex; flex-direction: column; }
-  .lm-ruta-paso { display: flex; gap: 14px; align-items: flex-start; position: relative; }
-  .lm-ruta-paso:not(:last-child)::before {
-    content: ''; position: absolute; left: 17px; top: 38px; bottom: 0;
-    width: 2px; background: var(--border);
-  }
-  .lm-ruta-dot {
-    width: 36px; height: 36px; border-radius: 50%;
-    border: 2px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; flex-shrink: 0; background: var(--surface2); margin-top: 2px;
-  }
-  .lm-ruta-dot.terminado  { border-color: var(--green);  background: rgba(34,197,94,0.12); }
-  .lm-ruta-dot.en-proceso { border-color: var(--orange); background: rgba(249,115,22,0.12); }
-  .lm-ruta-info { flex: 1; padding-bottom: 18px; }
-  .lm-ruta-proceso { font-size: 15px; font-weight: 700; }
-  .lm-ruta-maq { font-size: 12px; color: var(--text2); margin-top: 3px; }
-  .lm-ruta-prog { margin-top: 8px; height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
-  .lm-ruta-prog-fill { height: 100%; border-radius: 4px; }
-  .lm-ruta-nums { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  /* Ruta de fabricación */
+  .ruta{display:flex;flex-direction:column;}
+  .ruta-paso{display:flex;gap:18px;align-items:flex-start;position:relative;}
+  .ruta-paso:not(:last-child)::before{content:'';position:absolute;left:19px;top:42px;bottom:0;width:2px;background:var(--border);}
+  .ruta-dot{width:40px;height:40px;border-radius:50%;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--surface2);margin-top:2px;}
+  .ruta-dot.ok{border-color:var(--green);background:rgba(31,214,112,.12);}
+  .ruta-dot.wip{border-color:var(--orange);background:rgba(255,122,47,.12);}
+  .ruta-dot.actual{border-color:var(--accent);background:rgba(0,200,240,.12);}
+  .ruta-info{flex:1;padding-bottom:22px;}
+  .ruta-proc{font-size:17px;font-weight:800;}
+  .ruta-maq{font-size:14px;color:var(--text2);margin-top:4px;}
+  .ruta-bar{margin-top:10px;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+  .ruta-fill{height:100%;border-radius:4px;}
+  .ruta-nums{font-size:13px;color:var(--text2);margin-top:6px;}
 
-  .lm-reg-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
-  }
-  .lm-reg-row:last-child { border-bottom: none; }
-  .lm-reg-fecha { color: var(--text2); min-width: 85px; font-size: 12px; }
-  .lm-reg-proceso { font-weight: 700; color: var(--accent); }
-  .lm-reg-prod { margin-left: auto; font-weight: 800; color: var(--green); white-space: nowrap; }
+  /* Registros de producción */
+  .reg-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;}
+  .reg-row:last-child{border-bottom:none;}
+  .reg-fecha{color:var(--text2);min-width:88px;font-size:13px;}
+  .reg-proc{font-weight:800;color:var(--accent);}
+  .reg-prod{margin-left:auto;font-weight:900;color:var(--green);white-space:nowrap;font-size:16px;}
 
-  .lm-hermanos { display: flex; flex-wrap: wrap; gap: 8px; }
-  .lm-hermano-chip {
-    padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
-    border: 2px solid var(--border); background: var(--surface2); color: var(--text2);
-    cursor: pointer;
-  }
-  .lm-hermano-chip.actual { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.08); }
-  .lm-hermano-chip:active { background: var(--border); }
+  /* Calidad */
+  .cal-form{display:flex;flex-direction:column;gap:16px;}
+  .cal-field label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;font-weight:800;}
+  .cal-field input,.cal-field select,.cal-field textarea{width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:14px;color:var(--text);font-size:16px;padding:14px 16px;outline:none;-webkit-appearance:none;font-family:inherit;}
+  .cal-field input:focus,.cal-field select:focus,.cal-field textarea:focus{border-color:var(--accent);}
+  .cal-field select option{background:var(--surface2);color:var(--text);}
+  .cal-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .cal-save{display:block;width:100%;padding:20px;border:none;border-radius:18px;background:var(--accent);color:#000;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:8px;}
+  .cal-save:active{opacity:.8;}
+  .cal-saved{background:var(--green)!important;color:#000!important;}
 
-  .lm-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .lm-info-lbl { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
-  .lm-info-val { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 2px; }
+  /* Hermanos de orden */
+  .hermanos{display:flex;flex-wrap:wrap;gap:10px;}
+  .herm{padding:10px 18px;border-radius:20px;font-size:15px;font-weight:700;border:2px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;}
+  .herm.yo{border-color:var(--accent);color:var(--accent);background:rgba(0,200,240,.08);}
+  .herm:active{background:var(--border);}
 
-  .est-ABIERTO   { background: rgba(0,212,255,0.1);  color: var(--accent); }
-  .est-IMPRESO   { background: rgba(167,139,250,0.1); color: var(--purple); }
-  .est-TERMINADO { background: rgba(34,197,94,0.1);   color: var(--green); }
-  .est-CANCELADO { background: rgba(239,68,68,0.1);   color: var(--red); }
-  .est-EN_PROCESO { background: rgba(249,115,22,0.1); color: var(--orange); }
+  /* Sección genérica */
+  .sec{background:var(--surface);border:1.5px solid var(--border);border-radius:22px;margin-bottom:20px;overflow:hidden;}
+  .sec-hdr{background:var(--surface2);padding:14px 20px;font-size:12px;font-weight:900;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--border);}
+  .sec-body{padding:20px;}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .info-lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;}
+  .info-val{font-size:15px;font-weight:700;color:var(--text);margin-top:3px;}
 
-  @media (max-width: 380px) {
-    .lm-kpi-row { grid-template-columns: 1fr 1fr; }
-    .lm-info-grid { grid-template-columns: 1fr; }
-    .lm-option-icon { font-size: 44px; width: 56px; }
-    .lm-option-title { font-size: 18px; }
+  /* Rango de impresión */
+  .rango-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .rango-row input{background:var(--surface2);border:2px solid var(--border);border-radius:14px;color:var(--text);font-size:20px;font-weight:900;padding:16px;text-align:center;outline:none;-webkit-appearance:none;font-family:inherit;width:100%;}
+  .rango-row input:focus{border-color:var(--accent);}
+  .tipo-btn{display:flex;gap:10px;margin-bottom:16px;}
+  .tipo-opt{flex:1;padding:16px;border:2px solid var(--border);border-radius:14px;background:var(--surface2);color:var(--text);font-size:14px;font-weight:800;cursor:pointer;text-align:center;}
+  .tipo-opt.sel{border-color:var(--accent);background:rgba(0,200,240,.1);color:var(--accent);}
+  .btn-abrir{display:block;width:100%;padding:20px;border:none;border-radius:18px;background:var(--accent);color:#000;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;}
+  .btn-abrir:active{opacity:.8;}
+
+  @media(max-width:360px){
+    .hub-kpi-val{font-size:18px;}
+    .hub-btn-icon{font-size:38px;}
+    .hub-grid{gap:10px;}
+    .info-grid{grid-template-columns:1fr;}
   }
 </style>
 </head>
 <body>
 
-<!-- LOADER -->
 <div id="lm-loader">
-  <div class="lm-spinner"></div>
-  <span id="lm-loader-txt">CARGANDO...</span>
+  <div class="lm-spin"></div>
+  <span id="lm-ltxt">CARGANDO...</span>
 </div>
 
-<!-- HEADER -->
-<div class="lm-header">
-  <div class="lm-header-logo">
-    <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238"
-         onerror="this.style.display='none'" alt="ToolCN">
+<div class="hdr">
+  <div class="hdr-left">
+    <img class="hdr-logo" src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" onerror="this.style.display='none'" alt="ToolCN">
     <div>
-      <div class="lm-header-title">TRAZABILIDAD</div>
-      <div class="lm-header-sub">ToolCN — PCP</div>
+      <div class="hdr-title" id="hdr-title-txt">TRAZABILIDAD</div>
+      <div class="hdr-sub">ToolCN — PCP</div>
     </div>
   </div>
-  <button class="lm-home-btn" onclick="lmIrHome()" title="Buscar otro lote">⌂</button>
+  <button class="hdr-homebtn" onclick="lmHome()" title="Inicio">⌂</button>
 </div>
 
-<!-- PANTALLA HOME -->
-<div id="lm-screen-home" class="lm-screen active">
-  <div class="lm-home-hero">
-    <div class="hero-icon">📦</div>
-    <h1>Consulta de Lotes</h1>
-    <p>Escanea el código QR de un lote<br>o búscalo por nombre o pedido</p>
-  </div>
-  <div class="lm-options">
-    <div class="lm-option-card" onclick="lmIrEscaner()">
-      <div class="lm-option-icon">📷</div>
-      <div class="lm-option-text">
-        <div class="lm-option-title">Escanear QR</div>
-        <div class="lm-option-desc">Abre la cámara y apunta al código del lote</div>
+<!-- HOME -->
+<div id="sc-home" class="screen active">
+  <div class="home-wrap">
+    <div class="home-hero">
+      <span class="icon">📦</span>
+      <h1>Consulta de Lotes</h1>
+      <p>Escribe el nombre, pedido o código<br>para encontrar un lote</p>
+    </div>
+    <div class="home-search">
+      <div class="home-search-row">
+        <input id="lm-txt" type="text" placeholder="Ej: P.0024 o QSQ-123..."
+               autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+               onkeydown="if(event.key==='Enter')lmBuscar()">
+        <button onclick="lmBuscar()">IR</button>
       </div>
-      <div class="lm-option-arrow">›</div>
-    </div>
-    <div class="lm-option-card" onclick="lmIrBuscar()">
-      <div class="lm-option-icon">🔍</div>
-      <div class="lm-option-text">
-        <div class="lm-option-title">Buscar Lote</div>
-        <div class="lm-option-desc">Escribe el nombre, pedido o código del lote</div>
+      <div class="home-hint">
+        <div class="home-hint-icon">📷</div>
+        <div class="home-hint-txt"><b>Tip:</b> Escanea el QR con la cámara nativa del celular para ir directo al lote.</div>
       </div>
-      <div class="lm-option-arrow">›</div>
+    </div>
+  </div>
+  <div class="res-wrap" id="lm-res-wrap" style="display:none">
+    <div class="res-title" id="lm-res-title"></div>
+    <div id="lm-res"></div>
+  </div>
+</div>
+
+<!-- HUB del lote -->
+<div id="sc-hub" class="screen">
+  <div class="hub-wrap">
+    <div class="hub-hero">
+      <div class="hub-lote-nom" id="hub-nom">—</div>
+      <div class="hub-desc" id="hub-desc">—</div>
+      <div class="hub-meta" id="hub-meta"></div>
+    </div>
+    <div class="hub-kpis">
+      <div class="hub-kpi"><div class="hub-kpi-val" id="hub-sol" style="color:var(--accent)">—</div><div class="hub-kpi-lbl">Solicitado</div></div>
+      <div class="hub-kpi"><div class="hub-kpi-val" id="hub-prod">—</div><div class="hub-kpi-lbl">Producido</div></div>
+      <div class="hub-kpi"><div class="hub-kpi-val" id="hub-pct" style="color:var(--yellow)">—</div><div class="hub-kpi-lbl">Avance</div></div>
+    </div>
+    <div class="hub-loading-strip" id="hub-strip"></div>
+    <div class="hub-grid">
+      <div class="hub-btn loading-btn" id="btn-traz" onclick="lmSubTrazabilidad()">
+        <div class="hub-btn-icon">🗺️</div>
+        <div class="hub-btn-title">Trazabilidad</div>
+        <div class="hub-btn-sub">Toda la orden con procesos y producción</div>
+      </div>
+      <div class="hub-btn loading-btn" id="btn-cal" onclick="lmSubCalidad()">
+        <div class="hub-btn-icon">🔬</div>
+        <div class="hub-btn-title">Calidad</div>
+        <div class="hub-btn-sub">Datos de inspección y disposición</div>
+      </div>
+      <div class="hub-btn loading-btn" id="btn-etq" onclick="lmSubEtiqueta()">
+        <div class="hub-btn-icon">🏷️</div>
+        <div class="hub-btn-title">Etiqueta</div>
+        <div class="hub-btn-sub">Imprimir tarjeta de identificación</div>
+      </div>
+      <div class="hub-btn pending-impl" id="btn-insp">
+        <div class="hub-btn-icon">📋</div>
+        <div class="hub-btn-title">Reg. Inspección</div>
+        <div class="hub-btn-sub">Próximamente</div>
+      </div>
+      <div class="hub-btn loading-btn" id="btn-rep" onclick="lmSubReporte()">
+        <div class="hub-btn-icon">📝</div>
+        <div class="hub-btn-title">Reg. Producción</div>
+        <div class="hub-btn-sub">Reporte de producción del lote</div>
+      </div>
+      <div class="hub-btn loading-btn" id="btn-ruta" onclick="lmSubRuta()">
+        <div class="hub-btn-icon">🔄</div>
+        <div class="hub-btn-title">Ruta</div>
+        <div class="hub-btn-sub">Resumen visual de procesos</div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- PANTALLA ESCÁNER -->
-<div id="lm-screen-scan" class="lm-screen">
-  <div class="lm-scan-msg">Apunta la cámara al código QR del lote</div>
-  <div id="lm-scanContainer">
-    <video id="lm-scanVideo" playsinline autoplay muted></video>
-    <div class="lm-scan-overlay">
-      <div class="lm-scan-frame"></div>
-    </div>
-  </div>
-  <div id="lm-scanError"></div>
-  <input type="file" id="lm-fileInput" accept="image/*" capture="environment" onchange="lmScanDesdeArchivo(this)">
-  <button class="lm-btn-sec" style="margin-top:16px;" onclick="lmDetenerEscaner(); lmIrHome();">✖ Cancelar</button>
-</div>
-
-<!-- PANTALLA BÚSQUEDA -->
-<div id="lm-screen-buscar" class="lm-screen">
-  <div class="lm-screen-title">🔍 Buscar Lote</div>
-  <div class="lm-search-box">
-    <input id="lm-txtBuscar" type="text" placeholder="Ej: P.0024 o QSQ-123..."
-           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-           onkeydown="if(event.key==='Enter') lmBuscar()">
-    <button onclick="lmBuscar()">IR</button>
-  </div>
-  <div id="lm-resultados">
-    <div class="lm-empty"><div class="lm-empty-icon">🔍</div>Escribe algo para buscar</div>
+<!-- SUB: Trazabilidad completa -->
+<div id="sc-traz" class="screen">
+  <div class="sub-wrap">
+    <div class="sub-back" onclick="lmVolverHub()"><span class="sub-back-ico">‹</span> Volver</div>
+    <div class="sub-title">🗺️ Trazabilidad</div>
+    <div class="sub-subtitle" id="traz-sub"></div>
+    <div id="traz-content"></div>
   </div>
 </div>
 
-<!-- PANTALLA DASHBOARD -->
-<div id="lm-screen-dash" class="lm-screen">
-  <div id="lm-dash-content"></div>
+<!-- SUB: Calidad -->
+<div id="sc-cal" class="screen">
+  <div class="sub-wrap">
+    <div class="sub-back" onclick="lmVolverHub()"><span class="sub-back-ico">‹</span> Volver</div>
+    <div class="sub-title">🔬 Calidad</div>
+    <div class="sub-subtitle" id="cal-sub"></div>
+    <div id="cal-content"></div>
+  </div>
+</div>
+
+<!-- SUB: Etiqueta -->
+<div id="sc-etq" class="screen">
+  <div class="sub-wrap">
+    <div class="sub-back" onclick="lmVolverHub()"><span class="sub-back-ico">‹</span> Volver</div>
+    <div class="sub-title">🏷️ Imprimir Etiqueta</div>
+    <div class="sub-subtitle" id="etq-sub"></div>
+    <div id="etq-content"></div>
+  </div>
+</div>
+
+<!-- SUB: Reporte Producción -->
+<div id="sc-rep" class="screen">
+  <div class="sub-wrap">
+    <div class="sub-back" onclick="lmVolverHub()"><span class="sub-back-ico">‹</span> Volver</div>
+    <div class="sub-title">📝 Reporte de Producción</div>
+    <div class="sub-subtitle" id="rep-sub"></div>
+    <div id="rep-content"></div>
+  </div>
+</div>
+
+<!-- SUB: Ruta resumida -->
+<div id="sc-ruta" class="screen">
+  <div class="sub-wrap">
+    <div class="sub-back" onclick="lmVolverHub()"><span class="sub-back-ico">‹</span> Volver</div>
+    <div class="sub-title">🔄 Ruta de Fabricación</div>
+    <div class="sub-subtitle" id="ruta-sub"></div>
+    <div id="ruta-content"></div>
+  </div>
 </div>
 
 <script>
-var LM_LOTE_PARAM = '<?= loteParam ?>'.trim();
-var lm_scanStream  = null;
-var lm_scanAnimId  = null;
-var lm_scanCanvas  = document.createElement('canvas');
-var lm_scanCtx     = lm_scanCanvas.getContext('2d', { willReadFrequently: true });
-var lm_barcodeDetector = null;
+var LM_PARAM = '<?= loteParam ?>'.trim();
 
-// ══════════════════════════════════════════════════
-// UTILIDADES
-// ══════════════════════════════════════════════════
-function lmShowLoader(msg) {
-  document.getElementById('lm-loader-txt').textContent = msg || 'CARGANDO...';
-  document.getElementById('lm-loader').style.display = 'flex';
-}
-function lmHideLoader() { document.getElementById('lm-loader').style.display = 'none'; }
-function lmFmt(n) { return (parseFloat(n)||0).toLocaleString('es-MX', {maximumFractionDigits:2}); }
-function lmChipEst(est) {
-  var e = String(est||'').toUpperCase().replace(/ /g,'_');
-  return '<span class="lm-chip est-' + e + '">' + est + '</span>';
+// ══ ESTADO GLOBAL ══
+var _cache    = null;   // datos completos del hub (llenado en background)
+var _cacheOk  = false;  // true cuando el background terminó
+var _curLote  = '';
+var _tipoEtq  = 1;      // 1 = ETIQUETA, 2 = ETIQUETA_2
+
+// ══ UTILIDADES ══
+function lmLoad(t){ document.getElementById('lm-ltxt').textContent=t||'CARGANDO...'; document.getElementById('lm-loader').style.display='flex'; }
+function lmUnload(){ document.getElementById('lm-loader').style.display='none'; }
+function lmFmt(n){ return (parseFloat(n)||0).toLocaleString('es-MX',{maximumFractionDigits:2}); }
+function lmChipEst(est){
+  var e=String(est||'').toUpperCase().replace(/ /g,'_');
+  return '<span class="chip est-'+e+'">'+est+'</span>';
 }
 
-// ══════════════════════════════════════════════════
-// NAVEGACIÓN
-// ══════════════════════════════════════════════════
-function lmIrScreen(id) {
-  document.querySelectorAll('.lm-screen').forEach(function(s){ s.classList.remove('active'); });
+// ══ NAVEGACIÓN ══
+function lmScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
 }
-function lmIrHome() {
-  lmDetenerEscaner();
-  lmIrScreen('lm-screen-home');
-}
-function lmIrBuscar() {
-  lmIrScreen('lm-screen-buscar');
-  setTimeout(function(){ document.getElementById('lm-txtBuscar').focus(); }, 150);
-}
-function lmIrEscaner() {
-  lmIrScreen('lm-screen-scan');
-  lmIniciarEscaner();
-}
+function lmHome(){ lmScreen('sc-home'); document.getElementById('hdr-title-txt').textContent='TRAZABILIDAD'; }
+function lmVolverHub(){ lmScreen('sc-hub'); document.getElementById('hdr-title-txt').textContent=_curLote||'TRAZABILIDAD'; }
 
-// ══════════════════════════════════════════════════
-// BÚSQUEDA
-// ══════════════════════════════════════════════════
-function lmBuscar() {
-  var q = document.getElementById('lm-txtBuscar').value.trim();
+// ══ BÚSQUEDA ══
+function lmBuscar(){
+  var q = document.getElementById('lm-txt').value.trim();
   if (!q) return;
-  lmShowLoader('BUSCANDO...');
+  lmLoad('BUSCANDO...');
   google.script.run
-    .withSuccessHandler(function(r) {
-      lmHideLoader();
-      var data = typeof r === 'string' ? JSON.parse(r) : r;
-      if (!data.success) { lmSetResultados('<div class="lm-empty"><div class="lm-empty-icon">⚠️</div>' + data.msg + '</div>'); return; }
-      lmRenderResultados(data.lotes || []);
+    .withSuccessHandler(function(r){
+      lmUnload();
+      var d = typeof r==='string'?JSON.parse(r):r;
+      if (!d.success){ lmSetRes('<div class="empty"><span class="empty-ico">⚠️</span><p>'+d.msg+'</p></div>',q); return; }
+      lmRenderRes(d.lotes||[], q);
     })
-    .withFailureHandler(function(e) {
-      lmHideLoader();
-      lmSetResultados('<div class="lm-empty"><div class="lm-empty-icon">⚠️</div>Error: ' + (e.message||e) + '</div>');
-    })
+    .withFailureHandler(function(e){ lmUnload(); lmSetRes('<div class="empty"><span class="empty-ico">⚠️</span><p>Error: '+(e.message||e)+'</p></div>',q); })
     .lmBuscarLote(q);
 }
-function lmSetResultados(html) { document.getElementById('lm-resultados').innerHTML = html; }
-function lmRenderResultados(lotes) {
-  if (!lotes.length) { lmSetResultados('<div class="lm-empty"><div class="lm-empty-icon">📭</div>No se encontraron resultados</div>'); return; }
-  var html = '';
-  lotes.forEach(function(l) {
-    var ec = l.estado.toUpperCase().includes('TERMIN') ? 'lm-chip-green'
-           : l.estado.toUpperCase().includes('IMPR')   ? 'lm-chip-blue'
-           : 'lm-chip-orange';
-    html += '<div class="lm-result-item" onclick="lmCargarDashboard(\'' + l.lote.replace(/'/g,"\\'") + '\')">';
-    html += '<div class="lm-result-lote">' + l.lote + '</div>';
-    html += '<div class="lm-result-desc">' + (l.descripcion || l.codigo || '—') + '</div>';
-    html += '<div class="lm-result-meta">';
-    html += '<span class="lm-chip ' + ec + '">' + l.estado + '</span>';
-    if (l.pedido)  html += '<span class="lm-chip lm-chip-gray">📋 ' + l.pedido + '</span>';
-    if (l.proceso) html += '<span class="lm-chip lm-chip-gray">⚙️ ' + l.proceso + '</span>';
-    if (l.fecha)   html += '<span class="lm-chip lm-chip-gray">📅 ' + l.fecha + '</span>';
-    html += '</div></div>';
+function lmSetRes(h, q){
+  document.getElementById('lm-res-wrap').style.display='block';
+  document.getElementById('lm-res-title').textContent = q ? 'Resultados para "'+q+'"' : '';
+  document.getElementById('lm-res').innerHTML = h;
+}
+function lmRenderRes(lotes, q){
+  if (!lotes.length){ lmSetRes('<div class="empty"><span class="empty-ico">📭</span><p>Sin resultados</p></div>', q); return; }
+  var h='';
+  lotes.forEach(function(l){
+    var ec=l.estado.toUpperCase().includes('TERMIN')?'chip-g':l.estado.toUpperCase().includes('IMPR')?'chip-b':'chip-o';
+    h+='<div class="res-card" onclick="lmAbrirHub(\''+l.lote.replace(/'/g,"\\'")+'\')">'+
+       '<div class="res-lote">'+l.lote+'</div>'+
+       '<div class="res-desc">'+(l.descripcion||l.codigo||'—')+'</div>'+
+       '<div class="res-meta"><span class="chip '+ec+'">'+l.estado+'</span>'+
+       (l.pedido?'<span class="chip chip-x">📋 '+l.pedido+'</span>':'')+
+       (l.proceso?'<span class="chip chip-x">⚙️ '+l.proceso+'</span>':'')+
+       '</div></div>';
   });
-  lmSetResultados(html);
+  lmSetRes(h, q);
 }
 
-// ══════════════════════════════════════════════════
-// ESCÁNER — usa BarcodeDetector nativo (Chrome Android)
-// Si no soportado → fallback input file (foto)
-// ══════════════════════════════════════════════════
-function lmIniciarEscaner() {
-  document.getElementById('lm-scanError').style.display = 'none';
-  // Verificar soporte de BarcodeDetector
-  if (typeof BarcodeDetector === 'undefined') {
-    lmMostrarFallbackEscaner();
-    return;
-  }
-  BarcodeDetector.getSupportedFormats().then(function(formats) {
-    if (formats.indexOf('qr_code') < 0) { lmMostrarFallbackEscaner(); return; }
-    lm_barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(function(stream) {
-        lm_scanStream = stream;
-        var video = document.getElementById('lm-scanVideo');
-        video.srcObject = stream;
-        video.play();
-        video.onloadedmetadata = function() { lmScanLoop(); };
-      })
-      .catch(function(err) {
-        var el = document.getElementById('lm-scanError');
-        el.style.display = 'block';
-        el.textContent = 'No se pudo acceder a la cámara: ' + (err.message || err);
-        lmMostrarFallbackEscaner();
-      });
-  }).catch(function() { lmMostrarFallbackEscaner(); });
-}
+// ══ HUB ══
+function lmAbrirHub(lote){
+  _curLote  = lote;
+  _cache    = null;
+  _cacheOk  = false;
 
-function lmScanLoop() {
-  if (!lm_scanStream || !lm_barcodeDetector) return;
-  var video = document.getElementById('lm-scanVideo');
-  if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-    lm_scanAnimId = requestAnimationFrame(lmScanLoop); return;
-  }
-  lm_barcodeDetector.detect(video).then(function(codes) {
-    if (codes.length > 0) {
-      lmDetenerEscaner();
-      lmProcesarUrlQR(codes[0].rawValue);
-    } else {
-      lm_scanAnimId = requestAnimationFrame(lmScanLoop);
-    }
-  }).catch(function() {
-    lm_scanAnimId = requestAnimationFrame(lmScanLoop);
+  // Mostrar hub con datos básicos mientras carga el background
+  document.getElementById('hub-nom').textContent  = lote;
+  document.getElementById('hub-desc').textContent = 'Cargando información...';
+  document.getElementById('hub-meta').innerHTML   = '';
+  document.getElementById('hub-sol').textContent  = '—';
+  document.getElementById('hub-prod').textContent = '—';
+  document.getElementById('hub-pct').textContent  = '—';
+  document.getElementById('hdr-title-txt').textContent = lote;
+
+  // Poner todos los botones en "cargando"
+  ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.classList.add('loading-btn');
+    el.classList.remove('ready');
   });
-}
+  document.getElementById('hub-strip').classList.remove('hidden');
 
-function lmMostrarFallbackEscaner() {
-  // Ocultar video, mostrar opción de foto
-  document.getElementById('lm-scanContainer').style.display = 'none';
-  var err = document.getElementById('lm-scanError');
-  err.style.display = 'block';
-  err.innerHTML = '⚠️ Tu navegador no soporta escaneo en tiempo real.<br>Toma una foto del código QR:';
-  // Agregar botón de foto si no existe
-  if (!document.getElementById('lm-btnFoto')) {
-    var btn = document.createElement('button');
-    btn.id = 'lm-btnFoto';
-    btn.className = 'lm-btn-primary';
-    btn.textContent = '📸 Tomar foto del QR';
-    btn.onclick = function(){ document.getElementById('lm-fileInput').click(); };
-    err.after(btn);
-  }
-}
+  lmScreen('sc-hub');
 
-function lmScanDesdeArchivo(input) {
-  if (!input.files || !input.files[0]) return;
-  var file = input.files[0];
-  if (typeof BarcodeDetector === 'undefined') {
-    alert('Tu navegador no soporta lectura de QR. Usa la búsqueda manual.');
-    lmIrBuscar(); return;
-  }
-  lmShowLoader('LEYENDO QR...');
-  var img = new Image();
-  img.onload = function() {
-    lm_scanCanvas.width  = img.width;
-    lm_scanCanvas.height = img.height;
-    lm_scanCtx.drawImage(img, 0, 0);
-    new BarcodeDetector({ formats: ['qr_code'] }).detect(img)
-      .then(function(codes) {
-        lmHideLoader();
-        if (codes.length > 0) {
-          lmProcesarUrlQR(codes[0].rawValue);
-        } else {
-          alert('No se detectó ningún código QR en la imagen.');
-        }
-      })
-      .catch(function(e) { lmHideLoader(); alert('Error al leer QR: ' + e.message); });
-  };
-  img.src = URL.createObjectURL(file);
-}
-
-function lmDetenerEscaner() {
-  if (lm_scanAnimId) { cancelAnimationFrame(lm_scanAnimId); lm_scanAnimId = null; }
-  if (lm_scanStream) { lm_scanStream.getTracks().forEach(function(t){ t.stop(); }); lm_scanStream = null; }
-  lm_barcodeDetector = null;
-  document.getElementById('lm-scanContainer').style.display = '';
-}
-
-function lmProcesarUrlQR(texto) {
-  var lote = '';
-  try {
-    var url = new URL(texto);
-    lote = url.searchParams.get('lote') || '';
-  } catch(e) { lote = texto.trim(); }
-  if (lote) {
-    lmCargarDashboard(lote);
-  } else {
-    lmIrHome();
-    setTimeout(function(){ alert('No se reconoció el QR:\n' + texto); }, 300);
-  }
-}
-
-// ══════════════════════════════════════════════════
-// DASHBOARD
-// ══════════════════════════════════════════════════
-function lmCargarDashboard(lote) {
-  lmDetenerEscaner();
-  lmShowLoader('CARGANDO LOTE...');
+  // Cargar en background
   google.script.run
-    .withSuccessHandler(function(r) {
-      lmHideLoader();
-      var data = typeof r === 'string' ? JSON.parse(r) : r;
-      if (!data.success) {
-        lmIrBuscar();
-        setTimeout(function(){ alert('Lote no encontrado: ' + lote); }, 300);
-        return;
-      }
-      lmRenderDashboard(data);
-      lmIrScreen('lm-screen-dash');
+    .withSuccessHandler(function(r){
+      var d = typeof r==='string'?JSON.parse(r):r;
+      if (!d.success){ return; }
+      _cache   = d;
+      _cacheOk = true;
+      lmRenderHubKpis(d);
+      // Quitar loading de botones
+      ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta'].forEach(function(id){
+        var el = document.getElementById(id);
+        el.classList.remove('loading-btn');
+        el.classList.add('ready');
+      });
+      document.getElementById('hub-strip').classList.add('hidden');
     })
-    .withFailureHandler(function(e) {
-      lmHideLoader();
-      alert('Error: ' + (e.message || e));
+    .withFailureHandler(function(e){
+      document.getElementById('hub-strip').classList.add('hidden');
     })
-    .lmObtenerDetalleLote(lote);
+    .lmObtenerHubLote(lote);
 }
 
-function lmRenderDashboard(data) {
-  var l = data.lote, ord = data.orden || {};
-  var ruta = data.rutaFabricacion || [];
-  var regs = data.registrosProd || [];
-  var hermanos = data.lotesHermanos || [];
-  var pct = l.solicitado > 0 ? Math.min(100, (l.producido/l.solicitado)*100) : 0;
-  var pctColor = pct>=100?'var(--green)':pct>=50?'var(--orange)':'var(--red)';
-  var html = '';
+function lmRenderHubKpis(d){
+  var l   = d.lote;
+  var ord = d.orden || {};
+  document.getElementById('hub-nom').textContent  = l.nombre;
+  document.getElementById('hub-desc').textContent = ord.descripcion || ord.codigo || '—';
+  var pct = l.solicitado>0 ? Math.min(100,(l.producido/l.solicitado)*100) : 0;
+  var pc  = pct>=100?'var(--green)':pct>=50?'var(--orange)':'var(--red)';
+  document.getElementById('hub-sol').textContent  = lmFmt(l.solicitado);
+  document.getElementById('hub-prod').style.color = pc;
+  document.getElementById('hub-prod').textContent = lmFmt(l.producido);
+  document.getElementById('hub-pct').textContent  = Math.round(pct)+'%';
 
-  // Hero
-  html += '<div class="lm-dash-hero">';
-  html += '<div class="lm-dash-lote">' + l.nombre + '</div>';
-  html += '<div class="lm-dash-desc">' + (ord.descripcion||ord.codigo||'—') + '</div>';
-  html += '<div class="lm-dash-meta">' + lmChipEst(l.estado);
-  if (ord.pedido)  html += '<span class="lm-chip lm-chip-blue">📋 ' + ord.pedido + '</span>';
-  if (ord.proceso) html += '<span class="lm-chip lm-chip-gray">⚙️ ' + ord.proceso + '</span>';
-  if (l.fecha)     html += '<span class="lm-chip lm-chip-gray">📅 ' + l.fecha + '</span>';
-  html += '</div></div>';
+  var meta = '';
+  meta += lmChipEst(l.estado);
+  if (ord.pedido)  meta += '<span class="chip chip-b">📋 '+ord.pedido+'</span>';
+  if (ord.proceso) meta += '<span class="chip chip-x">⚙️ '+ord.proceso+'</span>';
+  if (l.fecha)     meta += '<span class="chip chip-x">📅 '+l.fecha+'</span>';
+  document.getElementById('hub-meta').innerHTML = meta;
+}
 
-  // KPIs
-  html += '<div class="lm-kpi-row">';
-  html += '<div class="lm-kpi"><div class="lm-kpi-val" style="color:var(--accent)">' + lmFmt(l.solicitado) + '</div><div class="lm-kpi-lbl">Solicitado</div></div>';
-  html += '<div class="lm-kpi"><div class="lm-kpi-val" style="color:' + pctColor + '">' + lmFmt(l.producido) + '</div><div class="lm-kpi-lbl">Producido</div></div>';
-  html += '<div class="lm-kpi"><div class="lm-kpi-val" style="color:var(--yellow)">' + Math.round(pct) + '%</div><div class="lm-kpi-lbl">Avance</div></div>';
-  html += '</div>';
+// ══ SUBPANTALLAS ══
 
-  // Info producto
-  if (ord.codigo) {
-    html += '<div class="lm-section"><div class="lm-section-hdr">📦 INFORMACIÓN DEL PRODUCTO</div><div class="lm-section-body"><div class="lm-info-grid">';
-    [['Código',ord.codigo],['Pedido',ord.pedido],['Máquina',ord.maquina],['Tipo',ord.tipo],
-     ['Diámetro',ord.diametro],['Longitud',ord.longitud],['Acero',ord.acero],['Serie/Orden',(ord.serie||'')+'.'+(ord.orden||'')]
-    ].forEach(function(c){
-      if (!c[1]) return;
-      html += '<div class="lm-info-item"><div class="lm-info-lbl">'+c[0]+'</div><div class="lm-info-val">'+c[1]+'</div></div>';
+// — Trazabilidad —
+function lmSubTrazabilidad(){
+  if (!_cacheOk){ lmLoad('CARGANDO...'); setTimeout(lmSubTrazabilidad, 400); return; }
+  lmUnload();
+  var d    = _cache;
+  var ord  = d.orden||{};
+  document.getElementById('traz-sub').textContent = (ord.descripcion||'') + ' — Pedido: '+(ord.pedido||'—');
+
+  var CERR = ['TERMINADO','SOBREPRODUCCION','CANCELADO'];
+  var ruta = d.rutaCompleta||[];
+  var regs = d.registrosProd||[];
+  var hers = d.lotesHermanos||[];
+  var h = '';
+
+  // Info del producto
+  h += '<div class="sec"><div class="sec-hdr">📦 PRODUCTO</div><div class="sec-body"><div class="info-grid">';
+  [['Código',ord.codigo],['Pedido',ord.pedido],['Tipo',ord.tipo],['Diámetro',ord.diametro],
+   ['Longitud',ord.longitud],['Acero',ord.acero],['Máquina',ord.maquina||''],['Serie/Orden',(ord.serie||'')+'.'+(ord.orden||'')]
+  ].forEach(function(c){ if(c[1]) h+='<div><div class="info-lbl">'+c[0]+'</div><div class="info-val">'+c[1]+'</div></div>'; });
+  h += '</div></div></div>';
+
+  // Ruta completa
+  if (ruta.length){
+    h += '<div class="sec"><div class="sec-hdr">🗺️ RUTA DE FABRICACIÓN</div><div class="sec-body"><div class="ruta">';
+    ruta.forEach(function(p){
+      var eu  = String(p.estado||'').toUpperCase();
+      var dc  = CERR.indexOf(eu)>=0?'ok':eu==='EN_PROCESO'||eu==='ABIERTO'||eu==='EN PROCESO'?'wip':'';
+      var ic  = dc==='ok'?'✅':dc==='wip'?'⚙️':'⏳';
+      var pp  = p.solicitado>0?Math.min(100,(p.producido/p.solicitado)*100):0;
+      var fc  = dc==='ok'?'var(--green)':dc==='wip'?'var(--orange)':'var(--border)';
+      h += '<div class="ruta-paso"><div class="ruta-dot '+dc+'">'+ic+'</div>'+
+           '<div class="ruta-info"><div class="ruta-proc">'+p.proceso+'</div>'+
+           (p.maquina?'<div class="ruta-maq">🔧 '+p.maquina+'</div>':'')+
+           '<div class="ruta-bar"><div class="ruta-fill" style="width:'+pp+'%;background:'+fc+'"></div></div>'+
+           '<div class="ruta-nums">'+lmFmt(p.producido)+' / '+lmFmt(p.solicitado)+' — '+p.estado+'</div>'+
+           '</div></div>';
     });
-    html += '</div></div></div>';
+    h += '</div></div></div>';
   }
 
-  // Ruta
-  if (ruta.length) {
-    html += '<div class="lm-section"><div class="lm-section-hdr">🗺️ RUTA DE FABRICACIÓN</div><div class="lm-section-body"><div class="lm-ruta">';
-    var cerrados = ['TERMINADO','SOBREPRODUCCION','CANCELADO'];
-    ruta.forEach(function(paso) {
-      var eu = String(paso.estado||'').toUpperCase();
-      var dc = cerrados.indexOf(eu)>=0?'terminado':eu==='EN_PROCESO'||eu==='ABIERTO'?'en-proceso':'pendiente';
-      var ic = dc==='terminado'?'✅':dc==='en-proceso'?'⚙️':'⏳';
-      var pp = paso.solicitado>0?Math.min(100,(paso.producido/paso.solicitado)*100):0;
-      var pc = dc==='terminado'?'var(--green)':dc==='en-proceso'?'var(--orange)':'var(--border)';
-      html += '<div class="lm-ruta-paso">';
-      html += '<div class="lm-ruta-dot '+dc+'">'+ic+'</div>';
-      html += '<div class="lm-ruta-info">';
-      html += '<div class="lm-ruta-proceso">'+paso.proceso+'</div>';
-      if (paso.maquina) html += '<div class="lm-ruta-maq">🔧 '+paso.maquina+'</div>';
-      html += '<div class="lm-ruta-prog"><div class="lm-ruta-prog-fill" style="width:'+pp+'%;background:'+pc+'"></div></div>';
-      html += '<div class="lm-ruta-nums">'+lmFmt(paso.producido)+' / '+lmFmt(paso.solicitado)+' — '+paso.estado+'</div>';
-      html += '</div></div>';
-    });
-    html += '</div></div></div>';
-  }
-
-  // Registros
-  if (regs.length) {
-    html += '<div class="lm-section"><div class="lm-section-hdr">📋 REGISTROS DE PRODUCCIÓN ('+regs.length+')</div><div class="lm-section-body">';
+  // Registros de producción
+  if (regs.length){
+    h += '<div class="sec"><div class="sec-hdr">📋 REGISTROS DE ESTE LOTE ('+regs.length+')</div><div class="sec-body">';
     regs.forEach(function(r){
-      html += '<div class="lm-reg-row">';
-      html += '<span class="lm-reg-fecha">'+r.fecha+'</span>';
-      html += '<span class="lm-reg-proceso">'+r.proceso+'</span>';
-      if (r.maquina) html += '<span style="font-size:11px;color:var(--text2)">'+r.maquina+'</span>';
-      html += '<span class="lm-reg-prod">+'+lmFmt(r.producido)+'</span>';
-      html += '</div>';
+      h += '<div class="reg-row">'+
+           '<span class="reg-fecha">'+r.fecha+'</span>'+
+           '<span class="reg-proc">'+r.maquina+'</span>'+
+           (r.operador?'<span style="font-size:12px;color:var(--text2)">'+r.operador+'</span>':'')+
+           '<span class="reg-prod">+'+lmFmt(r.producido)+'</span></div>';
     });
-    html += '</div></div>';
+    h += '</div></div>';
   }
 
-  // Hermanos
-  if (hermanos.length > 1) {
-    html += '<div class="lm-section"><div class="lm-section-hdr">🔗 LOTES DE ESTA ORDEN ('+hermanos.length+')</div><div class="lm-section-body"><div class="lm-hermanos">';
-    hermanos.forEach(function(h){
-      html += '<div class="lm-hermano-chip'+(h.esteEsActual?' actual':'')+'" onclick="lmCargarDashboard(\''+h.lote.replace(/'/g,"\\'")+'\')">'+h.lote+'</div>';
+  // Lotes hermanos
+  if (hers.length>1){
+    h += '<div class="sec"><div class="sec-hdr">🔗 LOTES DE ESTA ORDEN ('+hers.length+')</div><div class="sec-body"><div class="hermanos">';
+    hers.forEach(function(x){
+      h += '<div class="herm'+(x.esEsteActual?' yo':'')+'" onclick="lmAbrirHub(\''+x.lote.replace(/'/g,"\\'")+'\')">'+x.lote+'</div>';
     });
-    html += '</div></div></div>';
+    h += '</div></div></div>';
   }
 
-  html += '<div style="height:28px;"></div>';
-  document.getElementById('lm-dash-content').innerHTML = html;
+  document.getElementById('traz-content').innerHTML = h;
+  lmScreen('sc-traz');
+  document.getElementById('hdr-title-txt').textContent = 'Trazabilidad';
 }
 
-// ══════════════════════════════════════════════════
-// INICIO
-// ══════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', function() {
-  if (LM_LOTE_PARAM) { lmCargarDashboard(LM_LOTE_PARAM); }
+// — Calidad —
+function lmSubCalidad(){
+  if (!_cacheOk){ lmLoad('CARGANDO...'); setTimeout(lmSubCalidad, 400); return; }
+  lmUnload();
+  var cal = _cache.lote.calidad||{};
+  document.getElementById('cal-sub').textContent = _curLote;
+
+  var opcDisp = ['','ACEPTADO','LIBERADO','RECHAZADO','REPROCESO','EN ESPERA','SCRAP'];
+  var opcCal  = ['','APROBADO','RECHAZADO','CONDICIONAL'];
+
+  var h = '<div class="cal-form">';
+  h += '<div class="cal-field"><label>Resultado Calidad</label>'+
+       '<select id="cal-calidad">'+opcCal.map(function(o){ return '<option value="'+o+'"'+(cal.calidad===o?' selected':'')+'>'+o+'</option>'; }).join('')+'</select></div>';
+  h += '<div class="cal-field"><label>Disposición</label>'+
+       '<select id="cal-disposicion">'+opcDisp.map(function(o){ return '<option value="'+o+'"'+(cal.disposicion===o?' selected':'')+'>'+o+'</option>'; }).join('')+'</select></div>';
+  h += '<div class="cal-row2">'+
+       '<div class="cal-field"><label>Recuperado (kg)</label><input type="number" id="cal-recuperado" value="'+(cal.recuperado||0)+'" min="0" step="0.1"></div>'+
+       '<div class="cal-field"><label>Scrap (kg)</label><input type="number" id="cal-scrap" value="'+(cal.scrap||0)+'" min="0" step="0.1"></div>'+
+       '</div>';
+  h += '<div class="cal-field"><label>Boletín</label><input type="text" id="cal-boletin" value="'+(cal.boletin||'')+'" placeholder="Núm. boletín"></div>';
+  h += '<div class="cal-field"><label>Estado Calidad</label><input type="text" id="cal-estadocal" value="'+(cal.estadoCal||'')+'" placeholder="Ej: EN ESPERA"></div>';
+  h += '<button class="cal-save" id="cal-save-btn" onclick="lmGuardarCalidad()">💾 GUARDAR CALIDAD</button>';
+  h += '</div>';
+
+  document.getElementById('cal-content').innerHTML = h;
+  lmScreen('sc-cal');
+  document.getElementById('hdr-title-txt').textContent = 'Calidad';
+}
+
+function lmGuardarCalidad(){
+  var datos = {
+    calidad:     document.getElementById('cal-calidad').value,
+    recuperado:  parseFloat(document.getElementById('cal-recuperado').value)||0,
+    boletin:     document.getElementById('cal-boletin').value,
+    disposicion: document.getElementById('cal-disposicion').value,
+    scrap:       parseFloat(document.getElementById('cal-scrap').value)||0,
+    estadoCal:   document.getElementById('cal-estadocal').value
+  };
+  var btn = document.getElementById('cal-save-btn');
+  btn.textContent = '⏳ Guardando...';
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function(r){
+      var d = typeof r==='string'?JSON.parse(r):r;
+      btn.disabled = false;
+      if (d.success){
+        btn.textContent = '✅ GUARDADO';
+        btn.classList.add('cal-saved');
+        if (_cache) _cache.lote.calidad = datos;
+        setTimeout(function(){ btn.textContent='💾 GUARDAR CALIDAD'; btn.classList.remove('cal-saved'); }, 2500);
+      } else {
+        btn.textContent = '❌ ERROR: '+d.msg;
+      }
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='❌ '+(e.message||e); })
+    .lmGuardarCalidadLote(_curLote, datos);
+}
+
+// — Etiqueta —
+function lmSubEtiqueta(){
+  if (!_cacheOk){ lmLoad('CARGANDO...'); setTimeout(lmSubEtiqueta, 400); return; }
+  lmUnload();
+  var lote  = _cache.lote;
+  var baseUrl = _cache.baseUrl||'';
+  document.getElementById('etq-sub').textContent = _curLote;
+
+  // Calcular rango default: consecutivo, consec+1, consec+2
+  var cons   = lote.consecutivo || 1;
+  var defIni = cons;
+  var defFin = cons + 2;
+
+  var h = '';
+  h += '<div class="tipo-btn">'+
+       '<div class="tipo-opt sel" id="tipo-opt-1" onclick="lmSelTipo(1)">Tipo 1</div>'+
+       '<div class="tipo-opt" id="tipo-opt-2" onclick="lmSelTipo(2)">Tipo 2</div>'+
+       '</div>';
+  h += '<div style="font-size:14px;color:var(--text2);margin-bottom:10px;">Rango de lotes a imprimir:</div>';
+  h += '<div class="rango-row">'+
+       '<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;font-weight:800;">Desde</div>'+
+       '<input type="number" id="etq-ini" value="'+defIni+'" min="1"></div>'+
+       '<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;font-weight:800;">Hasta</div>'+
+       '<input type="number" id="etq-fin" value="'+defFin+'" min="1"></div>'+
+       '</div>';
+  h += '<button class="btn-abrir" onclick="lmAbrirEtiqueta(\''+baseUrl.replace(/'/g,"\\'")+'\',\''+lote.idOrden+'\')">🖨️ ABRIR ETIQUETAS</button>';
+
+  document.getElementById('etq-content').innerHTML = h;
+  _tipoEtq = 1;
+  lmScreen('sc-etq');
+  document.getElementById('hdr-title-txt').textContent = 'Etiqueta';
+}
+
+function lmSelTipo(t){
+  _tipoEtq = t;
+  document.getElementById('tipo-opt-1').className = 'tipo-opt'+(t===1?' sel':'');
+  document.getElementById('tipo-opt-2').className = 'tipo-opt'+(t===2?' sel':'');
+}
+
+function lmAbrirEtiqueta(baseUrl, idOrden){
+  var ini  = parseInt(document.getElementById('etq-ini').value)||1;
+  var fin  = parseInt(document.getElementById('etq-fin').value)||1;
+  var tipo = _tipoEtq===2?'ETIQUETA_2':'ETIQUETA';
+  var url  = baseUrl+'?tipo='+tipo+'&idOrden='+encodeURIComponent(idOrden)+'&inicio='+ini+'&fin='+fin;
+  window.open(url,'_blank');
+}
+
+// — Reporte Producción —
+function lmSubReporte(){
+  if (!_cacheOk){ lmLoad('CARGANDO...'); setTimeout(lmSubReporte, 400); return; }
+  lmUnload();
+  var lote    = _cache.lote;
+  var baseUrl = _cache.baseUrl||'';
+  document.getElementById('rep-sub').textContent = _curLote;
+
+  var cons   = lote.consecutivo || 1;
+  var defIni = cons;
+  var defFin = cons + 2;
+
+  var h = '';
+  h += '<div style="font-size:14px;color:var(--text2);margin-bottom:10px;">Rango de lotes para el reporte:</div>';
+  h += '<div class="rango-row">'+
+       '<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;font-weight:800;">Desde</div>'+
+       '<input type="number" id="rep-ini" value="'+defIni+'" min="1"></div>'+
+       '<div><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;font-weight:800;">Hasta</div>'+
+       '<input type="number" id="rep-fin" value="'+defFin+'" min="1"></div>'+
+       '</div>';
+  h += '<button class="btn-abrir" onclick="lmAbrirReporte(\''+baseUrl.replace(/'/g,"\\'")+'\',\''+lote.idOrden+'\')">📄 ABRIR REPORTE</button>';
+
+  document.getElementById('rep-content').innerHTML = h;
+  lmScreen('sc-rep');
+  document.getElementById('hdr-title-txt').textContent = 'Reporte';
+}
+
+function lmAbrirReporte(baseUrl, idOrden){
+  var ini = parseInt(document.getElementById('rep-ini').value)||1;
+  var fin = parseInt(document.getElementById('rep-fin').value)||1;
+  var url = baseUrl+'?tipo=REPORTE_SOLO&idOrden='+encodeURIComponent(idOrden)+'&inicio='+ini+'&fin='+fin;
+  window.open(url,'_blank');
+}
+
+// — Ruta resumida —
+function lmSubRuta(){
+  if (!_cacheOk){ lmLoad('CARGANDO...'); setTimeout(lmSubRuta, 400); return; }
+  lmUnload();
+  var ruta = _cache.rutaCompleta||[];
+  document.getElementById('ruta-sub').textContent = _curLote;
+
+  var CERR = ['TERMINADO','SOBREPRODUCCION','CANCELADO'];
+  var h = '<div class="ruta">';
+  ruta.forEach(function(p, idx){
+    var eu   = String(p.estado||'').toUpperCase();
+    var ok   = CERR.indexOf(eu)>=0;
+    var wip  = !ok && (eu==='EN_PROCESO'||eu==='ABIERTO'||eu==='EN PROCESO');
+    var dc   = ok?'ok':wip?'wip':'';
+    var ic   = ok?'✅':wip?'⚙️':'⏳';
+    var etq  = ok?'COMPLETADO':wip?'EN PROCESO':'PENDIENTE';
+    var clr  = ok?'var(--green)':wip?'var(--orange)':'var(--text2)';
+    var pp   = p.solicitado>0?Math.min(100,(p.producido/p.solicitado)*100):0;
+    var fc   = ok?'var(--green)':wip?'var(--orange)':'var(--border)';
+    h += '<div class="ruta-paso">'+
+         '<div class="ruta-dot '+dc+'">'+ic+'</div>'+
+         '<div class="ruta-info">'+
+         '<div class="ruta-proc" style="color:'+clr+'">'+p.proceso+'</div>'+
+         (p.maquina?'<div class="ruta-maq">🔧 '+p.maquina+'</div>':'')+
+         '<div style="font-size:12px;color:'+clr+';font-weight:800;margin-top:4px;">'+etq+'</div>'+
+         '<div class="ruta-bar"><div class="ruta-fill" style="width:'+pp+'%;background:'+fc+'"></div></div>'+
+         '<div class="ruta-nums">'+lmFmt(p.producido)+' / '+lmFmt(p.solicitado)+'</div>'+
+         '</div></div>';
+  });
+  h += '</div>';
+
+  document.getElementById('ruta-content').innerHTML = h;
+  lmScreen('sc-ruta');
+  document.getElementById('hdr-title-txt').textContent = 'Ruta';
+}
+
+// ══ INICIO ══
+window.addEventListener('DOMContentLoaded', function(){
+  if (LM_PARAM){ lmAbrirHub(LM_PARAM); }
 });
 </script>
 </body>

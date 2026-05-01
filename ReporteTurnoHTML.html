@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      @media print {
+        @page { size: letter landscape; margin: 12mm 5mm; }
+        body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .no-print { display: none; }
+        .maq-box { page-break-inside: avoid; }
+        tr { page-break-inside: avoid; }
+        .page-break { page-break-before: always; }
+      }
+      body { font-family: 'Arial', sans-serif; font-size: 11px; padding: 0; box-sizing: border-box; width: 100%; }
+      .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid black; padding-bottom: 5px; margin-bottom: 15px; }
+      .logo-img { height: 50px; }
+      .title { font-size: 24px; font-weight: 900; text-transform: uppercase; }
+      .info-box { display: flex; gap: 20px; align-items: center; }
+      .box-label { font-weight: bold; font-size: 12px; margin-right: 5px; }
+      .box-input-date { border: 1px solid black; width: 160px; height: 28px; }
+      .turnos-wrapper { display: flex; gap: 0; border: 1px solid black; }
+      .turn-box { width: 30px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; border-right: 1px solid black; }
+      .turn-box:last-child { border-right: none; }
+      .maq-box { margin-bottom: 15px; border: 1px solid black; }
+      .maq-head { background-color: #ffeb3b !important; color: black; padding: 4px; font-weight: 900; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid black; }
+      table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; }
+      th { border: 1px solid black; padding: 3px; background: #fff; font-size: 9px; font-weight: 900; white-space: nowrap; overflow: hidden; }
+      td { border: 1px solid black; padding: 2px; vertical-align: middle; height: 28px; font-size: 10px; overflow: hidden; }
+      .col-ord { width: 6%; font-size: 13px !important; font-weight: 900; white-space: nowrap; }
+      .col-dia { width: 6%; font-size: 13px !important; font-weight: 900; }
+      .col-long { width: 6%; font-size: 12px !important; font-weight: 900; }
+      .col-prod { width: 12%; font-size: 10px; font-weight: 900; line-height: 1.1; }
+      .col-det  { width: 10%; font-size: 9px; font-weight: 900; line-height: 1.1; }
+      .col-sae  { width: 5%; font-size: 10px; font-weight: 900; }
+      .col-num  { width: 6.5%; }
+      .num-blue { color: #0000ff; font-weight: 900; font-size: 13px; }
+      .num-red  { color: #d32f2f; font-weight: 900; font-size: 13px; }
+      .col-bar { width: 5%; }
+      .bar-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+      .bar-text { font-size: 9px; font-weight: 900; color: black; line-height: 1; margin-bottom: 2px; }
+      .bar-track { width: 90%; height: 6px; background: #e0e0e0; border: 1px solid #777; }
+      .bar-fill { height: 100%; background: #2196f3; }
+      .bg-gray { background-color: #f5f5f5 !important; color: #555; font-style: italic; font-size: 8px; width: 4%; }
+      .col-input { border-left: 2px solid black !important; width: 5%; background: white; }
+      .col-input-border { border-left: 1px solid black !important; width: 5%; background: white; }
+      .col-end { border-right: 2px solid black !important; }
+    </style>
+  </head>
+  <body>
+    <div class="no-print" style="position:fixed;top:10px;right:10px;">
+      <button onclick="window.print()" style="padding:10px 20px;background:#1976d2;color:white;font-weight:bold;cursor:pointer;">🖨️ IMPRIMIR</button>
+    </div>
+    <div class="header-container">
+      <div style="display:flex;align-items:center;gap:15px;">
+        <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" class="logo-img">
+        <div class="title">REPORTE PRODUCCIÓN <?= proceso ?></div>
+      </div>
+      <div class="info-box">
+        <div><span class="box-label">FECHA:</span></div>
+        <div class="box-input-date"></div>
+        <div><span class="box-label">TURNO:</span></div>
+        <div class="turnos-wrapper"><div class="turn-box">1°</div><div class="turn-box">2°</div><div class="turn-box">3°</div></div>
+      </div>
+    </div>
+
+    <? if (!datos || datos.length === 0) { ?>
+      <div style="padding:20px;text-align:center;">No hay órdenes vivas para <?= proceso ?>.</div>
+    <? } ?>
+
+    <? for (var i = 0; i < datos.length; i++) { ?>
+      <? var m = datos[i]; ?>
+      <? if (m.ordenes.length > 0) { ?>
+        <div class="maq-box">
+          <div class="maq-head">MAQUINA: <?= m.nombre ?></div>
+          <table>
+            <thead>
+              <tr>
+                <th class="col-ord">Orden</th>
+                <th class="col-prod">Producto</th>
+                <th class="col-dia">Ø</th>
+                <th class="col-long">Long</th>
+                <th class="col-det">Detalle</th>
+                <th class="col-sae">SAE</th>
+                <th class="col-num">Solic</th>
+                <th class="col-num">Prod</th>
+                <th class="col-bar">Avance</th>
+                <th class="col-num">Restan</th>
+                <th class="bg-gray">Ult.<br>Lote</th>
+                <th class="bg-gray">P.<br>Ini</th>
+                <th class="bg-gray">P.<br>Fin</th>
+                <th class="col-input">Peso<br>Final</th>
+                <th class="col-input-border">Peso<br>Inicial</th>
+                <th class="col-input-border">Peso<br>Tina</th>
+                <th class="col-input-border col-end">Peso<br>Neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <? for (var j = 0; j < m.ordenes.length; j++) { ?>
+                <? var o = m.ordenes[j]; ?>
+                <tr>
+                  <td class="col-ord"><?= o.ordenFull ?></td>
+                  <td class="col-prod"><?= o.producto ?></td>
+                  <td class="col-dia"><?= o.medidas.split(' x ')[0] ?></td>
+                  <td class="col-long"><?= o.medidas.split(' x ')[1] ?></td>
+                  <td class="col-det"><?= o.detalle ?></td>
+                  <td class="col-sae"><?= o.acero ?></td>
+                  <td class="num-blue"><?= Math.round(Number(o.sol)).toLocaleString('en-US') ?></td>
+                  <td class="num-blue"><?= Math.round(Number(o.prod)).toLocaleString('en-US') ?></td>
+                  <td class="col-bar">
+                    <div class="bar-wrapper">
+                      <div class="bar-text"><?= Math.round(o.avance) ?>%</div>
+                      <div class="bar-track"><div class="bar-fill" style="width:<?= Math.min(o.avance,100) ?>%"></div></div>
+                    </div>
+                  </td>
+                  <td class="num-red"><?= Math.round(Number(o.restan)).toLocaleString('en-US') ?></td>
+                  <td class="bg-gray"><?= o.ultimoLote ?></td>
+                  <td class="bg-gray"><?= Math.round(Number(o.ultimoPIni)) ?></td>
+                  <td class="bg-gray"><?= Math.round(Number(o.ultimoPFin)) ?></td>
+                  <td class="col-input"></td>
+                  <td class="col-input-border"></td>
+                  <td class="col-input-border"></td>
+                  <td class="col-input-border col-end"></td>
+                </tr>
+              <? } ?>
+            </tbody>
+          </table>
+        </div>
+      <? } ?>
+    <? } ?>
+  </body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      @media print {
+        @page { size: letter; margin: 0; }
+        body { margin: 0; padding: 0; }
+        .no-print { display: none !important; }
+        .page-break { page-break-after: always; height: 0; overflow: hidden; display: block; }
+      }
+      body { font-family: 'Arial', sans-serif; background-color: #eee; margin: 0; padding: 20px; }
+      .hoja { background: white; width: 216mm; height: 265mm; padding: 5mm 8mm; margin: 0 auto 10mm auto; box-sizing: border-box; display: block; overflow: hidden; }
+      .tercio { width: 100%; height: 88mm; box-sizing: border-box; padding: 5px 0; border-bottom: 1px dashed #ccc; position: relative; display: flex; flex-direction: column; justify-content: center; }
+      .tercio:last-child { border-bottom: none; }
+      .bloque-centrado { width: 100%; display: flex; flex-direction: column; justify-content: center; }
+      .rep-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; height: 45px; }
+      .rep-title-block { width: 35%; display: flex; align-items: center; gap: 10px; }
+      .rep-title { font-size: 14px; font-weight: 900; text-transform: uppercase; }
+      .rep-icon-mini { width: 40px; height: 40px; }
+      .rep-date-block { width: 25%; text-align: center; font-weight: bold; font-size: 11px; }
+      .rep-date-box { border: 1px solid black; width: 80px; height: 18px; display: inline-block; vertical-align: middle; margin-left: 5px; }
+      .rep-lote-block { width: 20%; text-align: center; font-size: 20px; font-weight: 900; }
+      .rep-qr-block { width: 20%; text-align: right; }
+      .rep-qr { width: 60px; height: 60px; }
+      .rep-info { font-size: 12px; font-weight: 900; margin-bottom: 5px; border-bottom: 2px solid #ccc; padding-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .rep-ops { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; font-size: 10px; }
+      .op-box { display: flex; align-items: center; border: 1px solid #999; padding: 2px; width: 45%; font-weight: bold; }
+      .check-sq { width: 12px; height: 12px; border: 1px solid black; margin-left: auto; }
+      table.rep-tbl { width: 100%; border-collapse: collapse; font-size: 10px; }
+      .rep-tbl th { border: 1px solid black; background: #eee; padding: 2px; font-weight: bold; }
+      .rep-tbl td { border: 1px solid black; height: 35px; text-align: center; padding: 0; vertical-align: middle; }
+      .turno-grid { display: flex; flex-direction: column; height: 100%; }
+      .t-cell { flex: 1; border-bottom: 1px solid black; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight: bold; }
+      .t-cell:last-child { border-bottom: none; }
+      .sello-grid { display: flex; height: 100%; width: 100%; }
+      .s-cell { flex: 1; border-right: 1px solid #ccc; }
+      .s-cell:last-child { border-right: none; }
+      .tm-head { display: flex; justify-content: flex-end; margin-bottom: 2px; }
+      .tm-lote { font-weight: 900; font-size: 16px; }
+      table.tm-tbl { width: 100%; border-collapse: collapse; font-size: 10px; }
+      .tm-tbl th { border: 1px solid black; background: #eee; text-align: center; font-weight: bold; padding: 3px; }
+      .tm-tbl td { border: 1px solid black; height: 22px; text-align: center; }
+      .col-abc { width: 25px; font-weight: bold; background: #f0f0f0; }
+      .col-desc { text-align: left; padding-left: 5px; width: 140px; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <div class="no-print" style="position:fixed;top:10px;right:10px;z-index:100;">
+      <button onclick="window.print()" style="padding:15px 30px;background:#1976d2;color:white;font-weight:bold;border:none;border-radius:5px;cursor:pointer;">🖨️ IMPRIMIR REPORTES</button>
+    </div>
+
+    <? for (var i = 0; i < lotes.length; i += 3) { ?>
+      <div class="hoja">
+        <? for (var j = i; j < i + 3 && j < lotes.length; j++) { ?>
+          <? var e = lotes[j]; ?>
+          <div class="tercio">
+            <div class="bloque-centrado">
+              <div class="rep-header">
+                <div class="rep-title-block">
+                  <div class="rep-icon-mini"><?!= e.iconoTipo ?></div>
+                  <div class="rep-title">REPORTE DE PRODUCCIÓN</div>
+                </div>
+                <div class="rep-date-block">Fecha: <div class="rep-date-box"></div></div>
+                <div class="rep-lote-block"><?= e.lote ?></div>
+                <div class="rep-qr-block"><img src="<?= e.qrUrl ?>" class="rep-qr"></div>
+              </div>
+              <div class="rep-info"><?= e.tipo ?> - <?= e.diametro ?> X <?= e.longitud ?> - <?= e.cuerda ?> - <?= e.cuerpo ?> - <?= e.acero ?></div>
+              <div class="rep-ops">
+                <? if (e.ruta) { for (var k=0; k<e.ruta.length; k++) { ?>
+                  <div class="op-box">
+                    <div style="flex:1"><div style="font-weight:900"><?= e.ruta[k].proceso ?></div><div style="color:#555;font-size:9px;"><?= e.ruta[k].maquina ?></div></div>
+                    <div class="check-sq"></div>
+                  </div>
+                <? } } ?>
+              </div>
+              <table class="rep-tbl">
+                <tr>
+                  <th style="width:6%">Turno</th><th style="width:24%">Operador</th>
+                  <th style="width:10%">P. Inicial</th><th style="width:10%">P. Final</th>
+                  <th style="width:10%">P. Tina</th><th style="width:10%">P. Neto</th>
+                  <th style="width:20%">Sello</th><th style="width:10%">Firma</th>
+                </tr>
+                <? for (var t=0; t<2; t++) { ?>
+                <tr>
+                  <td style="padding:0"><div class="turno-grid"><div class="t-cell">1°</div><div class="t-cell">2°</div><div class="t-cell">3°</div></div></td>
+                  <td></td><td></td><td></td><td></td><td></td>
+                  <td style="padding:0"><div class="sello-grid"><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div><div class="s-cell"></div></div></td>
+                  <td></td>
+                </tr>
+                <? } ?>
+              </table>
+            </div>
+          </div>
+        <? } ?>
+      </div>
+      <div class="page-break"></div>
+      <div class="hoja">
+        <? for (var j = i; j < i + 3 && j < lotes.length; j++) { ?>
+          <? var e = lotes[j]; ?>
+          <div class="tercio">
+            <div class="bloque-centrado">
+              <div class="tm-head"><div class="tm-lote"><?= e.lote ?></div></div>
+              <table class="tm-tbl">
+                <tr>
+                  <th style="width:20px"></th><th style="width:100px">CONCEPTO</th>
+                  <th>INICIO</th><th>FINAL</th><th>INICIO</th><th>FINAL</th><th>INICIO</th><th>FINAL</th>
+                  <th>TOTAL</th><th style="width:20px"></th>
+                </tr>
+                <?
+                  var conceptos = ["Ajustes (Oper)","Reajustes (Oper)","Sin Herram (Taller)","Herram NC (Taller)","Falla Elec (Mant)","Falla Mec (Mant)","Mat Prima NC","Falta Operador","Falta MP"];
+                  var letras = ["A","B","C","D","E","F","G","H","I"];
+                ?>
+                <? for (var r=0; r<conceptos.length; r++) { ?>
+                  <tr>
+                    <td class="col-abc"><?= letras[r] ?></td>
+                    <td class="col-desc"><?= conceptos[r] ?></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td class="col-abc"><?= letras[r] ?></td>
+                  </tr>
+                <? } ?>
+              </table>
+            </div>
+          </div>
+        <? } ?>
+      </div>
+      <div class="page-break"></div>
+    <? } ?>
+    <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 2000); }</script>
+  </body>
+</html>
