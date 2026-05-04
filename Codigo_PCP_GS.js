@@ -13628,22 +13628,33 @@ function pcp_obtenerDatosReporteTurno(procesoInput) {
 
 // ══════════════════════════════════════════════════════════════
 // LOTE MASTER — Hub completo de lote (UNA sola llamada, todo en caché)
+// VERSIÓN OPTIMIZADA: TextFinder + lectura acotada
 // ══════════════════════════════════════════════════════════════
 function lmObtenerHubLote(loteNombre) {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
-    var shLotes  = ss.getSheetByName('LOTES');
-    var shOrd    = ss.getSheetByName('ORDENES');
-    var shProd   = ss.getSheetByName('PRODUCCION');
-    var shRutas  = ss.getSheetByName('RUTAS');
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shLotes = ss.getSheetByName('LOTES');
+    var shOrd   = ss.getSheetByName('ORDENES');
+    var shProd  = ss.getSheetByName('PRODUCCION');
+    var shRutas = ss.getSheetByName('RUTAS');
     if (!shLotes) return JSON.stringify({ success: false, msg: 'Hoja LOTES no encontrada' });
 
-    var tz        = ss.getSpreadsheetTimeZone();
-    var loteNorm  = String(loteNombre || '').trim().toUpperCase();
+    var tz       = ss.getSpreadsheetTimeZone();
+    var loteNorm = String(loteNombre || '').trim().toUpperCase();
 
-    // ── 1. Fila del lote ──
-    var dataLotes = shLotes.getDataRange().getValues();
-    var hLotes    = dataLotes[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    // ── PASO 1: Encontrar fila del lote con TextFinder (sin leer toda la hoja) ──
+    var finder    = shLotes.createTextFinder(loteNorm).matchCase(false).matchEntireCell(true);
+    var celdaLote = finder.findNext();
+    if (!celdaLote) return JSON.stringify({ success: false, msg: 'Lote no encontrado: ' + loteNombre });
+
+    var filaLoteNum = celdaLote.getRow();
+    // Leer solo esa fila (todas las columnas)
+    var totalColsLotes = shLotes.getLastColumn();
+    var filaLoteData   = shLotes.getRange(filaLoteNum, 1, 1, totalColsLotes).getValues()[0];
+
+    // Mapear cabeceras de LOTES (solo fila 1)
+    var hLotes = shLotes.getRange(1, 1, 1, totalColsLotes).getValues()[0]
+                   .map(function(h){ return String(h).toUpperCase().trim(); });
     var lL = {
       ID:2, CONSEC:3, LOTE:4, SOL:5, PROD:6, ESTADO:7, FECHA:8, SELLO:9,
       CALIDAD:     hLotes.indexOf('CALIDAD'),
@@ -13653,168 +13664,185 @@ function lmObtenerHubLote(loteNombre) {
       SCRAP:       hLotes.indexOf('SCRAP'),
       ESTADO_CAL:  hLotes.indexOf('ESTADO_CALIDAD')
     };
-    var filaLote = null; var filaLoteIdx = -1;
-    for (var i = 1; i < dataLotes.length; i++) {
-      if (String(dataLotes[i][lL.LOTE] || '').trim().toUpperCase() === loteNorm) {
-        filaLote = dataLotes[i]; filaLoteIdx = i + 1; break;
-      }
-    }
-    if (!filaLote) return JSON.stringify({ success: false, msg: 'Lote no encontrado: ' + loteNombre });
 
-    var idOrden   = String(filaLote[lL.ID] || '').trim();
-    var fechaReg  = filaLote[lL.FECHA];
-    var fechaTxt  = (fechaReg instanceof Date && !isNaN(fechaReg))
+    var idOrden  = String(filaLoteData[lL.ID] || '').trim();
+    var fechaReg = filaLoteData[lL.FECHA];
+    var fechaTxt = (fechaReg instanceof Date && !isNaN(fechaReg))
       ? Utilities.formatDate(fechaReg, tz, 'dd/MM/yyyy HH:mm') : '';
 
     var calidad = {
-      calidad:     lL.CALIDAD     >= 0 ? String(filaLote[lL.CALIDAD]     || '') : '',
-      recuperado:  lL.RECUPERADO  >= 0 ? String(filaLote[lL.RECUPERADO]  || '') : '',
-      boletin:     lL.BOLETIN     >= 0 ? String(filaLote[lL.BOLETIN]     || '') : '',
-      disposicion: lL.DISPOSICION >= 0 ? String(filaLote[lL.DISPOSICION] || '') : '',
-      scrap:       lL.SCRAP       >= 0 ? (parseFloat(filaLote[lL.SCRAP]) || 0) : 0,
-      estadoCal:   lL.ESTADO_CAL  >= 0 ? String(filaLote[lL.ESTADO_CAL]  || '') : ''
+      calidad:     lL.CALIDAD     >= 0 ? String(filaLoteData[lL.CALIDAD]     || '') : '',
+      recuperado:  lL.RECUPERADO  >= 0 ? String(filaLoteData[lL.RECUPERADO]  || '') : '',
+      boletin:     lL.BOLETIN     >= 0 ? String(filaLoteData[lL.BOLETIN]     || '') : '',
+      disposicion: lL.DISPOSICION >= 0 ? String(filaLoteData[lL.DISPOSICION] || '') : '',
+      scrap:       lL.SCRAP       >= 0 ? (parseFloat(filaLoteData[lL.SCRAP]) || 0)  : 0,
+      estadoCal:   lL.ESTADO_CAL  >= 0 ? String(filaLoteData[lL.ESTADO_CAL]  || '') : ''
     };
 
-    // ── 2. Datos de TODAS las filas de la orden (procesos = ruta con estado real) ──
-    var dataOrd  = shOrd.getDataRange().getValues();
-    var hOrd     = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
-    var oID   = hOrd.indexOf('ID'),   oCOD  = hOrd.indexOf('CODIGO'),
-        oDESC = hOrd.indexOf('DESCRIPCION'), oPED  = hOrd.indexOf('PEDIDO'),
-        oPROC = hOrd.indexOf('PROCESO'),     oMAQ  = hOrd.indexOf('MAQUINA'),
-        oSEC  = hOrd.indexOf('SEC'),         oSOL  = hOrd.indexOf('SOLICITADO'),
-        oPROD = hOrd.indexOf('PRODUCIDO'),   oEST  = hOrd.indexOf('ESTADO'),
-        oTIPO = hOrd.indexOf('TIPO'),        oDIA  = hOrd.indexOf('DIAMETRO'),
-        oLON  = hOrd.indexOf('LONGITUD'),    oCUE  = hOrd.indexOf('CUERDA'),
-        oCUP  = hOrd.indexOf('CUERPO'),      oACE  = hOrd.indexOf('ACERO'),
-        oPESO = hOrd.indexOf('PESO'),        oSERIE= hOrd.indexOf('SERIE'),
-        oORDN = hOrd.indexOf('ORDEN'),       oCUER = hOrd.indexOf('CUERDA'),
-        oUNI  = hOrd.indexOf('UNIDAD');
+    // ── PASO 2: Encontrar filas de la orden con TextFinder en ORDENES ──
+    var finderOrd   = shOrd.createTextFinder(idOrden).matchCase(false).matchEntireCell(true);
+    var totalColsOrd = shOrd.getLastColumn();
+    var hOrdRow     = shOrd.getRange(1, 1, 1, totalColsOrd).getValues()[0]
+                       .map(function(h){ return String(h).toUpperCase().trim(); });
+    var oID   = hOrdRow.indexOf('ID'),   oCOD  = hOrdRow.indexOf('CODIGO'),
+        oDESC = hOrdRow.indexOf('DESCRIPCION'), oPED  = hOrdRow.indexOf('PEDIDO'),
+        oPROC = hOrdRow.indexOf('PROCESO'),     oMAQ  = hOrdRow.indexOf('MAQUINA'),
+        oSEC  = hOrdRow.indexOf('SEC'),         oSOL  = hOrdRow.indexOf('SOLICITADO'),
+        oPROD = hOrdRow.indexOf('PRODUCIDO'),   oEST  = hOrdRow.indexOf('ESTADO'),
+        oTIPO = hOrdRow.indexOf('TIPO'),        oDIA  = hOrdRow.indexOf('DIAMETRO'),
+        oLON  = hOrdRow.indexOf('LONGITUD'),    oCUE  = hOrdRow.indexOf('CUERDA'),
+        oCUP  = hOrdRow.indexOf('CUERPO'),      oACE  = hOrdRow.indexOf('ACERO'),
+        oPESO = hOrdRow.indexOf('PESO'),        oSERIE= hOrdRow.indexOf('SERIE'),
+        oORDN = hOrdRow.indexOf('ORDEN'),       oUNI  = hOrdRow.indexOf('UNIDAD');
 
-    var ordInfo = null; var rutaOrden = [];
-    for (var o = 1; o < dataOrd.length; o++) {
-      if (String(dataOrd[o][oID] || '').trim() !== idOrden) continue;
+    var ordInfo = null; var rutaOrden = []; var encontrados = [];
+    var celda;
+    finderOrd.startFrom(shOrd.getRange('A1'));
+    while ((celda = finderOrd.findNext()) !== null) {
+      var fNum = celda.getRow();
+      if (fNum === 1) continue; // saltar cabecera
+      if (encontrados.indexOf(fNum) >= 0) break; // evitar loop infinito
+      encontrados.push(fNum);
+      var rowData = shOrd.getRange(fNum, 1, 1, totalColsOrd).getValues()[0];
+      if (String(rowData[oID] || '').trim() !== idOrden) continue;
       if (!ordInfo) {
         ordInfo = {
-          codigo:      String(dataOrd[o][oCOD]  || ''),
-          descripcion: String(dataOrd[o][oDESC] || ''),
-          pedido:      String(dataOrd[o][oPED]  || ''),
-          tipo:        String(dataOrd[o][oTIPO] || ''),
-          diametro:    String(dataOrd[o][oDIA]  || ''),
-          longitud:    String(dataOrd[o][oLON]  || ''),
-          cuerda:      String(dataOrd[o][oCUE]  || ''),
-          cuerpo:      String(dataOrd[o][oCUP]  || ''),
-          acero:       String(dataOrd[o][oACE]  || ''),
-          peso:        parseFloat(dataOrd[o][oPESO]) || 0,
-          serie:       String(dataOrd[o][oSERIE]|| ''),
-          orden:       String(dataOrd[o][oORDN] || ''),
-          unidad:      String(dataOrd[o][oUNI]  || '')
+          codigo:      String(rowData[oCOD]  || ''),
+          descripcion: String(rowData[oDESC] || ''),
+          pedido:      String(rowData[oPED]  || ''),
+          tipo:        String(rowData[oTIPO] || ''),
+          diametro:    String(rowData[oDIA]  || ''),
+          longitud:    String(rowData[oLON]  || ''),
+          cuerda:      String(rowData[oCUE]  || ''),
+          cuerpo:      String(rowData[oCUP]  || ''),
+          acero:       String(rowData[oACE]  || ''),
+          peso:        parseFloat(rowData[oPESO]) || 0,
+          serie:       String(rowData[oSERIE]|| ''),
+          orden:       String(rowData[oORDN] || ''),
+          unidad:      String(rowData[oUNI]  || '')
         };
       }
       rutaOrden.push({
-        sec:       Number(dataOrd[o][oSEC])  || 0,
-        proceso:   String(dataOrd[o][oPROC] || ''),
-        maquina:   String(dataOrd[o][oMAQ]  || ''),
-        estado:    String(dataOrd[o][oEST]  || ''),
-        solicitado:parseFloat(dataOrd[o][oSOL])  || 0,
-        producido: parseFloat(dataOrd[o][oPROD]) || 0
+        sec:        Number(rowData[oSEC])  || 0,
+        proceso:    String(rowData[oPROC] || ''),
+        maquina:    String(rowData[oMAQ]  || ''),
+        estado:     String(rowData[oEST]  || ''),
+        solicitado: parseFloat(rowData[oSOL])  || 0,
+        producido:  parseFloat(rowData[oPROD]) || 0
       });
     }
     rutaOrden.sort(function(a,b){ return a.sec - b.sec; });
 
-    // Si no encontró por ID, buscar por nombre de serie.orden en RUTAS
+    // ── PASO 3: Ruta maestra (solo columnas B,D,E,F de RUTAS) ──
     var codigoRuta = ordInfo ? ordInfo.codigo : '';
     var rutaMaestra = [];
     if (shRutas && codigoRuta) {
-      var dataR = shRutas.getDataRange().getValues();
-      for (var r = 1; r < dataR.length; r++) {
-        if (String(dataR[r][1] || '').trim() === codigoRuta) {
-          rutaMaestra.push({
-            sec:     Number(dataR[r][3]) || 0,
-            proceso: String(dataR[r][4] || ''),
-            maquina: String(dataR[r][5] || '')
-          });
-        }
+      // Leer solo cols A-F (6 cols) de RUTAS para ser rápido
+      var lastRowR  = shRutas.getLastRow();
+      var dataRutas = lastRowR > 1 ? shRutas.getRange(1, 1, lastRowR, 6).getValues() : [];
+      for (var r = 1; r < dataRutas.length; r++) {
+        if (String(dataRutas[r][1] || '').trim() !== codigoRuta) continue;
+        rutaMaestra.push({
+          sec:     Number(dataRutas[r][3]) || 0,
+          proceso: String(dataRutas[r][4] || ''),
+          maquina: String(dataRutas[r][5] || '')
+        });
       }
       rutaMaestra.sort(function(a,b){ return a.sec - b.sec; });
     }
 
-    // ── 3. Ruta completa (fusionar ruta maestra con estado real de ordenes) ──
+    // Fusionar ruta maestra con estado real
     var rutaCompleta = rutaMaestra.map(function(paso) {
-      var match = rutaOrden.find(function(r){ return r.sec === paso.sec; });
+      var match = null;
+      for (var ri = 0; ri < rutaOrden.length; ri++) {
+        if (rutaOrden[ri].sec === paso.sec) { match = rutaOrden[ri]; break; }
+      }
       return {
         sec:        paso.sec,
         proceso:    paso.proceso,
-        maquina:    match ? match.maquina : paso.maquina,
-        estado:     match ? match.estado : 'PENDIENTE',
-        solicitado: match ? match.solicitado : 0,
-        producido:  match ? match.producido  : 0
+        maquina:    match ? match.maquina   : paso.maquina,
+        estado:     match ? match.estado    : 'PENDIENTE',
+        solicitado: match ? match.solicitado: 0,
+        producido:  match ? match.producido : 0
       };
     });
     if (rutaCompleta.length === 0) rutaCompleta = rutaOrden;
 
-    // ── 4. Registros de producción de ESTE lote ──
-    var dataProd = shProd.getDataRange().getValues();
-    var hProd    = dataProd[0].map(function(h){ return String(h).toUpperCase().trim(); });
-    var pLOTE    = hProd.indexOf('LOTE'),   pFECHA = hProd.indexOf('FECHA'),
-        pTURNO   = hProd.indexOf('TURNO'),  pMAQ   = hProd.indexOf('MAQUINA'),
-        pPROD    = hProd.indexOf('PRODUCIDO'), pOP1 = hProd.indexOf('NOMBRE_OPERADOR_TXT'),
-        pSELLO   = hProd.indexOf('SELLO'),  pPROC  = hProd.indexOf('ORDEN');
+    // ── PASO 4: Producción — leer solo las últimas 2000 filas de PRODUCCION ──
     var registrosProd = [];
-    for (var p = 1; p < dataProd.length; p++) {
-      if (String(dataProd[p][pLOTE] || '').trim().toUpperCase() !== loteNorm) continue;
-      var fp = dataProd[p][pFECHA];
-      var fpTxt = (fp instanceof Date && !isNaN(fp))
-        ? Utilities.formatDate(fp, tz, 'dd/MM/yyyy') : String(fp || '');
-      registrosProd.push({
-        fecha:     fpTxt,
-        turno:     String(dataProd[p][pTURNO] || ''),
-        maquina:   String(dataProd[p][pMAQ]   || ''),
-        producido: parseFloat(dataProd[p][pPROD]) || 0,
-        operador:  pOP1 >= 0 ? String(dataProd[p][pOP1] || '') : '',
-        sello:     pSELLO >= 0 ? String(dataProd[p][pSELLO] || '') : ''
-      });
+    if (shProd) {
+      var lastRowP  = shProd.getLastRow();
+      var startRowP = Math.max(2, lastRowP - 1999);
+      var numRowsP  = lastRowP - startRowP + 1;
+      if (numRowsP > 0) {
+        var dataProd = shProd.getRange(startRowP, 1, numRowsP, shProd.getLastColumn()).getValues();
+        var hProd    = shProd.getRange(1, 1, 1, shProd.getLastColumn()).getValues()[0]
+                         .map(function(h){ return String(h).toUpperCase().trim(); });
+        var pLOTE  = hProd.indexOf('LOTE'),   pFECHA = hProd.indexOf('FECHA'),
+            pTURNO = hProd.indexOf('TURNO'),  pMAQ   = hProd.indexOf('MAQUINA'),
+            pPROD  = hProd.indexOf('PRODUCIDO'), pOP1 = hProd.indexOf('NOMBRE_OPERADOR_TXT'),
+            pSELLO = hProd.indexOf('SELLO');
+        for (var p = 0; p < dataProd.length; p++) {
+          if (String(dataProd[p][pLOTE] || '').trim().toUpperCase() !== loteNorm) continue;
+          var fp    = dataProd[p][pFECHA];
+          var fpTxt = (fp instanceof Date && !isNaN(fp))
+            ? Utilities.formatDate(fp, tz, 'dd/MM/yyyy') : String(fp || '');
+          registrosProd.push({
+            fecha:     fpTxt,
+            turno:     String(dataProd[p][pTURNO] || ''),
+            maquina:   String(dataProd[p][pMAQ]   || ''),
+            producido: parseFloat(dataProd[p][pPROD]) || 0,
+            operador:  pOP1   >= 0 ? String(dataProd[p][pOP1]   || '') : '',
+            sello:     pSELLO >= 0 ? String(dataProd[p][pSELLO] || '') : ''
+          });
+        }
+      }
     }
 
-    // ── 5. Todos los lotes hermanos (misma orden) ──
+    // ── PASO 5: Lotes hermanos — leer solo col C (idOrden) y E (lote) ──
     var lotesHermanos = [];
-    for (var h = 1; h < dataLotes.length; h++) {
-      if (String(dataLotes[h][lL.ID] || '').trim() !== idOrden) continue;
-      var fh = dataLotes[h][lL.FECHA];
-      var fhTxt = (fh instanceof Date && !isNaN(fh))
-        ? Utilities.formatDate(fh, tz, 'dd/MM/yyyy') : '';
-      lotesHermanos.push({
-        lote:        String(dataLotes[h][lL.LOTE]   || ''),
-        consecutivo: parseInt(dataLotes[h][lL.CONSEC]) || 0,
-        estado:      String(dataLotes[h][lL.ESTADO] || ''),
-        producido:   parseFloat(dataLotes[h][lL.PROD]) || 0,
-        fecha:       fhTxt,
-        esEsteActual: String(dataLotes[h][lL.LOTE] || '').trim().toUpperCase() === loteNorm
-      });
+    var lastRowL  = shLotes.getLastRow();
+    if (lastRowL > 1) {
+      // Leer cols A-I (9 cols) para tener ID, CONSEC, LOTE, SOL, PROD, ESTADO, FECHA
+      var dataLotesMin = shLotes.getRange(2, 1, lastRowL - 1, 9).getValues();
+      for (var h = 0; h < dataLotesMin.length; h++) {
+        if (String(dataLotesMin[h][lL.ID] || '').trim() !== idOrden) continue;
+        var fh    = dataLotesMin[h][lL.FECHA];
+        var fhTxt = (fh instanceof Date && !isNaN(fh))
+          ? Utilities.formatDate(fh, tz, 'dd/MM/yyyy') : '';
+        lotesHermanos.push({
+          lote:         String(dataLotesMin[h][lL.LOTE]   || ''),
+          consecutivo:  parseInt(dataLotesMin[h][lL.CONSEC]) || 0,
+          estado:       String(dataLotesMin[h][lL.ESTADO] || ''),
+          producido:    parseFloat(dataLotesMin[h][lL.PROD]) || 0,
+          fecha:        fhTxt,
+          esEsteActual: String(dataLotesMin[h][lL.LOTE] || '').trim().toUpperCase() === loteNorm
+        });
+      }
     }
     lotesHermanos.sort(function(a,b){ return a.consecutivo - b.consecutivo; });
 
-    // ── 6. URL base para etiquetas ──
     var BASE_URL = ScriptApp.getService().getUrl();
 
     return JSON.stringify({
-      success: true,
+      success:       true,
       lote: {
         nombre:      loteNorm,
         idOrden:     idOrden,
-        consecutivo: parseInt(filaLote[lL.CONSEC]) || 0,
-        solicitado:  parseFloat(filaLote[lL.SOL])  || 0,
-        producido:   parseFloat(filaLote[lL.PROD]) || 0,
-        estado:      String(filaLote[lL.ESTADO]    || ''),
+        consecutivo: parseInt(filaLoteData[lL.CONSEC]) || 0,
+        solicitado:  parseFloat(filaLoteData[lL.SOL])  || 0,
+        producido:   parseFloat(filaLoteData[lL.PROD]) || 0,
+        estado:      String(filaLoteData[lL.ESTADO]    || ''),
         fecha:       fechaTxt,
-        sello:       String(filaLote[lL.SELLO]     || ''),
-        filaIdx:     filaLoteIdx,
+        sello:       String(filaLoteData[lL.SELLO]     || ''),
+        filaIdx:     filaLoteNum,
         calidad:     calidad
       },
-      orden:           ordInfo || {},
-      rutaCompleta:    rutaCompleta,
-      registrosProd:   registrosProd,
-      lotesHermanos:   lotesHermanos,
-      baseUrl:         BASE_URL
+      orden:         ordInfo || {},
+      rutaCompleta:  rutaCompleta,
+      registrosProd: registrosProd,
+      lotesHermanos: lotesHermanos,
+      baseUrl:       BASE_URL
     });
   } catch(err) {
     return JSON.stringify({ success: false, msg: err.message });
@@ -13864,93 +13892,115 @@ function lmGuardarCalidadLote(loteNombre, datosCalidad) {
 // ══════════════════════════════════════════════════════════════
 function lmBuscarLote(q) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
     var shLotes = ss.getSheetByName('LOTES');
     var shOrd   = ss.getSheetByName('ORDENES');
     if (!shLotes) return JSON.stringify({ success: false, msg: 'Hoja LOTES no encontrada' });
-    var tz = ss.getSpreadsheetTimeZone();
-    var qUpper = String(q || '').toUpperCase().trim();
-    if (!qUpper) return JSON.stringify({ success: true, lotes: [] });
 
-    var dataLotes = shLotes.getDataRange().getValues();
-    var dataOrd   = shOrd ? shOrd.getDataRange().getValues() : [];
+    var tz      = ss.getSpreadsheetTimeZone();
+    var qNorm   = String(q || '').trim().toUpperCase();
+    if (!qNorm)  return JSON.stringify({ success: false, msg: 'Búsqueda vacía' });
 
-    // Mapa idOrden → datos
+    // Leer cabeceras de LOTES (solo fila 1)
+    var totalColsL = shLotes.getLastColumn();
+    var hLotes = shLotes.getRange(1, 1, 1, totalColsL).getValues()[0]
+                   .map(function(h){ return String(h).toUpperCase().trim(); });
+    var lL = { ID:2, CONSEC:3, LOTE:4, SOL:5, PROD:6, ESTADO:7, FECHA:8 };
+    // Col de PROCESO en LOTES (si existe)
+    var lPROC = hLotes.indexOf('PROCESO');
+
+    // ── Determinar IDs de orden que coinciden con la búsqueda ──
+    // Estrategia: buscar en ORDENES por PEDIDO o por número de ORDEN
+    var idsOrden = {};  // Set de idOrden válidos
+
+    var totalColsO  = shOrd.getLastColumn();
+    var hOrd = shOrd.getRange(1, 1, 1, totalColsO).getValues()[0]
+                 .map(function(h){ return String(h).toUpperCase().trim(); });
+    var oID     = hOrd.indexOf('ID');   // col A (0-indexed)
+    var oORDEN  = hOrd.indexOf('ORDEN');
+    var oPEDIDO = hOrd.indexOf('PEDIDO');
+    var oSERIE  = hOrd.indexOf('SERIE');
+    var oCOD    = hOrd.indexOf('CODIGO');
+    var oDESC   = hOrd.indexOf('DESCRIPCION');
+    var oPROC   = hOrd.indexOf('PROCESO');
+    var oMAQ    = hOrd.indexOf('MAQUINA');
+
+    var soloNumero = /^\d+$/.test(qNorm);
+
+    // Leer ORDENES completo (solo cols necesarias)
+    var lastRowO = shOrd.getLastRow();
+    // Leer solo cols ID, ORDEN, SERIE, PEDIDO (para no traer toda la hoja)
+    var colsMin = Math.max(oID, oORDEN, oPEDIDO, oSERIE, oCOD, oDESC, oPROC, oMAQ) + 1;
+    var dataOrd = lastRowO > 1
+      ? shOrd.getRange(2, 1, lastRowO - 1, colsMin).getValues()
+      : [];
+
+    for (var o = 0; o < dataOrd.length; o++) {
+      var rowId     = String(dataOrd[o][oID]     || '').trim();
+      var rowOrden  = String(dataOrd[o][oORDEN]  || '').trim();
+      var rowPedido = String(dataOrd[o][oPEDIDO] || '').trim().toUpperCase();
+      var rowSerie  = String(dataOrd[o][oSERIE]  || '').trim().toUpperCase();
+      var match = false;
+
+      if (soloNumero) {
+        // Buscar por número de orden: "583" coincide con ORDEN=583
+        match = (rowOrden === qNorm);
+      } else {
+        // Buscar por pedido: "QSQ-66601" o parcial "QSQ-666"
+        match = rowPedido.indexOf(qNorm) >= 0;
+      }
+
+      if (match && rowId) idsOrden[rowId] = true;
+    }
+
+    if (!Object.keys(idsOrden).length){
+      return JSON.stringify({ success: true, lotes: [] });
+    }
+
+    // ── Leer LOTES y filtrar por idsOrden ──
+    var lastRowL = shLotes.getLastRow();
+    var dataLotes = lastRowL > 1
+      ? shLotes.getRange(2, 1, lastRowL - 1, Math.min(totalColsL, 12)).getValues()
+      : [];
+
+    // Para obtener proceso, necesitamos info de la orden
+    // Construir mapa idOrden → {pedido, proceso, descripcion}
     var mapaOrd = {};
-    if (dataOrd.length > 1) {
-      var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
-      var iID  = hOrd.indexOf('ID');
-      var iCOD = hOrd.indexOf('CODIGO');
-      var iDES = hOrd.indexOf('DESCRIPCION');
-      var iPED = hOrd.indexOf('PEDIDO');
-      var iPRO = hOrd.indexOf('PROCESO');
-      var iMAQ = hOrd.indexOf('MAQUINA');
-      var iSER = hOrd.indexOf('SERIE');
-      var iORD = hOrd.indexOf('ORDEN');
-      var iTIP = hOrd.indexOf('TIPO');
-      var iDIA = hOrd.indexOf('DIAMETRO');
-      var iLON = hOrd.indexOf('LONGITUD');
-      var iACE = hOrd.indexOf('ACERO');
-      var iEST = hOrd.indexOf('ESTADO');
-      for (var o = 1; o < dataOrd.length; o++) {
-        var oid = String(dataOrd[o][iID] || '').trim();
-        if (!oid) continue;
-        mapaOrd[oid] = {
-          codigo:      String(dataOrd[o][iCOD] || ''),
-          descripcion: String(dataOrd[o][iDES] || ''),
-          pedido:      String(dataOrd[o][iPED] || ''),
-          proceso:     String(dataOrd[o][iPRO] || ''),
-          maquina:     String(dataOrd[o][iMAQ] || ''),
-          serie:       String(dataOrd[o][iSER] || ''),
-          orden:       String(dataOrd[o][iORD] || ''),
-          tipo:        String(dataOrd[o][iTIP] || ''),
-          diametro:    String(dataOrd[o][iDIA] || ''),
-          longitud:    String(dataOrd[o][iLON] || ''),
-          acero:       String(dataOrd[o][iACE] || ''),
-          estadoOrden: String(dataOrd[o][iEST] || '')
+    for (var o = 0; o < dataOrd.length; o++) {
+      var rowId = String(dataOrd[o][oID] || '').trim();
+      if (!rowId || !idsOrden[rowId]) continue;
+      if (!mapaOrd[rowId]) {
+        mapaOrd[rowId] = {
+          pedido:      String(dataOrd[o][oPEDIDO] || ''),
+          proceso:     oPROC >= 0 ? String(dataOrd[o][oPROC] || '') : '',
+          descripcion: oDESC >= 0 ? String(dataOrd[o][oDESC] || '') : '',
+          codigo:      oCOD  >= 0 ? String(dataOrd[o][oCOD]  || '') : ''
         };
       }
     }
 
     var resultados = [];
-    for (var i = 1; i < dataLotes.length; i++) {
-      var lote  = String(dataLotes[i][4] || '').trim();
-      var idOrd = String(dataLotes[i][2] || '').trim();
-      if (!lote) continue;
-      var ord = mapaOrd[idOrd] || {};
-      // Buscar en lote, idOrden, pedido, codigo, descripcion
-      var haystack = [lote, idOrd, ord.pedido||'', ord.codigo||'', ord.descripcion||''].join(' ').toUpperCase();
-      if (haystack.indexOf(qUpper) < 0) continue;
-      var fechaReg = dataLotes[i][8];
-      var fechaTxt = '';
-      if (fechaReg instanceof Date && !isNaN(fechaReg)) {
-        fechaTxt = Utilities.formatDate(fechaReg, tz, 'dd/MM/yyyy');
-      }
+    for (var i = 0; i < dataLotes.length; i++) {
+      var idOrd = String(dataLotes[i][lL.ID] || '').trim();
+      if (!idsOrden[idOrd]) continue;
+      var nombreLote = String(dataLotes[i][lL.LOTE]   || '').trim();
+      var estado     = String(dataLotes[i][lL.ESTADO] || '').trim();
+      if (!nombreLote) continue;
+
+      var ordInfo = mapaOrd[idOrd] || {};
       resultados.push({
-        lote:        lote,
-        idOrden:     idOrd,
-        consecutivo: parseInt(dataLotes[i][3]) || 0,
-        solicitado:  parseFloat(dataLotes[i][5]) || 0,
-        producido:   parseFloat(dataLotes[i][6]) || 0,
-        estado:      String(dataLotes[i][7] || ''),
-        fecha:       fechaTxt,
-        sello:       String(dataLotes[i][9]  || ''),
-        qrCode:      String(dataLotes[i][10] || ''),
-        codigo:      ord.codigo      || '',
-        descripcion: ord.descripcion || '',
-        pedido:      ord.pedido      || '',
-        proceso:     ord.proceso     || '',
-        maquina:     ord.maquina     || '',
-        serie:       ord.serie       || '',
-        orden:       ord.orden       || '',
-        tipo:        ord.tipo        || '',
-        diametro:    ord.diametro    || '',
-        longitud:    ord.longitud    || '',
-        acero:       ord.acero       || '',
-        estadoOrden: ord.estadoOrden || ''
+        lote:        nombreLote,
+        estado:      estado,
+        pedido:      ordInfo.pedido      || '',
+        proceso:     ordInfo.proceso     || (lPROC >= 0 ? String(dataLotes[i][lPROC]||'') : ''),
+        descripcion: ordInfo.descripcion || '',
+        codigo:      ordInfo.codigo      || ''
       });
-      if (resultados.length >= 40) break;
     }
+
+    // Ordenar: primero por lote (alfabético)
+    resultados.sort(function(a,b){ return a.lote.localeCompare(b.lote); });
+
     return JSON.stringify({ success: true, lotes: resultados });
   } catch(err) {
     return JSON.stringify({ success: false, msg: err.message });
