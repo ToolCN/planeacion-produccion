@@ -21,8 +21,10 @@
   .hdr-logo{height:40px;}
   .hdr-title{font-size:20px;font-weight:900;color:var(--accent);letter-spacing:.06em;line-height:1.1;}
   .hdr-sub{font-size:12px;color:var(--text2);margin-top:2px;}
-  .hdr-homebtn{width:72px;height:72px;border-radius:18px;background:var(--surface2);border:2px solid var(--border);color:var(--text);font-size:40px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-appearance:none;font-family:inherit;}
+  .hdr-homebtn{width:88px;height:88px;border-radius:22px;background:var(--surface2);border:2.5px solid var(--border);color:var(--text);font-size:44px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-appearance:none;font-family:inherit;}
   .hdr-homebtn:active{background:var(--accent);color:#000;border-color:var(--accent);}
+  /* Header ajustado para acomodar botón más grande */
+  .hdr{min-height:80px;}
 
   /* LOADER */
   #lm-loader{display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,14,20,.93);flex-direction:column;align-items:center;justify-content:center;gap:20px;}
@@ -45,12 +47,28 @@
   .home-search-row input{flex:1;background:var(--surface);border:2.5px solid var(--border);border-radius:20px;color:var(--text);font-size:24px;padding:26px 24px;outline:none;-webkit-appearance:none;font-family:inherit;}
   .home-search-row input::placeholder{color:var(--text2);}
   .home-search-row input:focus{border-color:var(--accent);}
-  .home-search-row button{background:var(--accent);border:none;border-radius:20px;color:#000;font-weight:900;font-size:22px;padding:0 36px;min-height:80px;cursor:pointer;font-family:inherit;flex-shrink:0;}
+  .home-search-row button{background:var(--accent);border:none;border-radius:20px;color:#000;font-weight:900;font-size:24px;padding:0 44px;min-height:88px;cursor:pointer;font-family:inherit;flex-shrink:0;}
   .home-search-row button:active{opacity:.8;}
   .home-hint{display:flex;align-items:center;gap:12px;margin-top:20px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:18px 20px;}
   .home-hint-icon{font-size:36px;flex-shrink:0;}
   .home-hint-txt{font-size:16px;color:var(--text2);line-height:1.5;}
   .home-hint-txt b{color:var(--text);font-weight:800;}
+
+  /* Selector de serie */
+  .serie-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
+  .serie-btn{padding:18px 0;border:2.5px solid var(--border);border-radius:18px;background:var(--surface2);color:var(--text2);font-size:22px;font-weight:900;cursor:pointer;text-align:center;letter-spacing:.04em;-webkit-appearance:none;font-family:inherit;transition:border-color .12s,background .12s,color .12s;}
+  .serie-btn:active{opacity:.8;}
+  .serie-btn.sel-F{border-color:#ff7a2f;background:rgba(255,122,47,.15);color:#ff7a2f;}
+  .serie-btn.sel-P{border-color:#00c8f0;background:rgba(0,200,240,.13);color:#00c8f0;}
+  .serie-btn.sel-T{border-color:#b39ddb;background:rgba(179,157,219,.13);color:#b39ddb;}
+  .serie-btn.sel-SN{border-color:#1fd670;background:rgba(31,214,112,.13);color:#1fd670;}
+  .serie-label{font-size:12px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+  .search-input-wrap{position:relative;}
+  .search-prefix{position:absolute;left:22px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:900;pointer-events:none;}
+  .search-prefix.c-F{color:#ff7a2f;}
+  .search-prefix.c-P{color:#00c8f0;}
+  .search-prefix.c-T{color:#b39ddb;}
+  .home-search-row input.has-prefix{padding-left:68px;}
 
   /* Resultados */
   .res-wrap{padding:0 20px 32px;}
@@ -108,8 +126,18 @@
 
   /* ── SUBPANTALLAS ── */
   .sub-wrap{padding:20px 20px 40px;}
-  .sub-back{display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer;color:var(--accent);font-size:16px;font-weight:800;}
-  .sub-back-ico{font-size:24px;}
+  .sub-back{display:inline-flex;align-items:center;gap:14px;margin-bottom:24px;cursor:pointer;color:var(--accent);font-size:20px;font-weight:900;background:var(--surface2);border:2px solid var(--border);border-radius:18px;padding:18px 28px;-webkit-appearance:none;}
+  .sub-back:active{background:var(--accent);color:#000;border-color:var(--accent);}
+  .sub-back-ico{font-size:26px;}
+
+  /* Media query: en móvil el botón Volver ocupa todo el ancho */
+  @media(max-width:600px){
+    .sub-back{width:100%;justify-content:center;font-size:22px;padding:20px;}
+    .hdr-homebtn{width:80px;height:80px;font-size:40px;}
+    .home-search-row button{padding:0 32px;min-height:84px;font-size:22px;}
+    .serie-btn{padding:22px 0;font-size:24px;}
+    .home-search-row input{font-size:26px;padding:28px 24px;}
+  }
   .sub-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px;}
   .sub-subtitle{font-size:14px;color:var(--text2);margin-bottom:20px;}
 
@@ -134,6 +162,18 @@
   .reg-fecha{color:var(--text2);min-width:88px;font-size:13px;}
   .reg-proc{font-weight:800;color:var(--accent);}
   .reg-prod{margin-left:auto;font-weight:900;color:var(--green);white-space:nowrap;font-size:16px;}
+
+  /* Botón expandir registros y tabla */
+  .traz-exp-btn{margin-top:8px;display:inline-block;padding:8px 16px;border-radius:20px;background:var(--surface2);border:1.5px solid var(--border);color:var(--accent);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.03em;}
+  .traz-exp-btn:active{background:var(--border);}
+  .traz-reg-panel{margin-top:10px;border-radius:14px;overflow:hidden;border:1px solid var(--border);}
+  .reg-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.reg-tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:520px;}
+  .reg-tbl thead tr{background:var(--surface2);}
+  .reg-tbl th{padding:8px 6px;text-align:center;color:var(--text2);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .reg-tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text);vertical-align:middle;}
+  .reg-tbl tbody tr:last-child td{border-bottom:none;}
+  .reg-tbl tbody tr:nth-child(odd){background:rgba(255,255,255,.02);}
 
   /* Calidad */
   .cal-form{display:flex;flex-direction:column;gap:16px;}
@@ -205,11 +245,21 @@
       <p>Escribe el nombre, pedido o código<br>para encontrar un lote</p>
     </div>
     <div class="home-search">
-      <div class="home-search-row">
-        <input id="lm-txt" type="text" placeholder="Ej: P.0024 o QSQ-123..."
-               autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-               onkeydown="if(event.key==='Enter')lmBuscar()">
-        <button onclick="lmBuscar()">IR</button>
+      <div class="serie-label">Selecciona serie / tipo de búsqueda:</div>
+      <div class="serie-row">
+        <button class="serie-btn" id="sb-F"  onclick="lmSelSerie('F')">F</button>
+        <button class="serie-btn" id="sb-P"  onclick="lmSelSerie('P')">P</button>
+        <button class="serie-btn" id="sb-T"  onclick="lmSelSerie('T')">T</button>
+        <button class="serie-btn" id="sb-SN" onclick="lmSelSerie('SN')">SN</button>
+      </div>
+      <div class="search-input-wrap">
+        <span class="search-prefix" id="lm-prefix" style="display:none"></span>
+        <div class="home-search-row">
+          <input id="lm-txt" type="text" inputmode="numeric" placeholder="Número de orden..."
+                 autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                 onkeydown="if(event.key==='Enter')lmBuscar()">
+          <button onclick="lmBuscar()">IR</button>
+        </div>
       </div>
       <div class="home-hint">
         <div class="home-hint-icon">📷</div>
@@ -350,51 +400,134 @@ function lmHome(){ lmScreen('sc-home'); document.getElementById('hdr-title-txt')
 function lmVolverHub(){ lmScreen('sc-hub'); document.getElementById('hdr-title-txt').textContent=_curLote||'TRAZABILIDAD'; }
 
 // ══ BÚSQUEDA ══
+var _serieActual = '';           // 'F','P','T','SN'
+var _cacheBusqueda = null;       // resultados de la última búsqueda (lotes + datos base)
+var _precargaOrden = {};         // idOrden → datos parciales ya conocidos de la búsqueda
+
+function lmSelSerie(s){
+  _serieActual = s;
+  ['F','P','T','SN'].forEach(function(x){
+    var el = document.getElementById('sb-'+x);
+    el.className = 'serie-btn' + (x===s ? ' sel-'+x : '');
+  });
+  var inp = document.getElementById('lm-txt');
+  var pre = document.getElementById('lm-prefix');
+  inp.value = '';
+  if (s === 'SN'){
+    inp.setAttribute('inputmode','text');
+    inp.setAttribute('placeholder','Descripción, código o pedido...');
+    inp.classList.remove('has-prefix');
+    pre.style.display = 'none';
+    inp.setAttribute('autocapitalize','none');
+  } else {
+    inp.setAttribute('inputmode','numeric');
+    inp.setAttribute('placeholder','Número de orden...');
+    inp.classList.add('has-prefix');
+    pre.className = 'search-prefix c-'+s;
+    pre.textContent = s+'.';
+    pre.style.display = 'block';
+    inp.setAttribute('autocapitalize','characters');
+  }
+  inp.focus();
+}
+
 function lmBuscar(){
+  if (!_serieActual){
+    // Sin serie seleccionada: pedir que elija
+    document.getElementById('lm-res-wrap').style.display = 'block';
+    document.getElementById('lm-res-title').textContent = '';
+    document.getElementById('lm-res').innerHTML =
+      '<div class="empty"><span class="empty-ico">☝️</span><p>Selecciona una serie primero (F, P, T o SN)</p></div>';
+    return;
+  }
   var q = document.getElementById('lm-txt').value.trim();
   if (!q){ return; }
 
-  // Detectar si es número de orden puro (ej. "583") → buscar como orden
-  // o si es lote exacto (ej. "P.0583.31") → abrir hub directo
-  // o si contiene "-" es pedido (ej. "QSQ-66601")
-  var soloNumero = /^\d+$/.test(q);
-  var esLoteExacto = /^[A-Za-z]\.\d{4}\.\d+$/.test(q);
-
-  if (esLoteExacto){
-    // Ir directo al hub sin buscar
-    lmAbrirHub(q.toUpperCase());
-    return;
-  }
+  // Solo números con serie F/P/T → buscar por orden numérica + serie
+  // SN → buscar por texto libre (descripción/pedido/código)
+  var payload = {
+    serie: _serieActual,
+    texto: q
+  };
 
   lmLoad('BUSCANDO...');
-  // Pasar flag para que el backend sepa si buscar por orden numérica
+  _cacheBusqueda = null;
+  _precargaOrden = {};
+
   google.script.run
     .withSuccessHandler(function(r){
       lmUnload();
       var d = typeof r==='string'?JSON.parse(r):r;
-      if (!d.success){ lmSetRes('<div class="empty"><span class="empty-ico">⚠️</span><p>'+d.msg+'</p></div>',q); return; }
-      if (!d.lotes||!d.lotes.length){ lmSetRes('<div class="empty"><span class="empty-ico">📭</span><p>Sin resultados para "'+q+'"</p></div>',q); return; }
+      if (!d.success){
+        lmSetRes('<div class="empty"><span class="empty-ico">⚠️</span><p>'+d.msg+'</p></div>', q);
+        return;
+      }
+      if (!d.lotes||!d.lotes.length){
+        lmSetRes('<div class="empty"><span class="empty-ico">📭</span><p>Sin resultados</p></div>', q);
+        return;
+      }
+      _cacheBusqueda = d;
+      // Poblar _precargaOrden con los cachés ya construidos en el backend
+      // Cada lote de los resultados queda listo para abrir sin nueva llamada
+      if (d.hubCache){
+        var hc = d.hubCache;
+        for (var idK in hc){
+          var hubData = hc[idK];
+          var hers = hubData.lotesHermanos || [];
+          // Indexar por nombre de cada lote hermano para acceso directo
+          for (var hi = 0; hi < hers.length; hi++){
+            var nomH = String(hers[hi].lote || '').toUpperCase();
+            // Ajustar el campo lote.nombre al lote específico
+            var hubCopia = JSON.parse(JSON.stringify(hubData));
+            hubCopia.lote.nombre      = hers[hi].lote;
+            hubCopia.lote.consecutivo = hers[hi].consecutivo;
+            hubCopia.lote.solicitado  = hers[hi].solicitado;
+            hubCopia.lote.producido   = hers[hi].producido;
+            hubCopia.lote.estado      = hers[hi].estado;
+            hubCopia.lote.calidad     = hers[hi].calidad || { calidad:'', recuperado:0, boletin:'', disposicion:'', scrap:0, estadoCal:'' };
+            // Marcar cuál es el actual
+            for (var hj = 0; hj < hubCopia.lotesHermanos.length; hj++){
+              hubCopia.lotesHermanos[hj].esEsteActual =
+                String(hubCopia.lotesHermanos[hj].lote||'').toUpperCase() === nomH;
+            }
+            hubCopia._parcial = true;  // indica que falta registrosProd y ruta completa
+            _precargaOrden[nomH] = hubCopia;
+          }
+        }
+      }
       lmRenderRes(d.lotes, q);
     })
-    .withFailureHandler(function(e){ lmUnload(); lmSetRes('<div class="empty"><span class="empty-ico">⚠️</span><p>Error: '+(e.message||e)+'</p></div>',q); })
-    .lmBuscarLote(q);
+    .withFailureHandler(function(e){
+      lmUnload();
+      lmSetRes('<div class="empty"><span class="empty-ico">⚠️</span><p>Error: '+(e.message||e)+'</p></div>', q);
+    })
+    .lmBuscarConSerie(payload);
 }
+
+// (función eliminada — los datos del Hub vienen directamente en lmBuscarConSerie)
+
 function lmSetRes(h, q){
   document.getElementById('lm-res-wrap').style.display='block';
-  document.getElementById('lm-res-title').textContent = q ? 'Resultados para "'+q+'"' : '';
+  document.getElementById('lm-res-title').textContent = q ? 'Resultados para "'+(_serieActual&&_serieActual!=='SN'?_serieActual+'.':'')+q+'"' : '';
   document.getElementById('lm-res').innerHTML = h;
 }
+
 function lmRenderRes(lotes, q){
-  if (!lotes.length){ lmSetRes('<div class="empty"><span class="empty-ico">📭</span><p>Sin resultados</p></div>', q); return; }
+  if (!lotes.length){
+    lmSetRes('<div class="empty"><span class="empty-ico">📭</span><p>Sin resultados</p></div>', q);
+    return;
+  }
   var h='';
   lotes.forEach(function(l){
-    var ec=l.estado.toUpperCase().includes('TERMIN')?'chip-g':l.estado.toUpperCase().includes('IMPR')?'chip-b':'chip-o';
+    var eu = String(l.estado||'').toUpperCase();
+    var cc = eu.includes('TERMIN')||eu.includes('CERRAD')?'chip-g':eu.includes('IMPR')?'chip-b':'chip-o';
     h+='<div class="res-card" onclick="lmAbrirHub(\''+l.lote.replace(/'/g,"\\'")+'\')">'+
        '<div class="res-lote">'+l.lote+'</div>'+
        '<div class="res-desc">'+(l.descripcion||l.codigo||'—')+'</div>'+
-       '<div class="res-meta"><span class="chip '+ec+'">'+l.estado+'</span>'+
-       (l.pedido?'<span class="chip chip-x">📋 '+l.pedido+'</span>':'')+
-       (l.proceso?'<span class="chip chip-x">⚙️ '+l.proceso+'</span>':'')+
+       '<div class="res-meta">'+
+         '<span class="chip '+cc+'">'+l.estado+'</span>'+
+         (l.pedido?'<span class="chip chip-x">📋 '+l.pedido+'</span>':'')+
+         (l.proceso?'<span class="chip chip-x">⚙️ '+l.proceso+'</span>':'')+
        '</div></div>';
   });
   lmSetRes(h, q);
@@ -402,38 +535,72 @@ function lmRenderRes(lotes, q){
 
 // ══ HUB ══
 function lmAbrirHub(lote){
-  _curLote  = lote;
-  _cache    = null;
-  _cacheOk  = false;
+  _curLote = lote;
+  _cacheOk = false;
 
-  // Mostrar hub con datos básicos mientras carga el background
+  var cached = _precargaOrden && _precargaOrden[lote.toUpperCase()];
+
+  // Mostrar hub de inmediato con lo que tengamos
   document.getElementById('hub-nom').textContent  = lote;
-  document.getElementById('hub-desc').textContent = 'Cargando información...';
+  document.getElementById('hub-desc').textContent = cached ? (cached.orden&&cached.orden.descripcion||'—') : 'Cargando...';
   document.getElementById('hub-meta').innerHTML   = '';
-  document.getElementById('hub-sol').textContent  = '—';
-  document.getElementById('hub-prod').textContent = '—';
-  document.getElementById('hub-pct').textContent  = '—';
   document.getElementById('hdr-title-txt').textContent = lote;
 
-  // Poner todos los botones en "cargando"
-  ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta'].forEach(function(id){
-    var el = document.getElementById(id);
-    el.classList.add('loading-btn');
-    el.classList.remove('ready');
-  });
-  document.getElementById('hub-strip').classList.remove('hidden');
+  if (cached) {
+    // Caché parcial disponible: KPIs + Etiqueta + Reporte listos YA
+    _cache   = cached;
+    _cacheOk = true;   // true para que etiqueta/reporte funcionen inmediatamente
+    lmRenderHubKpis(cached);
+    // Etiqueta, Reporte y Calidad: ✓ inmediato
+    ['btn-etq','btn-rep','btn-cal'].forEach(function(id){
+      var el = document.getElementById(id);
+      el.classList.remove('loading-btn');
+      el.classList.add('ready');
+    });
+    // Trazabilidad y Ruta: loading hasta que llegue el completo
+    ['btn-traz','btn-ruta'].forEach(function(id){
+      var el = document.getElementById(id);
+      el.classList.add('loading-btn');
+      el.classList.remove('ready');
+    });
+    document.getElementById('hub-strip').classList.remove('hidden');
+  } else {
+    // Sin caché: todo en loading
+    _cache = null;
+    document.getElementById('hub-sol').textContent  = '—';
+    document.getElementById('hub-prod').textContent = '—';
+    document.getElementById('hub-pct').textContent  = '—';
+    ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta'].forEach(function(id){
+      var el = document.getElementById(id);
+      el.classList.add('loading-btn');
+      el.classList.remove('ready');
+    });
+    document.getElementById('hub-strip').classList.remove('hidden');
+  }
 
   lmScreen('sc-hub');
 
-  // Cargar en background
+  // Siempre cargar datos completos en background (ruta + registrosProd)
   google.script.run
     .withSuccessHandler(function(r){
       var d = typeof r==='string'?JSON.parse(r):r;
-      if (!d.success){ return; }
+      if (!d.success){
+        document.getElementById('hub-strip').classList.add('hidden');
+        // Si teníamos caché parcial al menos desbloquear traz/cal/ruta con lo que hay
+        if (_cache){
+          _cacheOk = true;
+          ['btn-traz','btn-ruta'].forEach(function(id){
+            var el = document.getElementById(id);
+            el.classList.remove('loading-btn');
+            el.classList.add('ready');
+          });
+        }
+        return;
+      }
+      // Sobreescribir con datos completos
       _cache   = d;
       _cacheOk = true;
       lmRenderHubKpis(d);
-      // Quitar loading de botones
       ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta'].forEach(function(id){
         var el = document.getElementById(id);
         el.classList.remove('loading-btn');
@@ -441,8 +608,16 @@ function lmAbrirHub(lote){
       });
       document.getElementById('hub-strip').classList.add('hidden');
     })
-    .withFailureHandler(function(e){
+    .withFailureHandler(function(){
       document.getElementById('hub-strip').classList.add('hidden');
+      if (_cache){
+        _cacheOk = true;
+        ['btn-traz','btn-ruta'].forEach(function(id){
+          var el = document.getElementById(id);
+          el.classList.remove('loading-btn');
+          el.classList.add('ready');
+        });
+      }
     })
     .lmObtenerHubLote(lote);
 }
@@ -477,56 +652,83 @@ function lmSubTrazabilidad(){
   var ord  = d.orden||{};
   document.getElementById('traz-sub').textContent = (ord.descripcion||'') + ' — Pedido: '+(ord.pedido||'—');
 
-  var CERR = ['TERMINADO','SOBREPRODUCCION','CANCELADO'];
-  var ruta = d.rutaCompleta||[];
-  var regs = d.registrosProd||[];
-  var hers = d.lotesHermanos||[];
+  var CERR  = ['TERMINADO','SOBREPRODUCCION','CANCELADO'];
+  var ruta  = d.rutaCompleta||[];
+  var regs  = d.registrosProd||{};   // ahora es objeto { proceso: [registros] }
+  var hers  = d.lotesHermanos||[];
   var h = '';
 
   // Info del producto
   h += '<div class="sec"><div class="sec-hdr">📦 PRODUCTO</div><div class="sec-body"><div class="info-grid">';
   [['Código',ord.codigo],['Pedido',ord.pedido],['Tipo',ord.tipo],['Diámetro',ord.diametro],
-   ['Longitud',ord.longitud],['Acero',ord.acero],['Máquina',ord.maquina||''],['Serie/Orden',(ord.serie||'')+'.'+(ord.orden||'')]
+   ['Longitud',ord.longitud],['Acero',ord.acero],['Máquina',ord.maquina||''],
+   ['Serie/Orden',(ord.serie||'P')+'.'+('0000'+(ord.orden||'')).slice(-4)]
   ].forEach(function(c){ if(c[1]) h+='<div><div class="info-lbl">'+c[0]+'</div><div class="info-val">'+c[1]+'</div></div>'; });
   h += '</div></div></div>';
 
-  // Ruta completa
+  // Ruta completa con registros expandibles por proceso
   if (ruta.length){
     h += '<div class="sec"><div class="sec-hdr">🗺️ RUTA DE FABRICACIÓN</div><div class="sec-body"><div class="ruta">';
-    ruta.forEach(function(p){
-      var eu  = String(p.estado||'').toUpperCase();
-      var dc  = CERR.indexOf(eu)>=0?'ok':eu==='EN_PROCESO'||eu==='ABIERTO'||eu==='EN PROCESO'?'wip':'';
-      var ic  = dc==='ok'?'✅':dc==='wip'?'⚙️':'⏳';
-      var pp  = p.solicitado>0?Math.min(100,(p.producido/p.solicitado)*100):0;
-      var fc  = dc==='ok'?'var(--green)':dc==='wip'?'var(--orange)':'var(--border)';
-      h += '<div class="ruta-paso"><div class="ruta-dot '+dc+'">'+ic+'</div>'+
-           '<div class="ruta-info"><div class="ruta-proc">'+p.proceso+'</div>'+
-           (p.maquina?'<div class="ruta-maq">🔧 '+p.maquina+'</div>':'')+
-           '<div class="ruta-bar"><div class="ruta-fill" style="width:'+pp+'%;background:'+fc+'"></div></div>'+
-           '<div class="ruta-nums">'+lmFmt(p.producido)+' / '+lmFmt(p.solicitado)+' — '+p.estado+'</div>'+
-           '</div></div>';
+    ruta.forEach(function(p, idx){
+      var eu   = String(p.estado||'').toUpperCase();
+      var ok   = CERR.indexOf(eu) >= 0;
+      var wip  = !ok && (eu==='EN_PROCESO'||eu==='ABIERTO'||eu==='EN PROCESO');
+      var dc   = ok?'ok':wip?'wip':'';
+      var ic   = ok?'✅':wip?'⚙️':'⏳';
+      var pp   = p.solicitado>0 ? Math.min(100,(p.producido/p.solicitado)*100) : 0;
+      var fc   = ok?'var(--green)':wip?'var(--orange)':'var(--border)';
+      var clr  = ok?'var(--green)':wip?'var(--orange)':'var(--text2)';
+
+      // Buscar registros: PRODUCCION agrupa por MAQUINA, no por PROCESO
+      // Intentar por máquina primero, luego por proceso como fallback
+      var regsProc = regs[p.maquina] || regs[p.proceso] || [];
+      // Si aún vacío, buscar coincidencia parcial (ej. maquina contiene el proceso)
+      if (!regsProc.length){
+        for (var rk in regs){
+          if (rk.indexOf(p.proceso) >= 0 || p.proceso.indexOf(rk) >= 0 ||
+              rk.indexOf(p.maquina) >= 0 || p.maquina.indexOf(rk) >= 0){
+            regsProc = regs[rk]; break;
+          }
+        }
+      }
+      var totalReg = regsProc.length;
+      var panelId  = 'traz-reg-'+idx;
+
+      h += '<div class="ruta-paso">'+
+             '<div class="ruta-dot '+dc+'">'+ic+'</div>'+
+             '<div class="ruta-info">'+
+               '<div class="ruta-proc" style="color:'+clr+'">'+p.proceso+'</div>'+
+               (p.maquina?'<div class="ruta-maq">🔧 '+p.maquina+'</div>':'')+
+               '<div class="ruta-bar"><div class="ruta-fill" style="width:'+pp+'%;background:'+fc+'"></div></div>'+
+               '<div class="ruta-nums" style="color:'+clr+'">'+
+                 '<b>'+lmFmt(p.producido)+'</b> producido &nbsp;/&nbsp; <b>'+lmFmt(p.solicitado)+'</b> solicitado'+
+                 ' &nbsp;·&nbsp; <span style="font-weight:900">'+Math.round(pp)+'%</span>'+
+               '</div>'+
+               // Botón expandir registros
+               (totalReg > 0
+                 ? '<div class="traz-exp-btn" onclick="lmToggleRegs(\''+panelId+'\')" id="'+panelId+'-btn">'+
+                     '📋 '+totalReg+' registro'+(totalReg!==1?'s':'')+' ▼'+
+                   '</div>'+
+                   '<div class="traz-reg-panel" id="'+panelId+'" style="display:none">'+
+                     lmBuildRegsHTML(regsProc)+
+                   '</div>'
+                 : '<div style="font-size:12px;color:var(--text2);margin-top:6px;">Sin registros</div>'
+               )+
+             '</div>'+
+           '</div>';
     });
     h += '</div></div></div>';
-  }
-
-  // Registros de producción
-  if (regs.length){
-    h += '<div class="sec"><div class="sec-hdr">📋 REGISTROS DE ESTE LOTE ('+regs.length+')</div><div class="sec-body">';
-    regs.forEach(function(r){
-      h += '<div class="reg-row">'+
-           '<span class="reg-fecha">'+r.fecha+'</span>'+
-           '<span class="reg-proc">'+r.maquina+'</span>'+
-           (r.operador?'<span style="font-size:12px;color:var(--text2)">'+r.operador+'</span>':'')+
-           '<span class="reg-prod">+'+lmFmt(r.producido)+'</span></div>';
-    });
-    h += '</div></div>';
   }
 
   // Lotes hermanos
   if (hers.length>1){
     h += '<div class="sec"><div class="sec-hdr">🔗 LOTES DE ESTA ORDEN ('+hers.length+')</div><div class="sec-body"><div class="hermanos">';
     hers.forEach(function(x){
-      h += '<div class="herm'+(x.esEsteActual?' yo':'')+'" onclick="lmAbrirHub(\''+x.lote.replace(/'/g,"\\'")+'\')">'+x.lote+'</div>';
+      if (x.esEsteActual){
+        h += '<div class="herm yo">'+x.lote+'</div>';
+      } else {
+        h += '<div class="herm" onclick="lmAbrirTrazDesdeHermano(\''+x.lote.replace(/'/g,"\\'")+'\')">'+x.lote+'</div>';
+      }
     });
     h += '</div></div></div>';
   }
@@ -534,6 +736,45 @@ function lmSubTrazabilidad(){
   document.getElementById('traz-content').innerHTML = h;
   lmScreen('sc-traz');
   document.getElementById('hdr-title-txt').textContent = 'Trazabilidad';
+}
+
+// Navegar a trazabilidad de un lote hermano sin pasar por el Hub
+function lmAbrirTrazDesdeHermano(lote){
+  lmAbrirHub(lote);          // actualiza _curLote y lanza carga en background
+  lmSubTrazabilidad();       // muestra trazabilidad inmediatamente con caché disponible
+}
+
+function lmToggleRegs(id){
+  var panel = document.getElementById(id);
+  var btn   = document.getElementById(id+'-btn');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (btn) btn.innerHTML = btn.innerHTML.replace(open?'▲':'▼', open?'▼':'▲');
+}
+
+function lmBuildRegsHTML(regs){
+  if (!regs||!regs.length) return '';
+  var h = '<div class="reg-table-wrap"><table class="reg-tbl">'+
+    '<thead><tr>'+
+      '<th>Fecha</th><th>Tur</th>'+
+      '<th>P.Ini</th><th>P.Fin</th><th>P.Tina</th>'+
+      '<th>Prod</th><th>Sello</th><th>Operador</th>'+
+    '</tr></thead><tbody>';
+  regs.forEach(function(r){
+    h += '<tr>'+
+      '<td>'+r.fecha+'</td>'+
+      '<td>'+r.turno+'</td>'+
+      '<td>'+(r.pesoI?lmFmt(r.pesoI):'—')+'</td>'+
+      '<td>'+(r.pesoF?lmFmt(r.pesoF):'—')+'</td>'+
+      '<td>'+(r.pesoTina?lmFmt(r.pesoTina):'—')+'</td>'+
+      '<td style="font-weight:900;color:var(--green)">'+lmFmt(r.producido)+'</td>'+
+      '<td style="font-size:11px">'+r.sello+'</td>'+
+      '<td style="font-size:12px">'+r.operador+'</td>'+
+    '</tr>';
+  });
+  h += '</tbody></table></div>';
+  return h;
 }
 
 // — Calidad —
