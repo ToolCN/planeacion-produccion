@@ -13892,7 +13892,13 @@ function lmObtenerHubLote(loteNombre) {
       registrosProd:    registrosProd,
       totalRegProd:     totalRegProd,
       lotesHermanos: lotesHermanos,
-      baseUrl:       BASE_URL
+      baseUrl:       BASE_URL,
+      docs:          (function(){
+        try {
+          var r = lmObtenerDocumentos(ordInfo ? ordInfo.codigo : '');
+          return JSON.parse(r).docs || {};
+        } catch(e){ return {}; }
+      })()
     });
   } catch(err) {
     return JSON.stringify({ success: false, msg: err.message });
@@ -13940,6 +13946,124 @@ function lmGuardarCalidadLote(loteNombre, datosCalidad) {
 // ══════════════════════════════════════════════════════════════
 // LOTE MASTER — Búsqueda de lotes por texto (para LoteMaster.html)
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// SISTEMA DOCUMENTAL — Obtener documentos aprobados por código
+// ══════════════════════════════════════════════════════════════
+var ID_SISTEMA_DOCUMENTAL = '1zeetFXVwyej9FcccXNFRCwb1wyWQWWx2uO196LGzcDs';
+
+// Mapa de prefijo de Tipo_Documento → clave de sección en el frontend
+var TIPO_DOC_MAP = {
+  'FI - Formato Inspeccion':  'fi',
+  'TA - Tabla':               'ta',
+  'FTF - Ficha Fabricacion':  'ftf',
+  'FTP - Ficha Produccion':   'ftp',
+  'HO - Hoja de Operacion':   'ho',
+  'AV - Ayuda Visual':        'av'
+};
+
+function lmObtenerDocumentos(codigoProducto) {
+  try {
+    var ss   = SpreadsheetApp.openById(ID_SISTEMA_DOCUMENTAL);
+    var shV  = ss.getSheetByName('Vinculos');
+    var shD  = ss.getSheetByName('Documentos');
+    if (!shV || !shD) return JSON.stringify({ success: false, msg: 'Hojas no encontradas en SISTEMA_DOCUMENTAL' });
+
+    var codigo = String(codigoProducto || '').trim().toUpperCase();
+    if (!codigo) return JSON.stringify({ success: true, docs: {} });
+
+    // ── Leer Vinculos: buscar IDs de documentos ligados a este código ──
+    var lastRowV = shV.getLastRow();
+    if (lastRowV < 2) return JSON.stringify({ success: true, docs: {} });
+    var dataV = shV.getRange(2, 1, lastRowV - 1, 3).getValues(); // cols A,B,C
+    // Col B (idx 1) = ID_Documento, Col C (idx 2) = Codigo
+    var idsDoc = {};
+    for (var v = 0; v < dataV.length; v++) {
+      var rowCod = String(dataV[v][2] || '').trim().toUpperCase();
+      if (rowCod === codigo) {
+        var idDoc = String(dataV[v][1] || '').trim();
+        if (idDoc) idsDoc[idDoc] = true;
+      }
+    }
+    if (!Object.keys(idsDoc).length) return JSON.stringify({ success: true, docs: {} });
+
+    // ── Leer Documentos: filtrar por ID y estado APROBADO ──
+    var lastRowD  = shD.getLastRow();
+    var totalColsD = shD.getLastColumn();
+    // Leer cabeceras
+    var hDocs = shD.getRange(1, 1, 1, totalColsD).getValues()[0]
+                  .map(function(h){ return String(h).toUpperCase().trim(); });
+    var dID    = hDocs.indexOf('ID_DOCUMENTO');
+    var dNOM   = hDocs.indexOf('NOMBRE');
+    var dTIPO  = hDocs.indexOf('TIPO_DOCUMENTO');
+    var dVER   = hDocs.indexOf('VERSION_VIGENTE');
+    var dEST   = hDocs.indexOf('ESTADO');
+    var dURL   = hDocs.indexOf('URL_PDF');
+    var dFECHA = hDocs.indexOf('FECHA_APROBACION');
+    var dNOTAS = hDocs.indexOf('NOTAS');
+    var dPROP  = hDocs.indexOf('PROPOSITO');
+
+    // Usar índices por posición (A=0,B=1,...,J=9,P=15,S=18,T=19)
+    // como fallback si indexOf falla
+    if (dID    < 0) dID    = 0;
+    if (dNOM   < 0) dNOM   = 1;
+    if (dTIPO  < 0) dTIPO  = 2;
+    if (dVER   < 0) dVER   = 5;
+    if (dEST   < 0) dEST   = 6;
+    if (dURL   < 0) dURL   = 9;
+    if (dFECHA < 0) dFECHA = 15;
+    if (dNOTAS < 0) dNOTAS = 18;
+    if (dPROP  < 0) dPROP  = 19;
+
+    var dataD = lastRowD > 1
+      ? shD.getRange(2, 1, lastRowD - 1, Math.min(totalColsD, 20)).getValues()
+      : [];
+
+    // Agrupar por sección de tipo
+    var docs = {};  // { 'fi': [...], 'av': [...], ... }
+
+    for (var d = 0; d < dataD.length; d++) {
+      var rowId  = String(dataD[d][dID]  || '').trim();
+      var rowEst = String(dataD[d][dEST] || '').trim().toLowerCase();
+      if (!idsDoc[rowId]) continue;
+      if (rowEst !== 'aprobado') continue;
+
+      var tipo    = String(dataD[d][dTIPO] || '').trim();
+      var fechaRaw = dataD[d][dFECHA];
+      var fechaTxt = (fechaRaw instanceof Date && !isNaN(fechaRaw))
+        ? Utilities.formatDate(fechaRaw, 'America/Mexico_City', 'dd/MM/yyyy')
+        : String(fechaRaw || '');
+
+      // Determinar clave de sección
+      var secKey = null;
+      for (var tk in TIPO_DOC_MAP) {
+        if (tipo.toUpperCase().indexOf(tk.toUpperCase()) >= 0 ||
+            tk.toUpperCase().indexOf(tipo.toUpperCase()) >= 0) {
+          secKey = TIPO_DOC_MAP[tk]; break;
+        }
+      }
+      if (!secKey) secKey = 'otros';
+
+      var doc = {
+        id:      rowId,
+        nombre:  String(dataD[d][dNOM]   || ''),
+        tipo:    tipo,
+        version: String(dataD[d][dVER]   || ''),
+        estado:  String(dataD[d][dEST]   || ''),
+        url:     String(dataD[d][dURL]   || ''),
+        fecha:   fechaTxt,
+        notas:   String(dataD[d][dNOTAS] || ''),
+        prop:    String(dataD[d][dPROP]  || '')
+      };
+      if (!docs[secKey]) docs[secKey] = [];
+      docs[secKey].push(doc);
+    }
+
+    return JSON.stringify({ success: true, docs: docs });
+  } catch(err) {
+    return JSON.stringify({ success: false, msg: err.message });
+  }
+}
+
 function lmBuscarConSerie(payload) {
   try {
     var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
@@ -14120,8 +14244,18 @@ function lmBuscarConSerie(payload) {
 
     var BASE_URL = ScriptApp.getService().getUrl();
 
+    // Obtener documentos del SISTEMA_DOCUMENTAL para el primer código encontrado
+    // (todos los lotes de la búsqueda son del mismo código de producto)
+    var primerCodigo = '';
+    for (var idK2 in mapaOrd){ if (mapaOrd[idK2].codigo){ primerCodigo = mapaOrd[idK2].codigo; break; } }
+    var docsResult = { docs: {} };
+    try {
+      var docsRaw = lmObtenerDocumentos(primerCodigo);
+      docsResult = JSON.parse(docsRaw);
+    } catch(e2) { /* silenciar */ }
+    var docsCache = docsResult.docs || {};
+
     // Construir mapa de cachés de Hub listos para usar en el frontend
-    // idOrden → objeto con la misma forma que lmObtenerHubLote
     var hubCache = {};
     for (var idK in mapaOrd){
       var ord  = mapaOrd[idK];
@@ -14163,7 +14297,8 @@ function lmBuscarConSerie(payload) {
         rutaCompleta:  ord.rutaParcial,
         registrosProd: [],
         lotesHermanos: hers,
-        baseUrl:       BASE_URL
+        baseUrl:       BASE_URL,
+        docs:          docsCache
       };
     }
 

@@ -163,6 +163,26 @@
   .reg-proc{font-weight:800;color:var(--accent);}
   .reg-prod{margin-left:auto;font-weight:900;color:var(--green);white-space:nowrap;font-size:16px;}
 
+  /* Documentos */
+  .doc-seccion{margin-bottom:20px;}
+  .doc-sec-hdr{display:flex;align-items:center;gap:12px;padding:16px 20px;border-radius:18px 18px 0 0;background:var(--surface2);border:2px solid var(--border);border-bottom:none;cursor:default;}
+  .doc-sec-hdr.tiene-docs{cursor:pointer;border-color:var(--accent);}
+  .doc-sec-hdr.tiene-docs:active{background:rgba(0,200,240,.08);}
+  .doc-sec-icon{font-size:32px;flex-shrink:0;}
+  .doc-sec-nom{font-size:17px;font-weight:900;color:var(--text);}
+  .doc-sec-badge{margin-left:auto;background:var(--accent);color:#000;font-size:12px;font-weight:900;padding:4px 12px;border-radius:20px;}
+  .doc-sec-badge.vacio{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+  .doc-sec-body{border:2px solid var(--border);border-top:none;border-radius:0 0 18px 18px;overflow:hidden;}
+  .doc-item{padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:flex-start;gap:14px;}
+  .doc-item:last-child{border-bottom:none;}
+  .doc-item:active{background:rgba(0,200,240,.05);}
+  .doc-item-ico{font-size:28px;flex-shrink:0;margin-top:2px;}
+  .doc-item-body{flex:1;}
+  .doc-item-nom{font-size:15px;font-weight:900;color:var(--text);line-height:1.2;}
+  .doc-item-meta{font-size:12px;color:var(--text2);margin-top:5px;line-height:1.5;}
+  .doc-item-arrow{font-size:22px;color:var(--accent);flex-shrink:0;align-self:center;}
+  .doc-vacio{padding:16px 20px;color:var(--text2);font-size:14px;font-style:italic;}
+
   /* Botón expandir registros y tabla */
   .traz-exp-btn{margin-top:8px;display:inline-block;padding:8px 16px;border-radius:20px;background:var(--surface2);border:1.5px solid var(--border);color:var(--accent);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.03em;}
   .traz-exp-btn:active{background:var(--border);}
@@ -303,11 +323,6 @@
         <div class="hub-btn-title">Etiqueta</div>
         <div class="hub-btn-sub">Imprimir tarjeta de identificación</div>
       </div>
-      <div class="hub-btn pending-impl" id="btn-insp">
-        <div class="hub-btn-icon">📋</div>
-        <div class="hub-btn-title">Reg. Inspección</div>
-        <div class="hub-btn-sub">Próximamente</div>
-      </div>
       <div class="hub-btn loading-btn" id="btn-rep" onclick="lmSubReporte()">
         <div class="hub-btn-icon">📝</div>
         <div class="hub-btn-title">Reg. Producción</div>
@@ -317,6 +332,11 @@
         <div class="hub-btn-icon">🔄</div>
         <div class="hub-btn-title">Ruta</div>
         <div class="hub-btn-sub">Resumen visual de procesos</div>
+      </div>
+      <div class="hub-btn loading-btn" id="btn-docs" onclick="lmSubDocs()">
+        <div class="hub-btn-icon">📂</div>
+        <div class="hub-btn-title">Documentos</div>
+        <div class="hub-btn-sub">Formatos, fichas y ayudas visuales</div>
       </div>
     </div>
   </div>
@@ -369,6 +389,16 @@
     <div class="sub-title">🔄 Ruta de Fabricación</div>
     <div class="sub-subtitle" id="ruta-sub"></div>
     <div id="ruta-content"></div>
+  </div>
+</div>
+
+<!-- SUB: Documentos -->
+<div id="sc-docs" class="screen">
+  <div class="sub-wrap">
+    <div class="sub-back" onclick="lmVolverHub()"><span class="sub-back-ico">‹</span> Volver</div>
+    <div class="sub-title">📂 Documentos del Producto</div>
+    <div class="sub-subtitle" id="docs-sub"></div>
+    <div id="docs-content"></div>
   </div>
 </div>
 
@@ -557,8 +587,8 @@ function lmAbrirHub(lote){
       el.classList.remove('loading-btn');
       el.classList.add('ready');
     });
-    // Trazabilidad y Ruta: loading hasta que llegue el completo
-    ['btn-traz','btn-ruta'].forEach(function(id){
+    // Trazabilidad, Ruta y Documentos: loading hasta que llegue el completo
+    ['btn-traz','btn-ruta','btn-docs'].forEach(function(id){
       var el = document.getElementById(id);
       el.classList.add('loading-btn');
       el.classList.remove('ready');
@@ -589,7 +619,7 @@ function lmAbrirHub(lote){
         // Si teníamos caché parcial al menos desbloquear traz/cal/ruta con lo que hay
         if (_cache){
           _cacheOk = true;
-          ['btn-traz','btn-ruta'].forEach(function(id){
+          ['btn-traz','btn-ruta','btn-docs'].forEach(function(id){
             var el = document.getElementById(id);
             el.classList.remove('loading-btn');
             el.classList.add('ready');
@@ -601,7 +631,7 @@ function lmAbrirHub(lote){
       _cache   = d;
       _cacheOk = true;
       lmRenderHubKpis(d);
-      ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta'].forEach(function(id){
+      ['btn-traz','btn-cal','btn-etq','btn-rep','btn-ruta','btn-docs'].forEach(function(id){
         var el = document.getElementById(id);
         el.classList.remove('loading-btn');
         el.classList.add('ready');
@@ -612,7 +642,7 @@ function lmAbrirHub(lote){
       document.getElementById('hub-strip').classList.add('hidden');
       if (_cache){
         _cacheOk = true;
-        ['btn-traz','btn-ruta'].forEach(function(id){
+        ['btn-traz','btn-ruta','btn-docs'].forEach(function(id){
           var el = document.getElementById(id);
           el.classList.remove('loading-btn');
           el.classList.add('ready');
@@ -1270,6 +1300,84 @@ function lmSubRuta(){
   document.getElementById('ruta-content').innerHTML = h;
   lmScreen('sc-ruta');
   document.getElementById('hdr-title-txt').textContent = 'Ruta';
+}
+
+// ══ DOCUMENTOS ══
+var DOC_SECCIONES = [
+  { key:'fi',   icon:'📋', label:'Formato Inspección' },
+  { key:'ta',   icon:'📏', label:'Tabla Gauge' },
+  { key:'ftf',  icon:'🔧', label:'Ficha Fabricación' },
+  { key:'ftp',  icon:'⚙️', label:'Ficha Producción' },
+  { key:'ho',   icon:'📄', label:'Hoja de Operación' },
+  { key:'av',   icon:'👁️', label:'Ayuda Visual' },
+  { key:'otros',icon:'📁', label:'Otros Documentos' }
+];
+
+function lmSubDocs(){
+  if (!_cacheOk){ lmLoad('CARGANDO...'); setTimeout(lmSubDocs, 400); return; }
+  lmUnload();
+  var docs = (_cache && _cache.docs) ? _cache.docs : {};
+  var ord  = _cache && _cache.orden ? _cache.orden : {};
+  document.getElementById('docs-sub').textContent = ord.codigo ? 'Código: ' + ord.codigo : _curLote;
+
+  var total = 0;
+  for (var k in docs) total += (docs[k]||[]).length;
+
+  var h = '';
+  if (total === 0) {
+    h = '<div class="empty"><span class="empty-ico">📭</span><p>No hay documentos aprobados<br>para este código de producto</p></div>';
+  } else {
+    DOC_SECCIONES.forEach(function(sec){
+      var lista = docs[sec.key] || [];
+      var tieneDoc = lista.length > 0;
+      h += '<div class="doc-seccion">';
+      h += '<div class="doc-sec-hdr'+(tieneDoc?' tiene-docs':'')+'" '+
+           (tieneDoc ? 'onclick="lmToggleDocSec(\'dsc-'+sec.key+'\')"' : '')+'>'+
+           '<span class="doc-sec-icon">'+sec.icon+'</span>'+
+           '<span class="doc-sec-nom">'+sec.label+'</span>'+
+           '<span class="doc-sec-badge'+(tieneDoc?'':' vacio')+'">'+
+             (tieneDoc ? lista.length+(lista.length===1?' doc':' docs') : 'Sin docs')+
+           '</span>'+
+           '</div>';
+      if (tieneDoc){
+        h += '<div class="doc-sec-body" id="dsc-'+sec.key+'">';
+        lista.forEach(function(doc){
+          var urlSafe = (doc.url||'').replace(/'/g,"\\'");
+          h += '<div class="doc-item" onclick="lmAbrirDoc(\''+urlSafe+'\')">'+
+               '<span class="doc-item-ico">'+sec.icon+'</span>'+
+               '<div class="doc-item-body">'+
+                 '<div class="doc-item-nom">'+doc.nombre+'</div>'+
+                 '<div class="doc-item-meta">'+
+                   'v'+doc.version+' &nbsp;·&nbsp; Aprobado: '+doc.fecha+
+                   (doc.prop ? '<br>'+doc.prop : '')+
+                   (doc.notas ? '<br><span style="color:var(--yellow)">📝 '+doc.notas+'</span>' : '')+
+                 '</div>'+
+               '</div>'+
+               '<span class="doc-item-arrow">›</span>'+
+               '</div>';
+        });
+        h += '</div>';
+      } else {
+        h += '<div class="doc-sec-body"><div class="doc-vacio">Sin documentos aprobados en esta categoría</div></div>';
+      }
+      h += '</div>';
+    });
+  }
+
+  document.getElementById('docs-content').innerHTML = h;
+  lmScreen('sc-docs');
+  document.getElementById('hdr-title-txt').textContent = 'Documentos';
+}
+
+function lmToggleDocSec(id){
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function lmAbrirDoc(url){
+  if (!url){ alert('Sin URL de documento'); return; }
+  window.open(url, '_blank');
 }
 
 // ══ INICIO ══
