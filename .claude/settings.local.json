@@ -42,7 +42,9 @@
       "Bash(grep -o 'fpd-filtros-bar.\\\\{0,600\\\\}fpd-grupo-btns.\\\\{0,100\\\\}</div>\\\\\\\\\\\\\\\\n' Mod_Planificador.html)",
       "Bash(grep -o 'trkAbrirMaterialEnviado\\(\\).\\\\{0,30\\\\}' MainApp_PlaneacionHTML.html)",
       "Bash(grep -o 'button onclick=\"trkAbrirPlanClavo\\(\\).\\\\{0,300\\\\}' C:/Users/rcdga/planeacion-produccion/Mod_Tracking.html)",
-      "Bash(grep -o 'button onclick=\"trkAbrirPlanClavo\\(\\).\\\\{0,600\\\\}' C:/Users/rcdga/planeacion-produccion/Mod_Tracking.html)"
+      "Bash(grep -o 'button onclick=\"trkAbrirPlanClavo\\(\\).\\\\{0,600\\\\}' C:/Users/rcdga/planeacion-produccion/Mod_Tracking.html)",
+      "Bash(findstr /N \"function.*cargarProcesos\\\\|function.*obtenerOrdenes\\\\|d.procesos\\\\|cargarOrdenes\" Mod_TableroSupervisor.html)",
+      "Bash(findstr /S /I \"prod.*sol\\\\|sol.*prod\\\\|producido\\\\|teórico\\\\|sello\\\\|eficiencia\" *.html)"
     ]
   }
 }

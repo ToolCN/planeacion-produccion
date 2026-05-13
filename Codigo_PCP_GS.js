@@ -1932,6 +1932,18 @@ function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
     var dataProd = shProd.getDataRange().getValues();
     var tz = ss.getSpreadsheetTimeZone();
 
+    // Velocidades por máquina desde ESTANDARES (col D=maquina, col E=velocidad)
+    var mapaVel = {};
+    var shEst = ss.getSheetByName('ESTANDARES');
+    if (shEst) {
+      var dataEst = shEst.getDataRange().getValues();
+      for (var e = 1; e < dataEst.length; e++) {
+        var maqE = String(dataEst[e][3] || '').trim().toUpperCase();
+        var velE  = parseFloat(dataEst[e][4]) || 0;
+        if (maqE && velE > 0) mapaVel[maqE] = velE;
+      }
+    }
+
     // Construir mapa id → fila de ORDENES  (col A = índice 0)
     var mapaOrdenes = {};
     for (var i = 1; i < dataOrd.length; i++) {
@@ -1985,6 +1997,7 @@ function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
         PESO_TINA:  Number(pr[22]) || '',
         PRODUCIDO:  Number(pr[10]) || '',
         SELLO:      pr[14] || '',
+        VEL:        mapaVel[String(pr[4] || '').trim().toUpperCase()] || 0,
         OPERADOR:   pr[17] || '',
         USER:       pr[24] || '',
         CAMBIOS:    pr[26] || ''

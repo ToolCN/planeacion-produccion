@@ -20750,6 +20750,730 @@ async function trkExportarProduccion() {
     // ── Autofilter en encabezado ──
     ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:cols.length} };
 
+    // ── Builder genérico: una hoja pivot por proceso ──────
+    var _buildHojaProceso = function(procFiltro, nombreHoja) {
+      var _DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      var _MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      function _norm(val){if(!val)return'';var s=String(val);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);var m1=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(m1)return m1[3]+'-'+m1[2]+'-'+m1[1];var d=new Date(s);if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return s.substring(0,10);}
+      function _sem(f){var d=new Date(f+'T12:00:00');d.setDate(d.getDate()+4-(d.getDay()||7));var y=new Date(d.getFullYear(),0,1);return Math.ceil((((d-y)/86400000)+1)/7);}
+      function _lunes(f){var d=new Date(f+'T12:00:00');var dow=d.getDay()||7;d.setDate(d.getDate()-dow+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+      function _fmtF(f){var d=new Date(f+'T12:00:00');if(isNaN(d.getTime()))return f;return _DIAS[d.getDay()]+' '+d.getDate()+'-'+_MESES[d.getMonth()];}
+      var rows=filas.filter(function(r){return(r.PROCESO||'').toUpperCase().indexOf(procFiltro)>=0;}).map(function(r){var fc={};for(var k in r)fc[k]=r[k];fc.FECHA=_norm(r.FECHA);return fc;});
+      if(!rows.length)return;
+      var maqSet={};
+      rows.forEach(function(r){if(r.MAQUINA)maqSet[r.MAQUINA.trim().toUpperCase()]=1;});
+      var maquinas=Object.keys(maqSet).sort();
+      if(!maquinas.length)return;
+      var HORAS_T={1:7.5,2:7.0,3:8.0};
+      var esColatado=(procFiltro.indexOf('COLATADO')>=0);
+      var pivot={};
+      maquinas.forEach(function(m){pivot[m]={};});
+      rows.forEach(function(r){
+        var m=(r.MAQUINA||'').trim().toUpperCase();if(!m||!pivot[m])return;
+        var fecha=r.FECHA;if(!fecha)return;
+        var turno=parseInt(r.TURNO)||1;
+        if(!pivot[m][fecha])pivot[m][fecha]={};
+        if(!pivot[m][fecha][turno])pivot[m][fecha][turno]={producido:0,sello:0,_set:false};
+        pivot[m][fecha][turno].producido+=parseFloat(r.PRODUCIDO)||0;
+        if(!pivot[m][fecha][turno]._set){
+          var vel=parseFloat(r.VEL)||0;
+          var hrs=HORAS_T[turno]||7.5;
+          var peso=parseFloat(r.PESO)||0;
+          if(vel>0){
+            if(esColatado){
+              pivot[m][fecha][turno].sello=vel*60*hrs;
+              pivot[m][fecha][turno]._set=true;
+            } else if(peso>0){
+              pivot[m][fecha][turno].sello=vel*60*hrs*peso;
+              pivot[m][fecha][turno]._set=true;
+            }
+          }
+        }
+      });
+      var fechasSet={};
+      rows.forEach(function(r){if(r.FECHA)fechasSet[r.FECHA]=1;});
+      var todasFechas=Object.keys(fechasSet).sort();
+      if(!todasFechas.length)return;
+      var semMap={};
+      todasFechas.forEach(function(f){
+        var d=new Date(f+'T12:00:00'),dow=d.getDay(),lun;
+        if(dow===0){var nd=new Date(d);nd.setDate(nd.getDate()+1);lun=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');}
+        else{lun=_lunes(f);}
+        if(!semMap[lun])semMap[lun]=[];
+        semMap[lun].push(f);
+      });
+      var semsOrden=Object.keys(semMap).sort();
+      if(!semsOrden.length)return;
+      var ws2=wb.addWorksheet(nombreHoja);
+      ws2.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,margins:{left:0.25,right:0.25,top:0.35,bottom:0.35,header:0.1,footer:0.1}};
+      var BT={style:'thin',color:{argb:'FF000000'}};
+      var BK={style:'medium',color:{argb:'FF000000'}};
+      var BH={style:'hair',color:{argb:'FF999999'}};
+      function _hT(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BK,bottom:BK,left:BK,right:BK};}
+      function _hD(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F1F1F'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:false};c.border={top:BT,bottom:BT,left:BK,right:BK};}
+      function _hTu(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF555555'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BT,bottom:BT,left:BH,right:BH};}
+      function _hTuL(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF555555'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BT,bottom:BT,left:BK,right:BH};}
+      function _cN(c,v,alt,bL){var iz=(v===0);c.value=(v===null||v===undefined)?0:v;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:iz?'FFFFD6D6':(alt?'FFF0F0F0':'FFFFFFFF')}};c.font={name:'Calibri',bold:false,size:12,color:{argb:iz?'FF721C24':'FF000000'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BH,bottom:BH,left:bL?BK:BH,right:BH};c.numFmt='#,##0';}
+      function _cE(c,alt,bL){c.value='';c.fill={type:'pattern',pattern:'solid',fgColor:{argb:alt?'FFF0F0F0':'FFFFFFFF'}};c.font={name:'Calibri',size:12,color:{argb:'FFAAAAAA'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BH,bottom:BH,left:bL?BK:BH,right:BH};}
+      function _cM(c,t,alt){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:alt?'FFE8E8E8':'FFFFFFFF'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FF000000'}};c.alignment={vertical:'middle',horizontal:'left'};c.border={top:BH,bottom:BH,left:BK,right:BT};}
+      function _cTo(c,v){c.value=v;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF333333'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BT,bottom:BT,left:BK,right:BK};c.numFmt='#,##0';}
+      function _cEf(c,v,ok){if(v===''){c.value='';}else{c.value=Math.round(v*100)/100;c.numFmt='0%';}c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ok?'FFD4EDDA':'FFFFD6D6'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:ok?'FF155724':'FF721C24'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BT,bottom:BT,left:BT,right:BK};}
+      var COL_MAQ=1,COL_TOT=19,COL_EF=20,COL_PRINT=21,TOT_COLS=21;
+      ws2.getColumn(COL_MAQ).width=13;
+      for(var _ci2=2;_ci2<=18;_ci2++)ws2.getColumn(_ci2).width=7.5;
+      ws2.getColumn(COL_TOT).width=9;ws2.getColumn(COL_EF).width=10;ws2.getColumn(COL_PRINT).width=12;
+      var rowOffset=0;
+      semsOrden.forEach(function(lunFecha,semIdx){
+        var numSem=_sem(lunFecha),O=rowOffset;
+        var _R=function(n){return ws2.getRow(O+n);};
+        var _C=function(r,c){return ws2.getCell(O+r,c);};
+        var _M=function(r1,c1,r2,c2){ws2.mergeCells(O+r1,c1,O+r2,c2);};
+        var diasSem=[];
+        for(var di=0;di<6;di++){var dd=new Date(lunFecha+'T12:00:00');dd.setDate(dd.getDate()+di);diasSem.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'));}
+        var colC=2,diaColMap={},diaTurnos={};
+        diasSem.forEach(function(dF){diaColMap[dF]=colC;var isSab=(new Date(dF+'T12:00:00').getDay()===6);diaTurnos[dF]=isSab?2:3;colC+=diaTurnos[dF];});
+        var diasConDatos={};
+        (semMap[lunFecha]||[]).forEach(function(f){diasConDatos[f]=true;});
+        var acumProd={},acumSello={},acumTurnoP={};
+        diasSem.forEach(function(dF){acumProd[dF]=0;acumSello[dF]=0;acumTurnoP[dF]={};for(var _tt=1;_tt<=diaTurnos[dF];_tt++)acumTurnoP[dF][_tt]=0;});
+        _M(1,1,1,TOT_COLS);_hT(_C(1,1),nombreHoja+' — SEMANA '+numSem);_R(1).height=26.25;
+        _R(2).height=26.25;_hD(_C(2,COL_MAQ),'MÁQUINA');
+        diasSem.forEach(function(dF){var ci=diaColMap[dF],nt=diaTurnos[dF];_M(2,ci,2,ci+nt-1);_hD(_C(2,ci),_fmtF(dF));});
+        _hD(_C(2,COL_TOT),'TOTAL');_hD(_C(2,COL_EF),'EFICIENCIA');
+        _R(3).height=26.25;_hTu(_C(3,COL_MAQ),'');
+        diasSem.forEach(function(dF){var ci=diaColMap[dF],nt=diaTurnos[dF];_hTuL(_C(3,ci),'T1');if(nt>=2)_hTu(_C(3,ci+1),'T2');if(nt>=3)_hTu(_C(3,ci+2),'T3');});
+        _hTu(_C(3,COL_TOT),'SEM');_hTu(_C(3,COL_EF),'%');
+        maquinas.forEach(function(maq,mi){
+          var rNum=mi+4,rRow=_R(rNum);rRow.height=26.25;var isAlt=(mi%2!==0);
+          _cM(rRow.getCell(COL_MAQ),maq,isAlt);
+          var totP=0,totS=0;
+          diasSem.forEach(function(dF){
+            var ci=diaColMap[dF],nt=diaTurnos[dF],tD=!!diasConDatos[dF];
+            for(var ti=0;ti<nt;ti++){
+              var t=ti+1,cell=rRow.getCell(ci+ti);
+              var dat=(pivot[maq]&&pivot[maq][dF]&&pivot[maq][dF][t])?pivot[maq][dF][t]:null;
+              var prod=dat?dat.producido:0,sell=dat?dat.sello:0;
+              totP+=prod;totS+=sell;acumProd[dF]+=prod;acumSello[dF]+=sell;acumTurnoP[dF][t]=(acumTurnoP[dF][t]||0)+prod;
+              if(tD){_cN(cell,Math.round(prod),isAlt,ti===0);}else{_cE(cell,isAlt,ti===0);}
+            }
+          });
+          _cTo(rRow.getCell(COL_TOT),Math.round(totP));
+          if(totS>0){var ef=Math.min(totP/totS,1);_cEf(rRow.getCell(COL_EF),ef,ef>=0.65);}
+          else if(totP===0){_cEf(rRow.getCell(COL_EF),0,false);}
+          else{_cEf(rRow.getCell(COL_EF),'',true);}
+        });
+        var rTurno=maquinas.length+4,rTurnoRow=_R(rTurno);rTurnoRow.height=26.25;
+        var cTLbl=rTurnoRow.getCell(COL_MAQ);cTLbl.value='TOTAL TURNO';cTLbl.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF444444'}};cTLbl.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};cTLbl.alignment={vertical:'middle',horizontal:'center'};cTLbl.border={top:BK,bottom:BK,left:BK,right:BT};
+        var ttP=0;
+        diasSem.forEach(function(dF){var ci=diaColMap[dF],nt=diaTurnos[dF],tD=!!diasConDatos[dF];for(var ti=0;ti<nt;ti++){var t=ti+1,cell=rTurnoRow.getCell(ci+ti);var prod=acumTurnoP[dF][t]||0;ttP+=prod;if(tD){_cTo(cell,Math.round(prod));}else{_cE(cell,false,ti===0);}}});
+        _cTo(rTurnoRow.getCell(COL_TOT),Math.round(ttP));
+        rTurnoRow.getCell(COL_EF).value='';rTurnoRow.getCell(COL_PRINT).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+        var rTot=maquinas.length+5,rTotRow=_R(rTot);rTotRow.height=26.25;
+        var cLbl=rTotRow.getCell(COL_MAQ);
+        cLbl.value='TOTAL DÍA';cLbl.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};
+        cLbl.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cLbl.alignment={vertical:'middle',horizontal:'center'};cLbl.border={top:BK,bottom:BK,left:BK,right:BT};
+        var gtP=0,gtS=0;
+        diasSem.forEach(function(dF){
+          var ci=diaColMap[dF],nt=diaTurnos[dF],tD=!!diasConDatos[dF];
+          var prod=acumProd[dF]||0,sell=acumSello[dF]||0;gtP+=prod;gtS+=sell;
+          _M(rTot,ci,rTot,ci+nt-1);
+          var cell=rTotRow.getCell(ci);
+          if(tD){var efD=(sell>0)?Math.min(prod/sell,1):0;cell.value=Math.round(prod).toLocaleString()+' · '+Math.round(efD*100)+'%';cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:efD>=0.65?'FFD4EDDA':'FFFFD6D6'}};cell.font={name:'Calibri',bold:true,size:12,color:{argb:efD>=0.65?'FF155724':'FF721C24'}};}
+          else{cell.value='';cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F5'}};cell.font={name:'Calibri',size:12,color:{argb:'FFAAAAAA'}};}
+          cell.alignment={vertical:'middle',horizontal:'center'};cell.border={top:BK,bottom:BK,left:BK,right:BK};
+        });
+        _cTo(rTotRow.getCell(COL_TOT),Math.round(gtP));
+        if(gtS>0){_cEf(rTotRow.getCell(COL_EF),Math.min(gtP/gtS,1),(gtP/gtS)>=0.65);}
+        else{_cEf(rTotRow.getCell(COL_EF),0,false);}
+        var pCell=rTotRow.getCell(COL_PRINT);pCell.value='.';pCell.font={name:'Calibri',size:12,color:{argb:'FF000000'}};pCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};pCell.alignment={vertical:'middle',horizontal:'center'};pCell.border={top:BK,bottom:BK,left:BT,right:BK};
+        if(semIdx<semsOrden.length-1){if(!ws2._pageBreaks)ws2._pageBreaks={id:'pageBreaks',rowBreaks:[],colBreaks:[]};ws2._pageBreaks.rowBreaks.push({id:O+rTot,man:1});}
+        rowOffset+=rTot;
+      });
+      ws2.pageSetup.printArea='A1:'+String.fromCharCode(64+TOT_COLS)+rowOffset;
+    };
+
+    // ══════════════════════════════════════════════════════
+    // HOJA EXTRA: CLAVO — Cumplimiento por máquina/día/turno
+    // ══════════════════════════════════════════════════════
+    (function() {
+      var DIAS_FULL = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      var MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      var TURNOS_ORDEN = [1, 2, 3];
+
+      // Función para parsear fecha robusta → siempre devuelve "YYYY-MM-DD"
+      function trkNormFecha(val) {
+        if (!val) return '';
+        var s = String(val);
+        // Ya está en formato YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+        // Formato DD/MM/YYYY
+        var m1 = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        if (m1) return m1[3]+'-'+m1[2]+'-'+m1[1];
+        // Intentar con Date
+        var d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        }
+        return s.substring(0,10);
+      }
+
+      // Filtrar solo ESTAMPADO
+      var filasClavo = filas.filter(function(f) {
+        var p = (f.PROCESO || '').toUpperCase();
+        return p.indexOf('ESTAMPADO') >= 0;
+      });
+      if (!filasClavo.length) return;
+
+      // Normalizar fechas en filasClavo
+      filasClavo = filasClavo.map(function(f) {
+        var fc = {};
+        for (var k in f) fc[k] = f[k];
+        fc.FECHA = trkNormFecha(f.FECHA);
+        return fc;
+      });
+
+      var DIAS_FULL_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      var MESES_C = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+      // Lista maestra sin CLAVERA 10, 14, 24, 25, 27, 32
+      var MAQUINAS_ESTAMPADO = [
+        'CLAVERA 02','CLAVERA 03','CLAVERA 04','CLAVERA 05','CLAVERA 06',
+        'CLAVERA 07','CLAVERA 08','CLAVERA 09','CLAVERA 11',
+        'CLAVERA 13','CLAVERA 16','CLAVERA 18','CLAVERA 20',
+        'CLAVERA 21','CLAVERA 22','CLAVERA 23',
+        'CLAVERA 26','CLAVERA 29','CLAVERA 30','CLAVERA 31',
+        'CLAVERA 33'
+      ];
+      var maquinas = MAQUINAS_ESTAMPADO;
+
+      // Velocidades pza/min por máquina (hoja ESTANDARES)
+      var VEL_MAQ = {
+        'CLAVERA 02':280,'CLAVERA 03':260,'CLAVERA 04':300,'CLAVERA 05':430,
+        'CLAVERA 06':480,'CLAVERA 07':480,'CLAVERA 08':500,'CLAVERA 09':280,
+        'CLAVERA 11':390,'CLAVERA 13':435,'CLAVERA 16':300,'CLAVERA 18':470,
+        'CLAVERA 20':600,'CLAVERA 21':730,'CLAVERA 22':280,'CLAVERA 23':500,
+        'CLAVERA 26':900,'CLAVERA 29':600,'CLAVERA 30':600,'CLAVERA 31':600,
+        'CLAVERA 33':500
+      };
+      var HORAS_TURNO = {1:7.5, 2:7.0, 3:8.0};
+
+      // Número de semana ISO
+      function _getSem(fechaISO) {
+        var d = new Date(fechaISO + 'T12:00:00');
+        d.setDate(d.getDate() + 4 - (d.getDay()||7));
+        var y = new Date(d.getFullYear(),0,1);
+        return Math.ceil((((d-y)/86400000)+1)/7);
+      }
+      // Lunes de la semana de una fecha → "YYYY-MM-DD"
+      function _getLunes(fechaISO) {
+        var d = new Date(fechaISO + 'T12:00:00');
+        var dow = d.getDay() || 7;
+        d.setDate(d.getDate() - dow + 1);
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      }
+      // Formatear fecha como "Lunes 11-may"
+      function _fmtFecha(fechaISO) {
+        var d = new Date(fechaISO + 'T12:00:00');
+        if (isNaN(d.getTime())) return fechaISO;
+        return DIAS_FULL_ES[d.getDay()] + ' ' + d.getDate() + '-' + MESES_C[d.getMonth()];
+      }
+
+      // Obtener fechas con datos
+      var fechasSet = {};
+      filasClavo.forEach(function(f){ if(f.FECHA) fechasSet[f.FECHA] = 1; });
+      var todasFechas = Object.keys(fechasSet).sort();
+      if (!todasFechas.length) return;
+
+      // Agrupar por semana (solo fechas Lun-Sáb; domingos van a semana siguiente como Lun)
+      var semMap = {};
+      todasFechas.forEach(function(f) {
+        var d = new Date(f + 'T12:00:00');
+        var dow = d.getDay(); // 0=dom, 1=lun ... 6=sáb
+        // Domingo lo tratamos como inicio de la semana siguiente (lunes)
+        var lun;
+        if (dow === 0) {
+          var nd = new Date(d); nd.setDate(nd.getDate() + 1);
+          lun = nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');
+        } else {
+          lun = _getLunes(f);
+        }
+        if (!semMap[lun]) semMap[lun] = [];
+        semMap[lun].push(f);
+      });
+      var semsOrden = Object.keys(semMap).sort();
+
+      // Pivot global pivot[maq][fecha][turno] = {producido, sello}
+      var pivot = {};
+      maquinas.forEach(function(m){ pivot[m] = {}; });
+      filasClavo.forEach(function(f) {
+        var m = f.MAQUINA; if(!m) return;
+        if (!pivot[m]) return; // máquina no está en la lista maestra — ignorar
+        var fecha = f.FECHA; if(!fecha) return;
+        var turno = parseInt(f.TURNO) || 1;
+        if (!pivot[m][fecha]) pivot[m][fecha] = {};
+        if (!pivot[m][fecha][turno]) pivot[m][fecha][turno] = {producido:0, sello:0, _set:false};
+        pivot[m][fecha][turno].producido += parseFloat(f.PRODUCIDO) || 0;
+        if (!pivot[m][fecha][turno]._set) {
+          var pu = parseFloat(f.PESO) || 0;
+          var vel = VEL_MAQ[m] || 0;
+          if (pu > 0 && vel > 0) {
+            pivot[m][fecha][turno].sello = vel * 60 * (HORAS_TURNO[turno]||7.5) * pu;
+            pivot[m][fecha][turno]._set = true;
+          }
+        }
+      });
+
+      // ── Hoja única ESTAMPADO ──
+      var wsCL = wb.addWorksheet('ESTAMPADO');
+      wsCL.pageSetup = {
+        orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0, paperSize:9,
+        margins:{left:0.25,right:0.25,top:0.35,bottom:0.35,header:0.1,footer:0.1}
+      };
+
+      // ── Helpers de estilo BN ──
+      var BRD_THIN  = {style:'thin',  color:{argb:'FF000000'}};
+      var BRD_THICK = {style:'medium',color:{argb:'FF000000'}};
+      var BRD_HAIR  = {style:'hair',  color:{argb:'FF999999'}};
+
+      function _hdrTit(cell, txt) {
+        cell.value = txt;
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_THICK,bottom:BRD_THICK,left:BRD_THICK,right:BRD_THICK};
+      }
+      function _hdrDia(cell, txt) {
+        cell.value = txt;
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1F1F1F'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cell.alignment = {vertical:'middle',horizontal:'center',wrapText:false};
+        cell.border = {top:BRD_THIN,bottom:BRD_THIN,left:BRD_THICK,right:BRD_THICK};
+      }
+      function _hdrTurno(cell, txt) {
+        cell.value = txt;
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF555555'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_THIN,bottom:BRD_THIN,left:BRD_HAIR,right:BRD_HAIR};
+      }
+      function _hdrTurnoL(cell, txt) {
+        cell.value = txt;
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF555555'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_THIN,bottom:BRD_THIN,left:BRD_THICK,right:BRD_HAIR};
+      }
+      function _cellNum(cell, val, isAlt, boldLeft) {
+        cell.value = (val === null || val === undefined) ? 0 : val;
+        var isZero = (cell.value === 0);
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isZero ? 'FFFFD6D6' : (isAlt ? 'FFF0F0F0' : 'FFFFFFFF')}};
+        cell.font = {name:'Calibri',bold:false,size:12,color:{argb: isZero ? 'FF721C24' : 'FF000000'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_HAIR,bottom:BRD_HAIR,left:boldLeft?BRD_THICK:BRD_HAIR,right:BRD_HAIR};
+        cell.numFmt = '#,##0';
+      }
+      function _cellEmpty(cell, isAlt, boldLeft) {
+        cell.value = '';
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isAlt ? 'FFF0F0F0' : 'FFFFFFFF'}};
+        cell.font = {name:'Calibri',size:12,color:{argb:'FFAAAAAA'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_HAIR,bottom:BRD_HAIR,left:boldLeft?BRD_THICK:BRD_HAIR,right:BRD_HAIR};
+      }
+      function _cellMaq(cell, txt, isAlt) {
+        cell.value = txt;
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: isAlt ? 'FFE8E8E8' : 'FFFFFFFF'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb:'FF000000'}};
+        cell.alignment = {vertical:'middle',horizontal:'left'};
+        cell.border = {top:BRD_HAIR,bottom:BRD_HAIR,left:BRD_THICK,right:BRD_THIN};
+      }
+      function _cellTot(cell, val) {
+        cell.value = val;
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF333333'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_THIN,bottom:BRD_THIN,left:BRD_THICK,right:BRD_THICK};
+        cell.numFmt = '#,##0';
+      }
+      function _cellEfic(cell, val, ok) {
+        if (val === '') {
+          cell.value = '';
+        } else {
+          cell.value = Math.round(val * 100) / 100;
+          cell.numFmt = '0%';
+        }
+        cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: ok ? 'FFD4EDDA' : 'FFFFD6D6'}};
+        cell.font = {name:'Calibri',bold:true,size:12,color:{argb: ok ? 'FF155724' : 'FF721C24'}};
+        cell.alignment = {vertical:'middle',horizontal:'center'};
+        cell.border = {top:BRD_THIN,bottom:BRD_THIN,left:BRD_THIN,right:BRD_THICK};
+      }
+
+      // ── Estructura de columnas (Sáb=2 turnos, otros=3) ──
+      var COL_MAQ = 1;
+      var COL_TOT = 19;
+      var COL_EF  = 20;
+      var COL_PRINT = 21;
+      var TOT_COLS = 21;
+
+      wsCL.getColumn(COL_MAQ).width = 13;
+      for (var _ci = 2; _ci <= 18; _ci++) wsCL.getColumn(_ci).width = 7.5;
+      wsCL.getColumn(COL_TOT).width = 9;
+      wsCL.getColumn(COL_EF).width  = 10;
+      wsCL.getColumn(COL_PRINT).width = 12;
+
+      var rowOffset = 0;
+
+      semsOrden.forEach(function(lunFecha, semIdx) {
+        var numSem = _getSem(lunFecha);
+        var O = rowOffset;
+        var _R = function(n) { return wsCL.getRow(O + n); };
+        var _C = function(r, c) { return wsCL.getCell(O + r, c); };
+        var _M = function(r1, c1, r2, c2) { wsCL.mergeCells(O + r1, c1, O + r2, c2); };
+
+        // 6 días Lun-Sáb de la semana
+        var diasSem = [];
+        for (var di = 0; di < 6; di++) {
+          var dd = new Date(lunFecha + 'T12:00:00');
+          dd.setDate(dd.getDate() + di);
+          diasSem.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'));
+        }
+
+        var colC = 2;
+        var diaColMap = {};
+        var diaTurnos = {};
+        diasSem.forEach(function(dF) {
+          diaColMap[dF] = colC;
+          var isSab = (new Date(dF + 'T12:00:00').getDay() === 6);
+          diaTurnos[dF] = isSab ? 2 : 3;
+          colC += diaTurnos[dF];
+        });
+
+        // Fechas con datos reales en esta semana
+        var diasConDatos = {};
+        var _datosSem = semMap[lunFecha] || [];
+        _datosSem.forEach(function(f){ diasConDatos[f] = true; });
+
+        // Acumuladores por día
+        var acumProdDia = {};
+        var acumTeoDia  = {};
+        var acumTurnoPDia = {};
+        diasSem.forEach(function(dF) {
+          acumProdDia[dF] = 0;
+          acumTeoDia[dF]  = 0;
+          acumTurnoPDia[dF] = {};
+          for (var _tt = 1; _tt <= diaTurnos[dF]; _tt++) acumTurnoPDia[dF][_tt] = 0;
+        });
+
+        // ── Fila 1: Título ──
+        _M(1, 1, 1, TOT_COLS);
+        _hdrTit(_C(1, 1), 'ESTAMPADO — SEMANA ' + numSem);
+        _R(1).height = 26.25;
+
+        // ── Fila 2: Días ──
+        _R(2).height = 26.25;
+        _hdrDia(_C(2, COL_MAQ), 'MÁQUINA');
+        diasSem.forEach(function(dF) {
+          var ci = diaColMap[dF], nt = diaTurnos[dF];
+          _M(2, ci, 2, ci+nt-1);
+          _hdrDia(_C(2, ci), _fmtFecha(dF));
+        });
+        _hdrDia(_C(2, COL_TOT), 'TOTAL');
+        _hdrDia(_C(2, COL_EF),  'EFICIENCIA');
+
+        // ── Fila 3: Turnos ──
+        _R(3).height = 26.25;
+        _hdrTurno(_C(3, COL_MAQ), '');
+        diasSem.forEach(function(dF) {
+          var ci = diaColMap[dF], nt = diaTurnos[dF];
+          _hdrTurnoL(_C(3, ci),   'T1');
+          if (nt >= 2) _hdrTurno(_C(3, ci+1), 'T2');
+          if (nt >= 3) _hdrTurno(_C(3, ci+2), 'T3');
+        });
+        _hdrTurno(_C(3, COL_TOT), 'SEM');
+        _hdrTurno(_C(3, COL_EF),  '%');
+
+        // ── Filas de máquinas ──
+        maquinas.forEach(function(maq, mi) {
+          var rNum = mi + 4;
+          var rRow = _R(rNum); rRow.height = 26.25;
+          var isAlt = (mi % 2 !== 0);
+
+          _cellMaq(rRow.getCell(COL_MAQ), maq, isAlt);
+
+          var totProd = 0, totTeo = 0;
+
+          diasSem.forEach(function(dF) {
+            var ci = diaColMap[dF];
+            var nt = diaTurnos[dF];
+            var tieneDatos = !!diasConDatos[dF];
+            if (!acumProdDia[dF]) acumProdDia[dF] = 0;
+            if (!acumTeoDia[dF])  acumTeoDia[dF]  = 0;
+
+            for (var ti = 0; ti < nt; ti++) {
+              var t = ti + 1;
+              var cell = rRow.getCell(ci + ti);
+              var dat = (pivot[maq][dF] && pivot[maq][dF][t]) ? pivot[maq][dF][t] : null;
+              var prod = dat ? dat.producido : 0;
+              var teo  = dat ? dat.sello     : 0;
+              totProd += prod;
+              totTeo  += teo;
+              acumProdDia[dF] += prod;
+              acumTeoDia[dF]  += teo;
+              acumTurnoPDia[dF][t] = (acumTurnoPDia[dF][t] || 0) + prod;
+              var boldLeft = (ti === 0);
+              if (tieneDatos) {
+                _cellNum(cell, Math.round(prod), isAlt, boldLeft);
+              } else {
+                _cellEmpty(cell, isAlt, boldLeft);
+              }
+            }
+          });
+
+          // TOTAL semana máquina
+          _cellTot(rRow.getCell(COL_TOT), Math.round(totProd));
+
+          // EFICIENCIA máquina (cap 100%)
+          if (totTeo > 0) {
+            var ef = Math.min(totProd / totTeo, 1);
+            _cellEfic(rRow.getCell(COL_EF), ef, ef >= 0.65);
+          } else if (totProd === 0) {
+            _cellEfic(rRow.getCell(COL_EF), 0, false);
+          } else {
+            _cellEfic(rRow.getCell(COL_EF), '', true);
+          }
+        });
+
+        // ── Fila TOTAL TURNO ──
+        var rTurnoE = maquinas.length + 4;
+        var rTurnoRowE = _R(rTurnoE); rTurnoRowE.height = 26.25;
+        var cTurnoLbl = rTurnoRowE.getCell(COL_MAQ);
+        cTurnoLbl.value = 'TOTAL TURNO';
+        cTurnoLbl.fill  = {type:'pattern',pattern:'solid',fgColor:{argb:'FF444444'}};
+        cTurnoLbl.font  = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cTurnoLbl.alignment = {vertical:'middle',horizontal:'center'};
+        cTurnoLbl.border = {top:BRD_THICK,bottom:BRD_THICK,left:BRD_THICK,right:BRD_THIN};
+        var ttProdE = 0;
+        diasSem.forEach(function(dF) {
+          var ci = diaColMap[dF], nt = diaTurnos[dF], tieneDatos = !!diasConDatos[dF];
+          for (var ti = 0; ti < nt; ti++) {
+            var t = ti + 1;
+            var cell = rTurnoRowE.getCell(ci + ti);
+            var prod = acumTurnoPDia[dF][t] || 0;
+            ttProdE += prod;
+            if (tieneDatos) { _cellTot(cell, Math.round(prod)); }
+            else { _cellEmpty(cell, false, ti === 0); }
+          }
+        });
+        _cellTot(rTurnoRowE.getCell(COL_TOT), Math.round(ttProdE));
+        rTurnoRowE.getCell(COL_EF).value = '';
+        rTurnoRowE.getCell(COL_PRINT).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+
+        // ── Fila TOTAL DÍA ──
+        var rTot = maquinas.length + 5;
+        var rTotRow = _R(rTot); rTotRow.height = 26.25;
+
+        var cLbl = rTotRow.getCell(COL_MAQ);
+        cLbl.value = 'TOTAL DÍA';
+        cLbl.fill  = {type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};
+        cLbl.font  = {name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};
+        cLbl.alignment = {vertical:'middle',horizontal:'center'};
+        cLbl.border = {top:BRD_THICK,bottom:BRD_THICK,left:BRD_THICK,right:BRD_THIN};
+
+        var gtProd = 0, gtTeo = 0;
+
+        diasSem.forEach(function(dF) {
+          var ci = diaColMap[dF];
+          var tieneDatos = !!diasConDatos[dF];
+          var prod = acumProdDia[dF] || 0;
+          var teo  = acumTeoDia[dF]  || 0;
+          gtProd += prod;
+          gtTeo  += teo;
+
+          _M(rTot, ci, rTot, ci+diaTurnos[dF]-1);
+          var cell = rTotRow.getCell(ci);
+          if (tieneDatos) {
+            var efD = (teo > 0) ? Math.min(prod / teo, 1) : 0;
+            var kgStr = Math.round(prod).toLocaleString() + ' kg';
+            var efStr = Math.round(efD * 100) + '%';
+            cell.value = kgStr + ' · ' + efStr;
+            cell.fill  = {type:'pattern',pattern:'solid',fgColor:{argb: efD >= 0.65 ? 'FFD4EDDA' : 'FFFFD6D6'}};
+            cell.font  = {name:'Calibri',bold:true,size:12,color:{argb: efD >= 0.65 ? 'FF155724' : 'FF721C24'}};
+          } else {
+            cell.value = '';
+            cell.fill  = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F5'}};
+            cell.font  = {name:'Calibri',size:12,color:{argb:'FFAAAAAA'}};
+          }
+          cell.alignment = {vertical:'middle',horizontal:'center'};
+          cell.border = {top:BRD_THICK,bottom:BRD_THICK,left:BRD_THICK,right:BRD_THICK};
+        });
+
+        // TOTAL semana general
+        _cellTot(rTotRow.getCell(COL_TOT), Math.round(gtProd));
+
+        // EFICIENCIA semana general
+        if (gtTeo > 0) {
+          _cellEfic(rTotRow.getCell(COL_EF), Math.min(gtProd/gtTeo,1), (gtProd/gtTeo) >= 0.65);
+        } else {
+          _cellEfic(rTotRow.getCell(COL_EF), 0, false);
+        }
+        var pCellE = rTotRow.getCell(COL_PRINT);
+        pCellE.value = '.';
+        pCellE.font = {name:'Calibri',size:12,color:{argb:'FF000000'}};
+        pCellE.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+        pCellE.alignment = {vertical:'middle',horizontal:'center'};
+        pCellE.border = {top:BRD_THICK,bottom:BRD_THICK,left:BRD_THIN,right:BRD_THICK};
+
+        // Salto de página entre semanas
+        if (semIdx < semsOrden.length - 1) {
+          if (!wsCL._pageBreaks) wsCL._pageBreaks = {id:'pageBreaks', rowBreaks:[], colBreaks:[]};
+          wsCL._pageBreaks.rowBreaks.push({id: O + rTot, man: 1});
+        }
+
+        rowOffset += rTot;
+      }); // fin forEach semanas
+
+      wsCL.pageSetup.printArea = 'A1:' + String.fromCharCode(64 + TOT_COLS) + rowOffset;
+
+    })();
+    // ══════════════════════════════════════════════════════
+    // FIN HOJA CLAVO
+    // ══════════════════════════════════════════════════════
+
+    // ── Hojas de proceso adicionales ──
+    _buildHojaProceso('ROSCADO',   'ROSCADO');
+    _buildHojaProceso('COLATADO',  'COLATADO');
+    _buildHojaProceso('ESTIRADO',  'ESTIRADO');
+    _buildHojaProceso('TREFILADO', 'TREFILADO');
+    _buildHojaProceso('FORJA',     'FORJA');
+
+    // ── Hoja GENERAL ──
+    (function() {
+      var PROCESOS_G=['ESTAMPADO','ROSCADO','COLATADO','ESTIRADO','TREFILADO','FORJA'];
+      var VEL_MAQ_EST={'CLAVERA 02':280,'CLAVERA 03':260,'CLAVERA 04':300,'CLAVERA 05':430,'CLAVERA 06':480,'CLAVERA 07':480,'CLAVERA 08':500,'CLAVERA 09':280,'CLAVERA 11':390,'CLAVERA 13':435,'CLAVERA 16':300,'CLAVERA 18':470,'CLAVERA 20':600,'CLAVERA 21':730,'CLAVERA 22':280,'CLAVERA 23':500,'CLAVERA 26':900,'CLAVERA 29':600,'CLAVERA 30':600,'CLAVERA 31':600,'CLAVERA 33':500};
+      var HORAS_G={1:7.5,2:7.0,3:8.0};
+      var DIAS_G=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+      var MESES_G=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      function _nG(v){if(!v)return'';var s=String(v);if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);var m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(m)return m[3]+'-'+m[2]+'-'+m[1];var d=new Date(s);if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return s.substring(0,10);}
+      function _sG(f){var d=new Date(f+'T12:00:00');d.setDate(d.getDate()+4-(d.getDay()||7));var y=new Date(d.getFullYear(),0,1);return Math.ceil((((d-y)/86400000)+1)/7);}
+      function _lG(f){var d=new Date(f+'T12:00:00');var w=d.getDay()||7;d.setDate(d.getDate()-w+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+      function _fG(f){var d=new Date(f+'T12:00:00');if(isNaN(d.getTime()))return f;return DIAS_G[d.getDay()]+' '+d.getDate()+'-'+MESES_G[d.getMonth()];}
+      var pivotG={};
+      PROCESOS_G.forEach(function(p){pivotG[p]={};});
+      filas.forEach(function(r){
+        var proc=(r.PROCESO||'').toUpperCase(),matchP=null;
+        PROCESOS_G.forEach(function(p){if(proc.indexOf(p)>=0)matchP=p;});
+        if(!matchP)return;
+        var fecha=_nG(r.FECHA);if(!fecha)return;
+        var turno=parseInt(r.TURNO)||1,maq=(r.MAQUINA||'').trim().toUpperCase();
+        if(!pivotG[matchP][fecha])pivotG[matchP][fecha]={};
+        if(!pivotG[matchP][fecha][turno])pivotG[matchP][fecha][turno]={producido:0,sello:0,_ms:{}};
+        var sl=pivotG[matchP][fecha][turno];
+        var pesoR=parseFloat(r.PESO)||0;
+        sl.producido+=(matchP==='COLATADO')?((parseFloat(r.PRODUCIDO)||0)*pesoR):(parseFloat(r.PRODUCIDO)||0);
+        var mk=maq+'_'+turno;
+        if(!sl._ms[mk]){
+          var vel=(matchP==='ESTAMPADO')?(VEL_MAQ_EST[maq]||0):(parseFloat(r.VEL)||0);
+          var hrs=HORAS_G[turno]||7.5;
+          if(vel>0&&pesoR>0){sl.sello+=vel*60*hrs*pesoR;sl._ms[mk]=true;}
+        }
+      });
+      var fSetG={};filas.forEach(function(r){var f=_nG(r.FECHA);if(f)fSetG[f]=1;});
+      var todasFG=Object.keys(fSetG).sort();if(!todasFG.length)return;
+      var semMapG={};
+      todasFG.forEach(function(f){var d=new Date(f+'T12:00:00'),dow=d.getDay(),lun;if(dow===0){var nd=new Date(d);nd.setDate(nd.getDate()+1);lun=nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0')+'-'+String(nd.getDate()).padStart(2,'0');}else{lun=_lG(f);}if(!semMapG[lun])semMapG[lun]=[];semMapG[lun].push(f);});
+      var semsG=Object.keys(semMapG).sort();if(!semsG.length)return;
+      var wsG=wb.addWorksheet('GENERAL');
+      wsG.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,margins:{left:0.25,right:0.25,top:0.35,bottom:0.35,header:0.1,footer:0.1}};
+      var BTG={style:'thin',color:{argb:'FF000000'}},BKG={style:'medium',color:{argb:'FF000000'}},BHG={style:'hair',color:{argb:'FF999999'}};
+      function _hTg(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BKG,bottom:BKG,left:BKG,right:BKG};}
+      function _hDg(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F1F1F'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:false};c.border={top:BTG,bottom:BTG,left:BKG,right:BKG};}
+      function _hTug(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF555555'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BTG,bottom:BTG,left:BHG,right:BHG};}
+      function _hTuLg(c,t){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF555555'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BTG,bottom:BTG,left:BKG,right:BHG};}
+      function _cNg(c,v,alt,bL){var iz=(v===0);c.value=(v===null||v===undefined)?0:v;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:iz?'FFFFD6D6':(alt?'FFF0F0F0':'FFFFFFFF')}};c.font={name:'Calibri',size:12,color:{argb:iz?'FF721C24':'FF000000'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BHG,bottom:BHG,left:bL?BKG:BHG,right:BHG};c.numFmt='#,##0';}
+      function _cEg(c,alt,bL){c.value='';c.fill={type:'pattern',pattern:'solid',fgColor:{argb:alt?'FFF0F0F0':'FFFFFFFF'}};c.font={name:'Calibri',size:12,color:{argb:'FFAAAAAA'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BHG,bottom:BHG,left:bL?BKG:BHG,right:BHG};}
+      function _cMg(c,t,alt){c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:alt?'FFE8E8E8':'FFFFFFFF'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FF000000'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BHG,bottom:BHG,left:BKG,right:BTG};}
+      function _cTog(c,v){c.value=v;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF333333'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BTG,bottom:BTG,left:BKG,right:BKG};c.numFmt='#,##0';}
+      function _cEfg(c,v,ok){if(v===''){c.value='';}else{c.value=Math.round(v*100)/100;c.numFmt='0%';}c.fill={type:'pattern',pattern:'solid',fgColor:{argb:ok?'FFD4EDDA':'FFFFD6D6'}};c.font={name:'Calibri',bold:true,size:12,color:{argb:ok?'FF155724':'FF721C24'}};c.alignment={vertical:'middle',horizontal:'center'};c.border={top:BTG,bottom:BTG,left:BTG,right:BKG};}
+      var CM_G=1,CT_G=19,CE_G=20,CP_G=21,TOT_G=21;
+      wsG.getColumn(CM_G).width=13;for(var _cig=2;_cig<=18;_cig++)wsG.getColumn(_cig).width=7.5;
+      wsG.getColumn(CT_G).width=9;wsG.getColumn(CE_G).width=10;wsG.getColumn(CP_G).width=12;
+      var rowOffG=0;
+      semsG.forEach(function(lunF,semIdx){
+        var nS=_sG(lunF),O=rowOffG;
+        var _R=function(n){return wsG.getRow(O+n);};
+        var _C=function(r,c){return wsG.getCell(O+r,c);};
+        var _M=function(r1,c1,r2,c2){wsG.mergeCells(O+r1,c1,O+r2,c2);};
+        var diasS=[];
+        for(var di=0;di<6;di++){var dd=new Date(lunF+'T12:00:00');dd.setDate(dd.getDate()+di);diasS.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'));}
+        var colC=2,dCM={},dTG={};
+        diasS.forEach(function(dF){dCM[dF]=colC;var iS=(new Date(dF+'T12:00:00').getDay()===6);dTG[dF]=iS?2:3;colC+=dTG[dF];});
+        var dCD={};(semMapG[lunF]||[]).forEach(function(f){dCD[f]=true;});
+        var acPG={},acSG={},acTG={},acPTG={};
+        diasS.forEach(function(dF){acPG[dF]=0;acSG[dF]=0;acTG[dF]={};acPTG[dF]={};for(var _tt=1;_tt<=dTG[dF];_tt++){acTG[dF][_tt]=0;acPTG[dF][_tt]=0;}});
+        _M(1,1,1,TOT_G);_hTg(_C(1,1),'GENERAL — SEMANA '+nS);_R(1).height=26.25;
+        _R(2).height=26.25;_hDg(_C(2,CM_G),'PROCESO');
+        diasS.forEach(function(dF){var ci=dCM[dF],nt=dTG[dF];_M(2,ci,2,ci+nt-1);_hDg(_C(2,ci),_fG(dF));});
+        _hDg(_C(2,CT_G),'TOTAL');_hDg(_C(2,CE_G),'EFICIENCIA');
+        _R(3).height=26.25;_hTug(_C(3,CM_G),'');
+        diasS.forEach(function(dF){var ci=dCM[dF],nt=dTG[dF];_hTuLg(_C(3,ci),'T1');if(nt>=2)_hTug(_C(3,ci+1),'T2');if(nt>=3)_hTug(_C(3,ci+2),'T3');});
+        _hTug(_C(3,CT_G),'SEM');_hTug(_C(3,CE_G),'%');
+        PROCESOS_G.forEach(function(proc,pi){
+          var rNum=pi+4,rRow=_R(rNum);rRow.height=26.25;var isA=(pi%2!==0);
+          _cMg(rRow.getCell(CM_G),proc,isA);
+          var totP=0,totS=0;
+          diasS.forEach(function(dF){
+            var ci=dCM[dF],nt=dTG[dF],tD=!!dCD[dF];
+            for(var ti=0;ti<nt;ti++){
+              var t=ti+1,cell=rRow.getCell(ci+ti);
+              var dat=(pivotG[proc]&&pivotG[proc][dF]&&pivotG[proc][dF][t])?pivotG[proc][dF][t]:null;
+              var prod=dat?dat.producido:0,sell=dat?dat.sello:0;
+              totP+=prod;totS+=sell;acPG[dF]+=prod;acSG[dF]+=sell;acTG[dF][t]=(acTG[dF][t]||0)+prod;if(proc!=='TREFILADO')acPTG[dF][t]=(acPTG[dF][t]||0)+prod;
+              if(tD){_cNg(cell,Math.round(prod),isA,ti===0);}else{_cEg(cell,isA,ti===0);}
+            }
+          });
+          _cTog(rRow.getCell(CT_G),Math.round(totP));
+          if(totS>0){var ef=Math.min(totP/totS,1);_cEfg(rRow.getCell(CE_G),ef,ef>=0.65);}
+          else if(totP===0){_cEfg(rRow.getCell(CE_G),0,false);}
+          else{_cEfg(rRow.getCell(CE_G),'',true);}
+        });
+        var rTg=PROCESOS_G.length+4,rTgRow=_R(rTg);rTgRow.height=26.25;
+        var cTTg=rTgRow.getCell(CM_G);cTTg.value='TOTAL TURNO';cTTg.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF444444'}};cTTg.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};cTTg.alignment={vertical:'middle',horizontal:'center'};cTTg.border={top:BKG,bottom:BKG,left:BKG,right:BTG};
+        var ttPg=0;
+        diasS.forEach(function(dF){var ci=dCM[dF],nt=dTG[dF],tD=!!dCD[dF];for(var ti=0;ti<nt;ti++){var t=ti+1,cell=rTgRow.getCell(ci+ti);var prod=acTG[dF][t]||0;ttPg+=prod;if(tD){_cTog(cell,Math.round(prod));}else{_cEg(cell,false,ti===0);}}});
+        _cTog(rTgRow.getCell(CT_G),Math.round(ttPg));rTgRow.getCell(CE_G).value='';
+        var rDg=PROCESOS_G.length+5,rDgRow=_R(rDg);rDgRow.height=26.25;
+        var cLg=rDgRow.getCell(CM_G);cLg.value='TOTAL DÍA';cLg.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}};cLg.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};cLg.alignment={vertical:'middle',horizontal:'center'};cLg.border={top:BKG,bottom:BKG,left:BKG,right:BTG};
+        var gtP=0,gtS=0;
+        diasS.forEach(function(dF){
+          var ci=dCM[dF],nt=dTG[dF],tD=!!dCD[dF];
+          var prod=acPG[dF]||0,sell=acSG[dF]||0;gtP+=prod;gtS+=sell;
+          _M(rDg,ci,rDg,ci+nt-1);
+          var cell=rDgRow.getCell(ci);
+          if(tD){var efD=(sell>0)?Math.min(prod/sell,1):0;cell.value=Math.round(prod).toLocaleString()+' · '+Math.round(efD*100)+'%';cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:efD>=0.65?'FFD4EDDA':'FFFFD6D6'}};cell.font={name:'Calibri',bold:true,size:12,color:{argb:efD>=0.65?'FF155724':'FF721C24'}};}
+          else{cell.value='';cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F5F5'}};cell.font={name:'Calibri',size:12,color:{argb:'FFAAAAAA'}};}
+          cell.alignment={vertical:'middle',horizontal:'center'};cell.border={top:BKG,bottom:BKG,left:BKG,right:BKG};
+        });
+        _cTog(rDgRow.getCell(CT_G),Math.round(gtP));
+        var efSum=0,efCnt=0;
+        PROCESOS_G.forEach(function(proc){
+          var tP=0,tS=0;
+          diasS.forEach(function(dF){var nt=dTG[dF];for(var t=1;t<=nt;t++){var dat=(pivotG[proc]&&pivotG[proc][dF]&&pivotG[proc][dF][t])?pivotG[proc][dF][t]:null;if(dat){tP+=dat.producido;tS+=dat.sello;}}});
+          if(tS>0){efSum+=Math.min(tP/tS,1);efCnt++;}
+        });
+        if(efCnt>0){var efAvg=efSum/efCnt;_cEfg(rDgRow.getCell(CE_G),efAvg,efAvg>=0.65);}else{_cEfg(rDgRow.getCell(CE_G),0,false);}
+        var pCg=rDgRow.getCell(CP_G);pCg.value='.';pCg.font={name:'Calibri',size:12,color:{argb:'FF000000'}};pCg.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};pCg.alignment={vertical:'middle',horizontal:'center'};pCg.border={top:BKG,bottom:BKG,left:BTG,right:BKG};
+        var rPTg=PROCESOS_G.length+6,rPTgRow=_R(rPTg);rPTgRow.height=26.25;
+        var cPTg=rPTgRow.getCell(CM_G);cPTg.value='PT';cPTg.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF003366'}};cPTg.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};cPTg.alignment={vertical:'middle',horizontal:'center'};cPTg.border={top:BKG,bottom:BKG,left:BKG,right:BTG};
+        var ptTot=0;
+        diasS.forEach(function(dF){var ci=dCM[dF],nt=dTG[dF],tD=!!dCD[dF];for(var ti=0;ti<nt;ti++){var t=ti+1,cell=rPTgRow.getCell(ci+ti);var prod=acPTG[dF][t]||0;ptTot+=prod;if(tD){_cTog(cell,Math.round(prod));}else{_cEg(cell,false,ti===0);}}});
+        _cTog(rPTgRow.getCell(CT_G),Math.round(ptTot));
+        rPTgRow.getCell(CE_G).value='';rPTgRow.getCell(CP_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+        if(semIdx<semsG.length-1){if(!wsG._pageBreaks)wsG._pageBreaks={id:'pageBreaks',rowBreaks:[],colBreaks:[]};wsG._pageBreaks.rowBreaks.push({id:O+rPTg,man:1});}
+        rowOffG+=rPTg;
+      });
+      wsG.pageSetup.printArea='A1:'+String.fromCharCode(64+TOT_G)+rowOffG;
+    })();
+
     // ── Descargar ──
     var buffer = await wb.xlsx.writeBuffer();
     var blob   = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -24600,6 +25324,90 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
+
+</script>
+</body>
+
 
 </script>
 </body>
