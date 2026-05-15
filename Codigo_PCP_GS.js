@@ -1932,16 +1932,23 @@ function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
     var dataProd = shProd.getDataRange().getValues();
     var tz = ss.getSpreadsheetTimeZone();
 
-    // Velocidades por máquina desde ESTANDARES (col D=maquina, col E=velocidad)
+    // Velocidades y lista maestra de máquinas por proceso desde ESTANDARES
     var mapaVel = {};
+    var maqPorProceso = {};
     var shEst = ss.getSheetByName('ESTANDARES');
     if (shEst) {
       var dataEst = shEst.getDataRange().getValues();
       for (var e = 1; e < dataEst.length; e++) {
-        var maqE = String(dataEst[e][3] || '').trim().toUpperCase();
-        var velE  = parseFloat(dataEst[e][4]) || 0;
+        var maqE   = String(dataEst[e][3] || '').trim().toUpperCase(); // col D
+        var velE   = parseFloat(dataEst[e][4]) || 0;                   // col E
+        var procEp = String(dataEst[e][2] || '').trim().toUpperCase(); // col C
         if (maqE && velE > 0) mapaVel[maqE] = velE;
+        if (procEp && maqE) {
+          if (!maqPorProceso[procEp]) maqPorProceso[procEp] = [];
+          if (maqPorProceso[procEp].indexOf(maqE) < 0) maqPorProceso[procEp].push(maqE);
+        }
       }
+      Object.keys(maqPorProceso).forEach(function(p){ maqPorProceso[p].sort(); });
     }
 
     // Construir mapa id → fila de ORDENES  (col A = índice 0)
@@ -2004,7 +2011,7 @@ function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
       });
     }
 
-    return JSON.stringify({ success: true, filas: filas });
+    return JSON.stringify({ success: true, filas: filas, maqPorProceso: maqPorProceso });
   } catch(e) {
     return JSON.stringify({ success: false, msg: e.toString() });
   }
