@@ -28,6 +28,9 @@ async function trkExportarProduccion() {
     var filas = res.filas || [];
     var maqPorProceso = res.maqPorProceso || {};
     if (!filas.length) { hideLoader(); sAlert('No hay registros en ese rango de fechas', 'warning'); return; }
+    var _dupKey=function(f){return String(f.FECHA||'')+'|'+String(f.MAQUINA||'').trim().toUpperCase()+'|'+String(f.LOTE||'')+'|'+String(parseFloat(f.PRODUCIDO)||0);};
+    var dupMap={};filas.forEach(function(f){var k=_dupKey(f);dupMap[k]=(dupMap[k]||0)+1;});
+    var dupPorDia={};filas.forEach(function(f){if(dupMap[_dupKey(f)]>1){var _fs=String(f.FECHA||''),_fd=_fs;if(/^\d{4}-\d{2}-\d{2}/.test(_fs))_fd=_fs.substring(0,10);else{var _fm=_fs.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(_fm)_fd=_fm[3]+'-'+_fm[2]+'-'+_fm[1];}dupPorDia[_fd]=(dupPorDia[_fd]||0)+1;}});
 
     showLoader('Generando Excel...');
 
@@ -86,14 +89,15 @@ async function trkExportarProduccion() {
 
     // ── Insertar filas de datos ──
     filas.forEach(function(f, idx) {
+      var isDup = (dupMap[_dupKey(f)] > 1);
       var row = ws.addRow(f);
       var isOdd = (idx % 2 === 0);
       row.height = 18;
       row.eachCell({includeEmpty:true}, function(cell, colNumber) {
         var colKey = cols[colNumber-1] ? cols[colNumber-1].key : '';
         var isNum  = colsNum.indexOf(colKey) >= 0;
-        cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb: isOdd ? 'FF0F1C2E' : 'FF142033'}};
-        cell.font = {name:'Calibri', size:10, color:{argb:'FFE2E8F0'}};
+        cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb: isDup ? 'FF7B0000' : (isOdd ? 'FF0F1C2E' : 'FF142033')}};
+        cell.font = {name:'Calibri', size:10, color:{argb: isDup ? 'FFFCE4E4' : 'FFE2E8F0'}};
         cell.border = {
           top:    {style:'hair', color:{argb:'FF1E3A5F'}},
           bottom: {style:'hair', color:{argb:'FF1E3A5F'}},
@@ -105,11 +109,12 @@ async function trkExportarProduccion() {
           cell.numFmt = '#,##0.00';
         }
       });
-      // Colorear columna PRODUCIDO en verde
-      var prodColIdx = cols.findIndex(function(c){return c.key==='PRODUCIDO';})+1;
-      if (prodColIdx > 0) {
-        var prodCell = row.getCell(prodColIdx);
-        prodCell.font = {name:'Calibri', size:10, color:{argb:'FF22C55E'}, bold:true};
+      if (!isDup) {
+        var prodColIdx = cols.findIndex(function(c){return c.key==='PRODUCIDO';})+1;
+        if (prodColIdx > 0) {
+          var prodCell = row.getCell(prodColIdx);
+          prodCell.font = {name:'Calibri', size:10, color:{argb:'FF22C55E'}, bold:true};
+        }
       }
     });
 
@@ -254,8 +259,10 @@ async function trkExportarProduccion() {
           cell.alignment={vertical:'middle',horizontal:'center'};cell.border={top:BK,bottom:BK,left:BK,right:BK};
         });
         _cTo(rTotRow.getCell(COL_TOT),Math.round(gtP));
-        if(gtS>0){_cEf(rTotRow.getCell(COL_EF),Math.min(gtP/gtS,1),(gtP/gtS)>=0.65);}
-        else{_cEf(rTotRow.getCell(COL_EF),0,false);}
+        var _gef=gtS>0?Math.min(gtP/gtS,1):0,_gefOk=_gef>=0.65;
+        _cEf(rTotRow.getCell(COL_EF),_gef,_gefOk);
+        _cEf(rTurnoRow.getCell(COL_EF),_gef,_gefOk);
+        _M(rTurno,COL_TOT,rTot,COL_TOT);_M(rTurno,COL_EF,rTot,COL_EF);
         var _prDR=rTotRow.getCell(COL_PROM);_prDR.value='';_prDR.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};_prDR.border={top:BK,bottom:BK,left:BK,right:BK};
         var pCell=rTotRow.getCell(COL_PRINT);pCell.value='.';pCell.font={name:'Calibri',size:12,color:{argb:'FF000000'}};pCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};pCell.alignment={vertical:'middle',horizontal:'center'};pCell.border={top:BK,bottom:BK,left:BT,right:BK};
         if(semIdx<semsOrden.length-1){if(!ws2._pageBreaks)ws2._pageBreaks={id:'pageBreaks',rowBreaks:[],colBreaks:[]};ws2._pageBreaks.rowBreaks.push({id:O+rTot,man:1});}
@@ -698,11 +705,10 @@ async function trkExportarProduccion() {
         _cellTot(rTotRow.getCell(COL_TOT), Math.round(gtProd));
 
         // EFICIENCIA semana general
-        if (gtTeo > 0) {
-          _cellEfic(rTotRow.getCell(COL_EF), Math.min(gtProd/gtTeo,1), (gtProd/gtTeo) >= 0.65);
-        } else {
-          _cellEfic(rTotRow.getCell(COL_EF), 0, false);
-        }
+        var _gefE=gtTeo>0?Math.min(gtProd/gtTeo,1):0,_gefEOk=_gefE>=0.65;
+        _cellEfic(rTotRow.getCell(COL_EF), _gefE, _gefEOk);
+        _cellEfic(rTurnoRowE.getCell(COL_EF), _gefE, _gefEOk);
+        _M(rTurnoE, COL_TOT, rTot, COL_TOT);_M(rTurnoE, COL_EF, rTot, COL_EF);
         var _prTotE=rTotRow.getCell(COL_PROM);_prTotE.value='';_prTotE.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};_prTotE.border={top:BRD_THICK,bottom:BRD_THICK,left:BRD_THICK,right:BRD_THICK};
         var pCellE = rTotRow.getCell(COL_PRINT);
         pCellE.value = '.';
@@ -880,7 +886,10 @@ async function trkExportarProduccion() {
           diasS.forEach(function(dF){var nt=dTG[dF];for(var t=1;t<=nt;t++){var dat=(pivotG[proc]&&pivotG[proc][dF]&&pivotG[proc][dF][t])?pivotG[proc][dF][t]:null;if(dat){tP+=dat.producido;tS+=dat.sello;}}});
           if(tS>0){efSum+=Math.min(tP/tS,1);efCnt++;}
         });
-        if(efCnt>0){var efAvg=efSum/efCnt;_cEfg(rDgRow.getCell(CE_G),efAvg,efAvg>=0.65);}else{_cEfg(rDgRow.getCell(CE_G),0,false);}
+        var _gavg=efCnt>0?efSum/efCnt:0,_gavgOk=_gavg>=0.65;
+        _cEfg(rDgRow.getCell(CE_G),_gavg,_gavgOk);
+        _cEfg(rTgRow.getCell(CE_G),_gavg,_gavgOk);
+        _M(rTg,CT_G,rDg,CT_G);_M(rTg,CE_G,rDg,CE_G);
         var _prDgRow=rDgRow.getCell(CPROM_G);_prDgRow.value='';_prDgRow.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};_prDgRow.border={top:BKG,bottom:BKG,left:BKG,right:BKG};
         var pCg=rDgRow.getCell(CP_G);pCg.value='.';pCg.font={name:'Calibri',size:12,color:{argb:'FF000000'}};pCg.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};pCg.alignment={vertical:'middle',horizontal:'center'};pCg.border={top:BKG,bottom:BKG,left:BTG,right:BKG};
         var rPTg=PROCESOS_G.length+6,rPTgRow=_R(rPTg);rPTgRow.height=26.25;
@@ -892,13 +901,18 @@ async function trkExportarProduccion() {
         _cPrg(rPTgRow.getCell(CPROM_G),_ptDCnt>0?Math.round(ptTot/_ptDCnt):0);
         rPTgRow.getCell(CE_G).value='';rPTgRow.getCell(CP_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
         var rPTSum=rPTg+1,rPTSumRow=_R(rPTSum);rPTSumRow.height=26.25;
-        var cPTSumLbl=rPTSumRow.getCell(CM_G);cPTSumLbl.value='';cPTSumLbl.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF003366'}};cPTSumLbl.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};cPTSumLbl.alignment={vertical:'middle',horizontal:'center'};cPTSumLbl.border={top:BKG,bottom:BKG,left:BKG,right:BTG};
+        var cPTSumLbl=rPTSumRow.getCell(CM_G);cPTSumLbl.value='TOTAL PT';cPTSumLbl.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF003366'}};cPTSumLbl.font={name:'Calibri',bold:true,size:12,color:{argb:'FFFFFFFF'}};cPTSumLbl.alignment={vertical:'middle',horizontal:'center'};cPTSumLbl.border={top:BKG,bottom:BKG,left:BKG,right:BTG};
         diasS.forEach(function(dF){var ci=dCM[dF],nt=dTG[dF],tD=!!dCD[dF];var dayPT=0;for(var _ptti=1;_ptti<=nt;_ptti++)dayPT+=(acPTG[dF][_ptti]||0);_M(rPTSum,ci,rPTSum,ci+nt-1);var cell=rPTSumRow.getCell(ci);if(tD){_cTog(cell,Math.round(dayPT));}else{_cEg(cell,false,false);}});
         _cTog(rPTSumRow.getCell(CT_G),Math.round(ptTot));
         rPTSumRow.getCell(CE_G).value='';var _prPTSumRow=rPTSumRow.getCell(CPROM_G);_prPTSumRow.value='';_prPTSumRow.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
         rPTSumRow.getCell(CP_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
-        if(semIdx<semsG.length-1){if(!wsG._pageBreaks)wsG._pageBreaks={id:'pageBreaks',rowBreaks:[],colBreaks:[]};wsG._pageBreaks.rowBreaks.push({id:O+rPTg+1,man:1});}
-        rowOffG+=rPTg+1;
+        _M(rPTg,CT_G,rPTSum,CT_G);_M(rPTg,CPROM_G,rPTSum,CPROM_G);
+        var rDupW=rPTg+2,rDupWRow=_R(rDupW);rDupWRow.height=22;
+        var cDupLbl=rDupWRow.getCell(CM_G);cDupLbl.value='';cDupLbl.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};cDupLbl.border={top:{style:'hair',color:{argb:'FFCCCCCC'}},bottom:{style:'hair',color:{argb:'FFCCCCCC'}},left:{style:'hair',color:{argb:'FFCCCCCC'}},right:{style:'hair',color:{argb:'FFCCCCCC'}}};
+        diasS.forEach(function(dF){var ci=dCM[dF],nt=dTG[dF],ndups=dupPorDia[dF]||0;_M(rDupW,ci,rDupW,ci+nt-1);var cell=rDupWRow.getCell(ci);if(ndups>0){cell.value='Revisar '+ndups+' registros duplicados encontrados';cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF3CD'}};cell.font={name:'Calibri',bold:true,size:10,color:{argb:'FF856404'}};}else{cell.value='';cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};cell.font={name:'Calibri',size:10,color:{argb:'FFAAAAAA'}};}cell.alignment={vertical:'middle',horizontal:'center',wrapText:true};cell.border={top:{style:'hair',color:{argb:'FFCCCCCC'}},bottom:{style:'hair',color:{argb:'FFCCCCCC'}},left:{style:'hair',color:{argb:'FFCCCCCC'}},right:{style:'hair',color:{argb:'FFCCCCCC'}}};});
+        rDupWRow.getCell(CT_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};rDupWRow.getCell(CE_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};rDupWRow.getCell(CPROM_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};rDupWRow.getCell(CP_G).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+        if(semIdx<semsG.length-1){if(!wsG._pageBreaks)wsG._pageBreaks={id:'pageBreaks',rowBreaks:[],colBreaks:[]};wsG._pageBreaks.rowBreaks.push({id:O+rPTg+2,man:1});}
+        rowOffG+=rPTg+2;
       });
       wsG.pageSetup.printArea='A1:'+String.fromCharCode(64+TOT_G)+rowOffG;
     })();
