@@ -2766,7 +2766,65 @@ function val_renderAuditoria(){
   var container=document.getElementById('val-contAuditoria');if(!container)return;
   if(!val_dataOrig||val_dataOrig.error){container.innerHTML='<div style="padding:14px;color:red;font-weight:bold">⚠️ Error: '+(val_dataOrig?val_dataOrig.error:'Sin datos')+'</div>';return;}
   if(!val_dataOrig.candidatos||!Array.isArray(val_dataOrig.candidatos)){container.innerHTML='<p style="text-align:center;padding:20px">No hay pedidos candidatos.</p>';return;}
-  var html='<table class="val-table"><thead><tr><th style="width:36px">#</th><th style="width:44px">Cerrar</th><th style="width:28%">PEDIDO / STOCK</th><th style="width:23%">A FABRICAR</th><th>ÓRDENES Y PROCESOS</th></tr></thead><tbody>';
+
+  // ── SECCIÓN 1: Estados inválidos sin órdenes ──────────────────────────────
+  var estadosValidos=['ABIERTO','TERMINADO','CANCELADO'];
+  var sinOrdenes=[];
+  for(var kp in val_dataOrig.pedidos){
+    var pp=val_dataOrig.pedidos[kp];
+    if(!pp||!pp.est)continue;
+    if(estadosValidos.indexOf(pp.est.trim().toUpperCase())>-1)continue;
+    // verificar que no tiene órdenes asociadas
+    var tieneOrd=false;
+    for(var ko in val_dataOrig.ordenes){if(val_dataOrig.ordenes[ko].keyPed===kp){tieneOrd=true;break;}}
+    if(!tieneOrd)sinOrdenes.push(kp);
+  }
+  var htmlExtra='';
+  if(sinOrdenes.length>0){
+    htmlExtra+='<style>@keyframes val-blink{0%,100%{opacity:1}50%{opacity:0.25}}.val-blink-row{animation:val-blink 1.2s infinite;background:#fff3e0!important;border-left:5px solid #e65100!important;}</style>';
+    htmlExtra+='<div style="margin-bottom:16px;border:2px solid #e65100;border-radius:8px;overflow:hidden">';
+    htmlExtra+='<div style="background:#e65100;color:white;padding:8px 14px;font-weight:900;font-size:13px">⚠️ PEDIDOS CON ESTADO INVÁLIDO SIN ÓRDENES ('+sinOrdenes.length+') — Requieren atención</div>';
+    sinOrdenes.forEach(function(keyPed){
+      var p=val_dataOrig.pedidos[keyPed];if(!p)return;
+      htmlExtra+='<div class="val-blink-row" style="padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #ffcc80">';
+      htmlExtra+='<input type="checkbox" class="chk-cierre" data-keyped="'+keyPed+'" onchange="val_markCierre(\''+keyPed+'\',this.checked)" style="transform:scale(1.5)">';
+      htmlExtra+='<div style="flex:1"><b>'+(p.nombre||keyPed)+'</b> &nbsp;<span style="background:#e65100;color:white;border-radius:3px;padding:2px 6px;font-size:11px">'+(p.est||'SIN ESTADO')+'</span>';
+      htmlExtra+='<span style="font-size:11px;color:#555;margin-left:8px">'+(p.cod||'')+'</span></div>';
+      htmlExtra+='<button onclick="val_regStatePed(\''+keyPed+'\',\'TERMINADO\',\'\')" style="background:#2e7d32;color:white;border:none;border-radius:4px;padding:6px 14px;font-weight:900;cursor:pointer;font-size:12px">✓ CERRAR</button>';
+      htmlExtra+='</div>';
+    });
+    htmlExtra+='</div>';
+  }
+
+  // ── SECCIÓN 2: Recomendados para cerrar (todas órdenes TERMINADO) ─────────
+  var recomCierre=[];
+  val_dataOrig.candidatos.forEach(function(keyPed){
+    var ordenes=[];
+    for(var ko in val_dataOrig.ordenes){if(val_dataOrig.ordenes[ko].keyPed===keyPed)ordenes.push(val_dataOrig.ordenes[ko]);}
+    if(ordenes.length===0)return;
+    var todasTerm=ordenes.every(function(o){return o.estOrd==='TERMINADO';});
+    if(todasTerm)recomCierre.push(keyPed);
+  });
+  if(recomCierre.length>0){
+    htmlExtra+='<div style="margin-bottom:16px;border:2px solid #2e7d32;border-radius:8px;overflow:hidden">';
+    htmlExtra+='<div style="background:#2e7d32;color:white;padding:8px 14px;font-weight:900;font-size:13px">✅ RECOMENDADOS PARA CERRAR ('+recomCierre.length+') — Todas las órdenes en TERMINADO</div>';
+    recomCierre.forEach(function(keyPed){
+      var p=val_dataOrig.pedidos[keyPed];if(!p)return;
+      var avance=val_calcularAvancePedido(keyPed);
+      htmlExtra+='<div style="padding:10px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #c8e6c9;background:#f1f8e9">';
+      htmlExtra+='<input type="checkbox" class="chk-cierre" data-keyped="'+keyPed+'" onchange="val_markCierre(\''+keyPed+'\',this.checked)" checked style="transform:scale(1.5)">';
+      htmlExtra+='<div style="flex:1"><b>'+(p.nombre||keyPed)+'</b> &nbsp;<span style="background:#388e3c;color:white;border-radius:3px;padding:2px 6px;font-size:11px">'+(p.est||'')+'</span>';
+      htmlExtra+='<span style="font-size:11px;color:#555;margin-left:8px">'+(p.cod||'')+'</span>';
+      htmlExtra+='<span style="font-size:11px;color:#1b5e20;margin-left:8px;font-weight:bold">'+Math.round(avance)+'%</span></div>';
+      htmlExtra+='<button onclick="val_regStatePed(\''+keyPed+'\',\'TERMINADO\',\'rowAud-'+keyPed+'\')" style="background:#2e7d32;color:white;border:none;border-radius:4px;padding:6px 14px;font-weight:900;cursor:pointer;font-size:12px">✓ CERRAR PEDIDO</button>';
+      htmlExtra+='</div>';
+    });
+    htmlExtra+='</div>';
+  }
+
+  container.innerHTML=htmlExtra+(htmlExtra?'<div style="margin-bottom:8px;font-size:12px;color:#78909c;font-weight:bold">── LISTA COMPLETA DE AUDITORÍA ──</div>':'')
+    +'<table class="val-table"><thead><tr><th style="width:36px">#</th><th style="width:44px">Cerrar</th><th style="width:28%">PEDIDO / STOCK</th><th style="width:23%">A FABRICAR</th><th>ÓRDENES Y PROCESOS</th></tr></thead><tbody>';
+  var html='';
   val_dataOrig.candidatos.forEach(function(keyPed){
     var p=val_dataOrig.pedidos[keyPed];if(!p)return;
     var avance=val_calcularAvancePedido(keyPed);
@@ -2798,7 +2856,7 @@ function val_renderAuditoria(){
     html+='<td>'+(mostrarFab?val_renderFabricarBox(keyPed,aFabricar):'<span style="color:#999">N/A</span>')+'</td>';
     html+='<td style="padding:0">'+val_renderTableProcesos(keyPed)+'</td></tr>';
   });
-  container.innerHTML=html+'</tbody></table>';
+  container.innerHTML+=html+'</tbody></table>';
   val_renumerarFilas('contAuditoria');
 }
 
@@ -25402,6 +25460,10 @@ function ppRenderTabla() {
   html += '</tbody></table>';
   cont.innerHTML = html;
 }
+
+</script>
+</body>
+
 
 </script>
 </body>
