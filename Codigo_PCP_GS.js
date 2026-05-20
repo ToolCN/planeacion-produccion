@@ -10531,6 +10531,32 @@ function obtenerDatosEditor(idOrden) {
   }
   rutaActual.sort(function(a,b){ return Number(a.SEC) - Number(b.SEC); });
 
+  // Leer campos globales y MP/MERMA desde RUTAS para este código
+  var datosGlobalesRuta = { cantLote: "", familia: "", generaInt: "", codVenta: "", serieRuta: targetSerie };
+  var mapaRutaMP    = {};
+  var mapaRutaMERMA = {};
+  var primeraMR = true;
+  for (var r = 1; r < dataRutas.length; r++) {
+    if (String(dataRutas[r][1]).trim().toUpperCase() == String(targetCodigo).trim().toUpperCase()) {
+      if (primeraMR) {
+        datosGlobalesRuta.cantLote  = dataRutas[r][22] !== undefined ? dataRutas[r][22] : "";
+        datosGlobalesRuta.familia   = dataRutas[r][23] !== undefined ? dataRutas[r][23] : "";
+        datosGlobalesRuta.generaInt = dataRutas[r][24] !== undefined ? dataRutas[r][24] : "";
+        datosGlobalesRuta.codVenta  = dataRutas[r][25] !== undefined ? dataRutas[r][25] : "";
+        primeraMR = false;
+      }
+      var sec = String(dataRutas[r][3]);
+      mapaRutaMP[sec]    = String(dataRutas[r][17] || "");
+      mapaRutaMERMA[sec] = String(dataRutas[r][26] || "");
+    }
+  }
+  // Inyectar MP y MERMA en cada paso
+  rutaActual.forEach(function(paso) {
+    var s = String(paso.SEC);
+    paso.MP    = mapaRutaMP[s]    || "";
+    paso.MERMA = mapaRutaMERMA[s] || "";
+  });
+
   // Catálogo ESTANDARES
   var dataEst = sheetEst.getDataRange().getValues();
   var headersEst = dataEst[0];
@@ -10552,10 +10578,20 @@ function obtenerDatosEditor(idOrden) {
     }
   }
 
+  // Familias únicas desde RUTAS col X (23)
+  var familiasSet = {};
+  for (var r = 1; r < dataRutas.length; r++) {
+    var fam = String(dataRutas[r][23] || "").trim();
+    if (fam) familiasSet[fam] = true;
+  }
+  var familiasLista = Object.keys(familiasSet).sort();
+
   return {
     codigo: targetCodigo, nombreDisplay: nombreFormateado,
     serie: targetSerie, consecutivo: targetConsec,
-    ruta: rutaActual, catalogo: catalogo
+    ruta: rutaActual, catalogo: catalogo,
+    globales: datosGlobalesRuta,
+    familias: familiasLista
   };
 }
 
@@ -10568,8 +10604,11 @@ function guardarCambiosRuta(payload) {
   var sheetRutas = ss.getSheetByName("RUTAS");
   
   var codigoObjetivo = String(payload.codigo).trim().toUpperCase();
-  var nuevaRuta = payload.ruta; 
-  var serieObjetivo = payload.serie || "GEN"; 
+  var nuevaRuta = payload.ruta;
+  var serieObjetivo = payload.serie || "GEN";
+  var globales = payload.globales || {};
+  // Orden que se estaba editando — se actualiza siempre sin importar fecha ni estado
+  var ordenForzada = payload.ordenForzada ? String(payload.ordenForzada).trim().toUpperCase() : null;
   
   // --- 1. RESCATAR DATOS EXISTENTES (PRESERVACIÓN) ---
   var dataR = sheetRutas.getDataRange().getValues();
@@ -10604,8 +10643,8 @@ function guardarCambiosRuta(payload) {
 
   // --- 3. INSERTAR NUEVAS FILAS (CON LOGICA DE FUSIÓN) ---
   var nuevasFilasRutas = nuevaRuta.map(function(step) {
-     // Aumentamos el array a 26 espacios (0 a 25) para llegar a la Columna Z
-     var row = new Array(26).fill(""); 
+     // Aumentamos el array a 27 espacios (0 a 26) para llegar a la Columna AA
+     var row = new Array(27).fill("");
 
      row[0] = nextIdRutas++; 
      row[1] = codigoObjetivo;
@@ -10628,17 +10667,14 @@ function guardarCambiosRuta(payload) {
      row[18] = step.ESP_1 || "";        // Col S
      row[19] = step.ESP_2 || "";        // Col T
      row[20] = step.ESP_3 || "";        // Col U
-     
-     // Col V (21) vacío
-
-     // PRIORIDAD: Dato del Payload (Nuevo) > Dato Preservado (Viejo)
-     row[22] = (step.CANT_LOTE !== undefined) ? step.CANT_LOTE : datosPreservados.cantLote;
-     row[23] = (step.FAMILIA !== undefined) ? step.FAMILIA : datosPreservados.familia;
-     row[24] = (step.GENERA_INT !== undefined) ? step.GENERA_INT : datosPreservados.generaInt;
-     
-     // Si no hay código de venta definido, usamos el código de producción
-     var cv = (step.CODIGO_VENTA !== undefined) ? step.CODIGO_VENTA : datosPreservados.codVenta;
+     // row[21] vacío (Col V)
+     // PRIORIDAD: globales del payload > dato preservado
+     row[22] = (globales.cantLote  !== undefined && globales.cantLote  !== "") ? globales.cantLote  : datosPreservados.cantLote;
+     row[23] = (globales.familia   !== undefined && globales.familia   !== "") ? globales.familia   : datosPreservados.familia;
+     row[24] = (globales.generaInt !== undefined && globales.generaInt !== "") ? globales.generaInt : datosPreservados.generaInt;
+     var cv  = (globales.codVenta  !== undefined && globales.codVenta  !== "") ? globales.codVenta  : datosPreservados.codVenta;
      row[25] = cv || codigoObjetivo;
+     row[26] = step.MERMA || "";        // Col AA: MERMA
 
      return row;
   });
@@ -10699,16 +10735,26 @@ function guardarCambiosRuta(payload) {
      // 1. Validar Código
      if (cod != String(codigoObjetivo)) continue;
 
-     // 2. VALIDAR FECHA ESTRICTA (60 DÍAS)
-     var fechaFila = null;
-     if (fechaRaw instanceof Date) {
-        fechaFila = fechaRaw;
-     } else if (typeof fechaRaw === 'string' && fechaRaw.length > 5) {
-        var partes = fechaRaw.split(' ')[0].split('/'); 
-        if (partes.length === 3) fechaFila = new Date(partes[2], partes[1]-1, partes[0]);
-     }
+     // 2. Calcular nombre de esta orden para comparar con ordenForzada
+     var nomOrdenCheck = "";
+     var sChk = (IDX.SERIE > -1)  ? String(dataOrd[i][IDX.SERIE]).trim()  : "";
+     var cChk = (IDX.CONSEC > -1) ? String(dataOrd[i][IDX.CONSEC]).trim() : "";
+     if (sChk && cChk) nomOrdenCheck = (sChk + "." + ("0000" + cChk).slice(-4)).toUpperCase();
+     else nomOrdenCheck = String(dataOrd[i][IDX.ORDEN] || "").trim().toUpperCase();
 
-     if (!fechaFila || fechaFila.getTime() < timeLimite) continue;
+     var esForzada = (ordenForzada && nomOrdenCheck === ordenForzada);
+
+     // VALIDAR FECHA ESTRICTA (60 DÍAS) — se omite si la orden es la forzada
+     if (!esForzada) {
+       var fechaFila = null;
+       if (fechaRaw instanceof Date) {
+          fechaFila = fechaRaw;
+       } else if (typeof fechaRaw === 'string' && fechaRaw.length > 5) {
+          var partes = fechaRaw.split(' ')[0].split('/');
+          if (partes.length === 3) fechaFila = new Date(partes[2], partes[1]-1, partes[0]);
+       }
+       if (!fechaFila || fechaFila.getTime() < timeLimite) continue;
+     }
 
      var nomOrden = "";
      var s = (IDX.SERIE > -1) ? dataOrd[i][IDX.SERIE] : "";
