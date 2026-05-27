@@ -4429,6 +4429,87 @@ function obtenerDetallePedidoAlerta(codigo) {
   }
 }
 
+/**
+ * Cambia el estado de TODOS los procesos de una orden y
+ * actualiza col I (ESTADO) + col R (NOTA) de PEDIDOS si aplica.
+ * nuevoEst: 'FALTA MP' | 'FALTA ESPEC.' | 'CANCELADO' | 'ACTIVE' | etc.
+ * nota: string con el motivo (vacío para limpiar).
+ */
+function planifCambiarEstadoOrdenCompleta(idOrden, nuevoEst, nota) {
+  try {
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) return 'Error: servidor ocupado';
+
+    var ss     = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd  = ss.getSheetByName('ORDENES');
+    var shPed  = ss.getSheetByName('PEDIDOS');
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hOrd    = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+
+    var iId     = 0;                          // col A = ID
+    var iSerie  = hOrd.indexOf('SERIE');      // col E
+    var iOrden  = hOrd.indexOf('ORDEN');      // col F
+    var iPedido = hOrd.indexOf('PEDIDO');     // col B
+    var iPartida= hOrd.indexOf('PARTIDA');    // col C
+    var iEst    = hOrd.indexOf('ESTADO');     // col P (índice 15)
+
+    // 1. Encontrar la fila target para obtener SERIE + ORDEN + PEDIDO + PARTIDA
+    var serieTarget = '', ordenTarget = '', pedidoTarget = '', partidaTarget = '';
+    for (var i = 1; i < dataOrd.length; i++) {
+      if (String(dataOrd[i][iId]).trim() === String(idOrden).trim()) {
+        serieTarget  = String(dataOrd[i][iSerie]).trim();
+        ordenTarget  = String(dataOrd[i][iOrden]).trim();
+        pedidoTarget = String(dataOrd[i][iPedido]).trim();
+        partidaTarget= String(dataOrd[i][iPartida] || '').trim();
+        break;
+      }
+    }
+
+    // 2. Actualizar ESTADO en TODAS las filas con misma SERIE + ORDEN
+    for (var j = 1; j < dataOrd.length; j++) {
+      if (String(dataOrd[j][iSerie]).trim() === serieTarget &&
+          String(dataOrd[j][iOrden]).trim() === ordenTarget) {
+        shOrd.getRange(j + 1, iEst + 1).setValue(nuevoEst);
+      }
+    }
+
+    // 3. Actualizar PEDIDOS: col I (ESTADO) + col R (NOTA) donde PEDIDO+PARTIDA coincidan
+    var ESTADOS_CON_NOTA = ['FALTA MP', 'FALTA ESPEC.'];
+    var ESTADOS_LIMPIAR  = ['ACTIVE', 'EN PROCESO', 'ABIERTO'];
+    if (pedidoTarget) {
+      var dataPed = shPed.getDataRange().getValues();
+      var hPed    = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+      var iPedB   = hPed.indexOf('PEDIDO');   // col B
+      var iPedC   = hPed.indexOf('PARTIDA');  // col C
+      var iPedI   = hPed.indexOf('ESTADO');   // col I
+      var iPedR   = 17;                        // col R (índice 17, 0-based)
+
+      for (var p = 1; p < dataPed.length; p++) {
+        var pedRow = String(dataPed[p][iPedB] || '').trim();
+        var parRow = String(dataPed[p][iPedC] || '').trim();
+        if (pedRow !== pedidoTarget) continue;
+        if (partidaTarget && parRow !== partidaTarget) continue;
+        // Actualizar estado del pedido
+        shPed.getRange(p + 1, iPedI + 1).setValue(nuevoEst);
+        // Actualizar nota
+        if (ESTADOS_CON_NOTA.indexOf(nuevoEst) >= 0) {
+          shPed.getRange(p + 1, iPedR + 1).setValue(nota || '');
+        } else if (ESTADOS_LIMPIAR.indexOf(nuevoEst) >= 0) {
+          shPed.getRange(p + 1, iPedR + 1).setValue('');
+        }
+        break; // Solo una fila por PEDIDO+PARTIDA
+      }
+    }
+
+    SpreadsheetApp.flush();
+    lock.releaseLock();
+    return 'ok';
+  } catch(e) {
+    try { LockService.getScriptLock().releaseLock(); } catch(ex){}
+    return 'Error: ' + e.toString();
+  }
+}
+
 function ejecutarCambioEstadoDirecto(id, nuevoEstado) {
   var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
   var sh = ss.getSheetByName("ORDENES");
@@ -4548,6 +4629,7 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
       CANTIDAD:    getIdx("CANTIDAD"),
       SOLICITADO:  getIdx("SOLICITADO"),
       DESCRIPCION: getIdx("DESCRIPCION"),
+      TIPO:        getIdx("TIPO"),        // para detección fiable de varilla
       PESO:        getIdx("PESO"),
       LONGITUD:    getIdx("LONGITUD"),
       PRODUCIDO:   getIdx("PRODUCIDO"),
@@ -4574,16 +4656,22 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
 
       var unidad      = String(data[j][idx.UNIDAD]      || "").toUpperCase().trim();
       var descripcion = String(data[j][idx.DESCRIPCION] || "").toUpperCase();
+      var tipo        = idx.TIPO >= 0 ? String(data[j][idx.TIPO] || "").toUpperCase() : "";
       var peso        = parseFloat(data[j][idx.PESO])   || 0;
       var longStr     = String(data[j][idx.LONGITUD]    || "");
       var longMatch   = longStr.match(/[\d.]+/);
       var longitud    = longMatch ? parseFloat(longMatch[0]) : 0;
-      var esVarilla   = descripcion.indexOf("VARILLA") > -1;
+      // Detectar varilla por TIPO (fuente canónica) O por DESCRIPCION (fallback)
+      var esVarilla   = tipo.indexOf("VARILLA") > -1 || descripcion.indexOf("VARILLA") > -1;
 
-      // Col I: CANTIDAD = nuevaCantidad (en unidad del pedido, sin convertir)
+      // Col I: CANTIDAD = nuevaCantidad (en PZA para todos, sin convertir)
       sh.getRange(j + 1, idx.CANTIDAD + 1).setValue(nuevaCantidad);
 
       // Col N: SOLICITADO = conversión a KG según unidad
+      // Regla:
+      //   KG / ROL       → sin conversión (ya viene en kg)
+      //   PZA / CTO      → × PESO
+      //   PZA + VARILLA  → × PESO × LONGITUD  (varilla: kg/m × metros = kg/pza)
       var nuevoSolicitado = nuevaCantidad;
       if (unidad === "KG" || unidad === "ROL") {
         nuevoSolicitado = nuevaCantidad;
@@ -4592,16 +4680,24 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
         if (esVarilla && longitud > 0) {
           nuevoSolicitado = nuevoSolicitado * longitud;
         }
+      } else if (esVarilla && peso > 0 && longitud > 0) {
+        // Unidad desconocida pero es varilla → convertir igual (PZA × kg/m × m)
+        nuevoSolicitado = nuevaCantidad * peso * longitud;
       }
       sh.getRange(j + 1, idx.SOLICITADO + 1).setValue(nuevoSolicitado);
 
-      // Re-evaluar ESTADO si estaba TERMINADO o SOBREPRODUCCION
+      // Re-evaluar ESTADO en ambos sentidos (aumento Y disminución)
       if (idx.PRODUCIDO > -1 && idx.ESTADO > -1) {
         var producido    = parseFloat(data[j][idx.PRODUCIDO]) || 0;
         var estadoActual = String(data[j][idx.ESTADO] || "").toUpperCase().trim();
-        var REVERTIBLES  = ["TERMINADO", "SOBREPRODUCCION"];
-        if (REVERTIBLES.indexOf(estadoActual) > -1 && producido < nuevoSolicitado) {
-          sh.getRange(j + 1, idx.ESTADO + 1).setValue("EN PROCESO");
+        if (estadoActual !== "CANCELADO") {
+          if (["TERMINADO", "SOBREPRODUCCION"].indexOf(estadoActual) > -1 && producido < nuevoSolicitado) {
+            // Aumentó cantidad → revertir a EN PROCESO
+            sh.getRange(j + 1, idx.ESTADO + 1).setValue("EN PROCESO");
+          } else if (estadoActual === "EN PROCESO" && nuevoSolicitado > 0 && producido >= nuevoSolicitado) {
+            // Disminuyó cantidad → marcar TERMINADO o SOBREPRODUCCION según corresponda
+            sh.getRange(j + 1, idx.ESTADO + 1).setValue(producido > nuevoSolicitado ? "SOBREPRODUCCION" : "TERMINADO");
+          }
         }
       }
     }
@@ -4660,16 +4756,20 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
         // porque ya hicimos setValue (data[] no se actualiza). Lo recalculamos igual:
         var _unidad   = String(data[r][idx.UNIDAD]      || '').toUpperCase().trim();
         var _desc     = String(data[r][idx.DESCRIPCION] || '').toUpperCase();
+        var _tipo     = idx.TIPO >= 0 ? String(data[r][idx.TIPO] || '').toUpperCase() : '';
         var _peso     = parseFloat(data[r][idx.PESO])   || 0;
         var _longStr  = String(data[r][idx.LONGITUD]    || '');
         var _longM    = _longStr.match(/[\d.]+/);
         var _long     = _longM ? parseFloat(_longM[0]) : 0;
-        var _esVar    = _desc.indexOf('VARILLA') > -1;
+        // Misma detección dual: TIPO (canónico) o DESCRIPCION (fallback)
+        var _esVar    = _tipo.indexOf('VARILLA') > -1 || _desc.indexOf('VARILLA') > -1;
         if (_unidad === 'KG' || _unidad === 'ROL') {
           solFinal = nuevaCantidad;
         } else if (_unidad === 'PZA' || _unidad === 'CTO') {
           solFinal = nuevaCantidad * _peso;
           if (_esVar && _long > 0) solFinal = solFinal * _long;
+        } else if (_esVar && _peso > 0 && _long > 0) {
+          solFinal = nuevaCantidad * _peso * _long;
         } else {
           solFinal = nuevaCantidad;
         }
@@ -7610,6 +7710,8 @@ function obtenerSinPedidoBajoStock(proceso) {
     var oDESC   = hOrd.indexOf("DESCRIPCION");
     var oPED    = hOrd.indexOf("PEDIDO");
     var oSEC    = hOrd.indexOf("SEC");
+    var oSOLord = hOrd.indexOf("SOLICITADO"); if (oSOLord < 0) oSOLord = hOrd.indexOf("SOL");
+    var oPRODord= hOrd.indexOf("PRODUCIDO");  if (oPRODord < 0) oPRODord= hOrd.indexOf("PROD");
 
     var ESTADOS_MUERTOS_ORD = ['TERMINADO','CANCELADO','SOBREPRODUCCION','CERRADO'];
 
@@ -7673,6 +7775,24 @@ function obtenerSinPedidoBajoStock(proceso) {
       if (todosCriticosTerminados) codigosAlerta[cod] = true;
     });
 
+    // ── 6.5. Calcular total sol y RESTAN activo por código en este proceso ──
+    var totalSolActivoMap    = {};  // codigo → suma de SOLICITADO de órdenes vivas
+    var totalRestanActivoMap = {};  // codigo → suma de (SOLICITADO-PRODUCIDO) de órdenes vivas (en unidad nativa: kg para varilla)
+    for (var ts = 1; ts < dataOrd.length; ts++) {
+      var tsCod  = String(dataOrd[ts][oCOD] ||'').trim().toUpperCase();
+      var tsEst  = String(dataOrd[ts][oEST] ||'').toUpperCase().trim();
+      var tsProc = String(dataOrd[ts][oPROC]||'').toUpperCase().trim();
+      if (!tsCod || tsProc !== PROC) continue;
+      if (ESTADOS_MUERTOS_ORD.indexOf(tsEst) !== -1) continue;
+      var tsSol  = oSOLord  >= 0 ? (Number(dataOrd[ts][oSOLord])||0)  : 0;
+      var tsProd = oPRODord >= 0 ? (Number(dataOrd[ts][oPRODord])||0) : 0;
+      var tsRest = Math.max(0, tsSol - tsProd);
+      if (!totalSolActivoMap[tsCod])    totalSolActivoMap[tsCod]    = 0;
+      if (!totalRestanActivoMap[tsCod]) totalRestanActivoMap[tsCod] = 0;
+      totalSolActivoMap[tsCod]    += tsSol;
+      totalRestanActivoMap[tsCod] += tsRest;
+    }
+
     // ── 7. Construir resultado: bajo stock sin pedido vivo, + alertas ──
     var resultados = [];
     var resultadosAlerta = [];
@@ -7686,7 +7806,6 @@ function obtenerSinPedidoBajoStock(proceso) {
           var g2=inv2.back||0, en2=inv2.existNeg||0, tot2=inv2.exist+g2+en2;
           pct2=inv2.max>0?tot2/inv2.max:0; pedir2=Math.max(0,Math.round(inv2.max-inv2.exist-g2-en2));
         } else { pct2=inv2.exist/inv2.max; pedir2=Math.max(0,Math.round(inv2.max-inv2.exist)); }
-        if (pct2 >= 0.75) return;
         var rInfo2=rutaInfoMap[cod]||{}, ruta2=rutaMap[cod]||[];
         resultadosAlerta.push({
           codigo:codU, desc:descPorCodigo[codU]||codU,
@@ -7694,15 +7813,44 @@ function obtenerSinPedidoBajoStock(proceso) {
           back:inv2.back||0, existNeg:inv2.esVarilla?(inv2.existNeg||0):null,
           esVarilla:inv2.esVarilla||false, codigoVenta:inv2.codigoVenta||'',
           pct:Math.round(pct2*100), pedirCalc:pedir2,
+          totalSolActivo: totalSolActivoMap[codU]||0,
+          totalRestanActivo: totalRestanActivoMap[codU]||0,
           tipo_prod:rInfo2.tipo||'', dia:rInfo2.dia||'', long:rInfo2.long||'',
           cuerda:rInfo2.cuerda||'', cuerpo:rInfo2.cuerpo||'', acero:rInfo2.acero||'',
           maquinas:rInfo2.maquinas||[], serie:rInfo2.serie||'P',
           unidad:rInfo2.unidad||'KG', cantLote:rInfo2.cantLote||0, peso:rInfo2.peso||0,
-          ruta:ruta2, alerta:true
+          ruta:ruta2, alerta:true, tieneOrdenActiva:true
         });
         return;
       }
-      if (codigosConPedidoVivo[codU]) return;
+      // Incluir todos los códigos, incluyendo los que tienen orden activa
+      if (codigosConPedidoVivo[codU] && !codigosAlerta[codU]) {
+        // Tiene orden activa y proceso vivo → incluir marcado
+        var invA = getInv(codU);
+        if (!invA || invA.max <= 0 || invA.max > 500000) return;
+        var pctA = invA.esVarilla
+          ? (invA.exist + (invA.back||0) + (invA.existNeg||0)) / invA.max
+          : invA.exist / invA.max;
+        var pedirA = invA.esVarilla
+          ? Math.max(0, Math.round(invA.max - invA.exist - (invA.back||0) - (invA.existNeg||0)))
+          : Math.max(0, Math.round(invA.max - invA.exist));
+        var rInfoA = rutaInfoMap[cod]||{}, rutaA = rutaMap[cod]||[];
+        resultados.push({
+          codigo:codU, desc:descPorCodigo[codU]||codU,
+          exist:invA.exist, min:invA.min, max:invA.max,
+          back:invA.back||0, existNeg:invA.esVarilla?(invA.existNeg||0):null,
+          esVarilla:invA.esVarilla||false, codigoVenta:invA.codigoVenta||'',
+          pct:Math.round(pctA*100), pedirCalc:pedirA,
+          totalSolActivo: totalSolActivoMap[codU]||0,
+          totalRestanActivo: totalRestanActivoMap[codU]||0,
+          tipo_prod:rInfoA.tipo||'', dia:rInfoA.dia||'', long:rInfoA.long||'',
+          cuerda:rInfoA.cuerda||'', cuerpo:rInfoA.cuerpo||'', acero:rInfoA.acero||'',
+          maquinas:rInfoA.maquinas||[], serie:rInfoA.serie||'P',
+          unidad:rInfoA.unidad||'KG', cantLote:rInfoA.cantLote||0, peso:rInfoA.peso||0,
+          ruta:rutaA, tieneOrdenActiva:true
+        });
+        return;
+      }
       var inv = getInv(codU);
       if (!inv || inv.max <= 0 || inv.max > 500000) return;
 
@@ -7719,8 +7867,6 @@ function obtenerSinPedidoBajoStock(proceso) {
         pct   = inv.exist / inv.max;
         pedir = Math.max(0, Math.round(inv.max - inv.exist));
       }
-      if (pct >= 0.75) return;
-
       var rInfo = rutaInfoMap[cod] || {};
       var rutaCompleta = rutaMap[cod] || [];
       resultados.push({
@@ -7735,6 +7881,8 @@ function obtenerSinPedidoBajoStock(proceso) {
         codigoVenta: inv.codigoVenta || '',
         pct:         Math.round(pct * 100),
         pedirCalc:   pedir,
+        totalSolActivo:   totalSolActivoMap[codU]||0,
+        totalRestanActivo: totalRestanActivoMap[codU]||0,
         tipo_prod:   rInfo.tipo    || '',
         dia:         rInfo.dia     || '',
         long:        rInfo.long    || '',
