@@ -932,25 +932,47 @@ function loadCaptura() {
     setTimeout(function(){
       btn.disabled=false; btn.innerText="✅ CONFIRMAR Y GUARDAR"; btn.style.background="#2e7d32"; btn.style.cursor="pointer";
       btn.onclick = function() {
-        btn.disabled=true; btn.innerText="GUARDANDO...";
-        document.getElementById('cap-modalPreview').style.display='none';
+        btn.disabled=true; btn.innerText="GUARDANDO..."; btn.style.background="#888"; btn.style.cursor="not-allowed";
         showLoader('GUARDANDO PRODUCCIÓN...');
-        // CRÍTICO: asignar usuario ANTES de enviar al servidor
         var nombreUsuario = (currentUser && currentUser.nombre) ? currentUser.nombre : '';
         capLocalEntries.forEach(function(r){ r.usuario = nombreUsuario; });
         var registrosParaReporte = capLocalEntries.slice();
         google.script.run.withSuccessHandler(function(res) {
           hideLoader();
-          if (!res) {
-            Swal.fire({ icon:'error', title:'Error al guardar', text:'El servidor no respondió correctamente. Intenta de nuevo. (res null)' });
-            btn.disabled=false; btn.innerText="✅ CONFIRMAR Y GUARDAR"; btn.style.background="#2e7d32"; btn.style.cursor="pointer";
+          if (!res || !res.success) {
+            var msgErr = (res && res.msg) ? res.msg : 'El servidor no confirmó el guardado.';
+            btn.disabled=false;
+            btn.innerText="🔁 REINTENTAR GUARDAR";
+            btn.style.background="#e65100";
+            btn.style.cursor="pointer";
+            Swal.fire({
+              icon:'error',
+              title:'⚠️ NO SE GUARDÓ',
+              html:'<p style="font-size:16px;"><b>Los datos NO fueron guardados en la hoja.</b></p>'
+                + '<p style="color:#555;font-size:14px;">' + msgErr + '</p>'
+                + '<p style="color:#d32f2f;font-weight:900;font-size:15px;">El modal sigue abierto. Presiona REINTENTAR GUARDAR para intentar de nuevo.</p>',
+              confirmButtonText:'Entendido',
+              confirmButtonColor:'#e65100'
+            });
             return;
           }
+          document.getElementById('cap-modalPreview').style.display='none';
           capMostrarExitoConReporte(res, registrosParaReporte);
         }).withFailureHandler(function(err){
           hideLoader();
-          Swal.fire({ icon:'error', title:'Error al guardar', text:err.message||String(err) });
-          btn.disabled=false; btn.innerText="✅ CONFIRMAR Y GUARDAR"; btn.style.background="#2e7d32"; btn.style.cursor="pointer";
+          btn.disabled=false;
+          btn.innerText="🔁 REINTENTAR GUARDAR";
+          btn.style.background="#e65100";
+          btn.style.cursor="pointer";
+          Swal.fire({
+            icon:'error',
+            title:'⚠️ ERROR — NO SE GUARDÓ',
+            html:'<p style="font-size:16px;"><b>Error de comunicación con el servidor.</b></p>'
+              + '<p style="color:#555;font-size:14px;">' + (err.message||String(err)) + '</p>'
+              + '<p style="color:#d32f2f;font-weight:900;font-size:15px;">El modal sigue abierto. Presiona REINTENTAR GUARDAR para intentar de nuevo.</p>',
+            confirmButtonText:'Entendido',
+            confirmButtonColor:'#e65100'
+          });
         }).guardarProduccionCompleta({ registros: capLocalEntries });
       };
     },10000);

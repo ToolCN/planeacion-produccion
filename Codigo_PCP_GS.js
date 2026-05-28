@@ -3634,9 +3634,14 @@ function ejecutarCambiosGenerador(cambios) {
   // Procesos que consumen materia prima (guardar en Col AD)
   var PROCS_MP = ['ESTAMPADO','FORJA','ROSCADO','ESTIRADO','TREFILADO','COLATADO'];
   
+  // Limitar a 10 cambios por llamada para evitar timeout
+  if (cambios.length > 10) {
+    return JSON.stringify({ success: false, timeout: false, msg: 'Máximo 10 cambios por llamada. Usa procesamiento en lotes desde el cliente.' });
+  }
+
   try {
     lock.waitLock(25000);
-    
+
     cambios.forEach(c => {
       // 1. CANCELAR
       if(c.accion === "CANCELAR"){
@@ -3740,9 +3745,12 @@ function ejecutarCambiosGenerador(cambios) {
         }
       }
     });
-    return "OK";
-  } catch(e) { return "Error: " + e.toString(); } 
-  finally { lock.releaseLock(); }
+    return JSON.stringify({ success: true, msg: 'OK' });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.toString() });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
@@ -3838,9 +3846,9 @@ function cancelarOrdenEspecifica(folioPedido, serie, nOrden) {
       }
     }
     
-    return "OK";
+    return JSON.stringify({ success: true, msg: 'OK' });
   } catch(e) {
-    return e.toString();
+    return JSON.stringify({ success: false, msg: e.toString() });
   } finally {
     lock.releaseLock();
   }
@@ -4196,13 +4204,13 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
             aceroSVG:          getSvgAcero(aceroVal),
             avance:            row[idx.SOL] > 0 ? Math.round((row[idx.PROD] / row[idx.SOL]) * 100) : 0,
             maquinasPermitidas: maqPermitidasMap[String(row[idx.COD]) + "_" + String(row[idx.PROC]).toUpperCase().trim()] || String(row[idx.MAQ]),
-            invExist:    (function(){ var _d=getInvExt(row[idx.COD]); planif_invTmp=_d; return _d.exist; })(),
-            invMin:      planif_invTmp ? planif_invTmp.min : null,
-            invMax:      planif_invTmp ? planif_invTmp.max : null,
-            invExistNeg: planif_invTmp ? (planif_invTmp.existNeg !== undefined ? planif_invTmp.existNeg : null) : null,
-            invBack:      planif_invTmp ? (planif_invTmp.back !== undefined ? planif_invTmp.back : 0) : 0,
-            invUnidad:    planif_invTmp ? (planif_invTmp.unidad || "") : "",
-            invEsVarilla: planif_invTmp ? (planif_invTmp.esVarilla === true) : false
+            invExist:    (function(){ var _inv=getInvExt(row[idx.COD]); resultados.__lastInv=_inv; return _inv.exist; })(),
+            invMin:      resultados.__lastInv ? resultados.__lastInv.min : null,
+            invMax:      resultados.__lastInv ? resultados.__lastInv.max : null,
+            invExistNeg: resultados.__lastInv ? (resultados.__lastInv.existNeg !== undefined ? resultados.__lastInv.existNeg : null) : null,
+            invBack:      resultados.__lastInv ? (resultados.__lastInv.back !== undefined ? resultados.__lastInv.back : 0) : 0,
+            invUnidad:    resultados.__lastInv ? (resultados.__lastInv.unidad || "") : "",
+            invEsVarilla: resultados.__lastInv ? (resultados.__lastInv.esVarilla === true) : false
           });
         }
       }
@@ -8744,10 +8752,15 @@ function guardarProduccionCompleta(payload) {
        lotesParaActualizar.add(r.loteFull);
     });
 
+    var filaAntesDeGuardar = sheetProd.getLastRow();
     if(nuevasFilasProd.length > 0) {
-       sheetProd.getRange(sheetProd.getLastRow()+1, 1, nuevasFilasProd.length, nuevasFilasProd[0].length).setValues(nuevasFilasProd);
+       sheetProd.getRange(filaAntesDeGuardar+1, 1, nuevasFilasProd.length, nuevasFilasProd[0].length).setValues(nuevasFilasProd);
     }
     SpreadsheetApp.flush();
+    var filaDespuesDeGuardar = sheetProd.getLastRow();
+    if(nuevasFilasProd.length > 0 && filaDespuesDeGuardar < filaAntesDeGuardar + nuevasFilasProd.length) {
+      throw new Error("Fallo al insertar filas en PRODUCCION. Filas esperadas: " + (filaAntesDeGuardar + nuevasFilasProd.length) + ", filas actuales: " + filaDespuesDeGuardar);
+    }
 
     // === NUEVO: VINCULAR UUIDs PARA RASTREO ===
     // Esto mapea el ID único de cada fila recién guardada al objeto de memoria

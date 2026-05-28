@@ -410,32 +410,57 @@ function genPreviaGuardar() {
     } else {
       showLoader('Aplicando cambios...');
     }
-    google.script.run
-      .withSuccessHandler(function(res) {
+    // Procesamiento en lotes de 10 para evitar timeout de GAS (límite 6 min)
+    var GEN_LOTE_SIZE = 10;
+    var gen_lotes = [];
+    for (var gi = 0; gi < cambiosList.length; gi += GEN_LOTE_SIZE) {
+      gen_lotes.push(cambiosList.slice(gi, gi + GEN_LOTE_SIZE));
+    }
+    var gen_loteActual = 0;
+    var gen_procesados = 0;
+
+    function genProcesarLote() {
+      if (gen_loteActual >= gen_lotes.length) {
         if (usarProgress) {
           genProgFinish(nOrdTotal);
-          setTimeout(function() {
-            genProgReset();
-            hideLoader();
-            if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
-            sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
-            gen_cambios = {}; gen_foliosPreview = {};
-            genRecargarTodo();
-          }, 1200);
+          setTimeout(function() { genProgReset(); hideLoader(); sAlert('Se aplicaron ' + gen_procesados + ' cambios correctamente.', 'success', '¡Listo!'); gen_cambios = {}; gen_foliosPreview = {}; genRecargarTodo(); }, 1200);
         } else {
           hideLoader();
-          if (String(res).startsWith('Error')) { sAlert(res, 'error', 'Error al guardar'); return; }
-          sAlert('Cambios aplicados correctamente.', 'success', '¡Listo!');
+          sAlert('Se aplicaron ' + gen_procesados + ' cambios correctamente.', 'success', '¡Listo!');
           gen_cambios = {}; gen_foliosPreview = {};
           genRecargarTodo();
         }
-      })
-      .withFailureHandler(function(err) {
-        if (usarProgress) genProgReset();
-        hideLoader();
-        sAlert('Error: ' + err, 'error');
-      })
-      .ejecutarCambiosGenerador(cambiosList);
+        return;
+      }
+      var loteIdx = gen_loteActual;
+      var lote = gen_lotes[loteIdx];
+      showLoader('Procesando lote ' + (loteIdx + 1) + ' de ' + gen_lotes.length + '...');
+      (function(loteCapturado, idxCapturado) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            var ok = false;
+            try { var r = JSON.parse(res); ok = r.success === true || r.msg === 'OK'; } catch(e) { ok = (res === 'OK'); }
+            if (ok) {
+              gen_procesados += loteCapturado.length;
+              gen_loteActual++;
+              genProcesarLote();
+            } else {
+              if (usarProgress) genProgReset();
+              hideLoader();
+              var msg = ''; try { msg = JSON.parse(res).msg; } catch(e) { msg = res; }
+              sAlert('Error en lote ' + (idxCapturado + 1) + ': ' + msg, 'error', 'Error al guardar');
+            }
+          })
+          .withFailureHandler(function(err) {
+            if (usarProgress) genProgReset();
+            hideLoader();
+            sAlert('Error en lote ' + (idxCapturado + 1) + ': ' + err, 'error');
+          })
+          .ejecutarCambiosGenerador(loteCapturado);
+      })(lote, loteIdx);
+    }
+
+    genProcesarLote();
   });
 }
 

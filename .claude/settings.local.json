@@ -39,7 +39,8 @@
       "Bash(xcopy *)",
       "Read(//c/Users/rcdga/AppData/Local/**)",
       "PowerShell",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(del _fix_c1.py _fix_c45.py)"
     ]
   }
 }
