@@ -1,6 +1,31 @@
 // ══ PLANIFICADOR MODULE ══════════════════════════════════════════════════════
 // Variables globales del módulo Planificador (prefijo planif_)
 var planif_catalogo = {}, planif_ordenesVivas = [], planif_seleccionProcesos = [];
+var planif_bgPausado = false;
+var planif_toastTimer = null;
+function planifToastGuardando(msg) {
+  planif_bgPausado = true;
+  toggleSaving(true, msg || 'Guardando...');
+}
+function planifToastOk(msg) {
+  planif_bgPausado = false;
+  toggleSaving(false);
+  var t = document.getElementById('saving-toast');
+  if (!t) return;
+  t.style.borderLeftColor = '#16a34a';
+  document.getElementById('saving-msg').innerText = msg || '✔ Guardado correctamente';
+  t.style.display = 'block';
+  if (planif_toastTimer) clearTimeout(planif_toastTimer);
+  planif_toastTimer = setTimeout(function() {
+    t.style.display = 'none';
+    t.style.borderLeftColor = '#6366f1';
+  }, 2500);
+}
+function planifToastErr(e) {
+  planif_bgPausado = false;
+  toggleSaving(false);
+  sAlert('Error: ' + (e.message || e), 'error');
+}
 var planif_idCambioMaqActivo = null;
 var planif_maqsVisibles = [], planif_cambiosPendientes = {}, planif_historialUndo = {};
 var planif_dataHistTemp = [], planif_maqSyncActiva = "";
@@ -986,10 +1011,10 @@ function fprog_aplicarStock() {
   }).then(function(res) {
     if (!res.isConfirmed) return;
     fprog_cerrarModalStock();
-    showLoader('Aplicando cambios...');
+    planifToastGuardando('Aplicando cambios...');
     google.script.run
       .withSuccessHandler(function(r) {
-        hideLoader();
+        planifToastOk('✔ Cambios aplicados');
         var parsed = (typeof r === 'string') ? JSON.parse(r) : r;
         var ok = parsed && parsed.success;
         Swal.fire({
@@ -999,10 +1024,7 @@ function fprog_aplicarStock() {
           confirmButtonColor: ok ? '#2e7d32' : '#c62828'
         }).then(function() { if (ok) fprogRefresh(); });
       })
-      .withFailureHandler(function(e) {
-        hideLoader();
-        Swal.fire({ icon: 'error', title: 'Error del servidor', text: String(e), confirmButtonColor: '#c62828' });
-      })
+      .withFailureHandler(function(e) { planifToastErr(e); })
       .aplicarActualizacionEjecucion(sel);
   });
 }
@@ -1824,16 +1846,15 @@ function fpd_refrescarConCheck() {
           fpd_ejecutarRefresh();
           return;
         }
-        showLoader('Guardando y actualizando...');
+        planifToastGuardando('Guardando y actualizando...');
         google.script.run
           .withSuccessHandler(function() {
-            hideLoader();
+            planifToastOk('✔ Guardado, actualizando...');
             if (btnGuardar) btnGuardar.style.display = 'none';
             fpd_ejecutarRefresh();
           })
           .withFailureHandler(function(e) {
-            hideLoader();
-            sAlert('Error al guardar: ' + e, 'error');
+            planifToastErr(e);
           })
           .guardarPlanificacion(lista);
       } else if (r.isDenied) {
@@ -1879,15 +1900,13 @@ function fpd_guardarPrioridades() {
     });
   });
   if (listaCambios.length === 0) return;
-  showLoader('Guardando prioridades...');
+  planifToastGuardando('Guardando prioridades...');
   google.script.run.withSuccessHandler(function() {
-    hideLoader();
+    planifToastOk('✔ Prioridades guardadas');
     var btn = document.getElementById('fpd-btnGuardar');
     if (btn) btn.style.display = 'none';
-    sAlert('Prioridades guardadas', 'success', '¡Listo!');
   }).withFailureHandler(function(e) {
-    hideLoader();
-    sAlert('Error: ' + e, 'error');
+    planifToastErr(e);
   }).guardarPlanificacion(listaCambios);
 }
 
@@ -2210,10 +2229,10 @@ function fpc_guardarCambios() {
   var numBorrados = lista.filter(function(r){ return r.borrar; }).length;
   Swal.fire({ title:'¿Confirmar guardado?', html:'Modificados: <b>' + (lista.length-numBorrados) + '</b><br>Eliminar: <b>' + numBorrados + '</b>', icon:'question', showCancelButton:true, confirmButtonText:'Guardar', cancelButtonText:'Cancelar' }).then(function(result) {
     if (!result.isConfirmed) return;
-    showLoader('Guardando cambios...');
+    planifToastGuardando('Guardando prioridades...');
     google.script.run
-      .withSuccessHandler(function(res) { sAlert(res,'success','¡Listo!'); fpc_procesar(); })
-      .withFailureHandler(function(e) { hideLoader(); sAlert('Error: ' + e,'error'); })
+      .withSuccessHandler(function(res) { planifToastOk('✔ Prioridades guardadas'); fpc_procesar(); })
+      .withFailureHandler(function(e) { planifToastErr(e); })
       .guardarCambiosProduccion(lista);
   });
 }
@@ -3508,13 +3527,12 @@ function fprogConfirmarCambioCantidad() {
   // Restaurar onclick original
   var btnGuardar = document.querySelector('#planif-modalCantidad button[onclick="fprogConfirmarCambioCantidad()"]');
   if (btnGuardar) btnGuardar.setAttribute('onclick', 'planifConfirmarCambioCantidad()');
-  showLoader('Actualizando cantidad...');
+  planifToastGuardando('Actualizando cantidad...');
   google.script.run.withSuccessHandler(function() {
-    hideLoader();
+    planifToastOk('✔ Cantidad actualizada');
     fprogCargarDatos(); // recargar tabla completa (cantidad afecta a todos los procesos)
   }).withFailureHandler(function(e) {
-    hideLoader();
-    sAlert('Error al actualizar cantidad: ' + e, 'error');
+    planifToastErr(e);
   }).actualizarCantidadOrden(fprog_filaEditandoCantidad.id_orden, nuevaCantidad);
 }
 
@@ -3893,9 +3911,9 @@ function fprogCiclarZoom() {
 function fprogRefresh() {
   var btn = document.getElementById('forja-refresh-btn');
   if (btn) btn.classList.add('cargando');
-  showLoader('Actualizando datos Forja...');
+  planifToastGuardando('Actualizando datos Forja...');
   google.script.run.withSuccessHandler(function(resRaw) {
-    hideLoader();
+    planifToastOk('✔ Datos Forja actualizados');
     if (btn) btn.classList.remove('cargando');
     try {
       var data = JSON.parse(resRaw);
@@ -3917,9 +3935,8 @@ function fprogRefresh() {
       sAlert('Error al actualizar: ' + e.message, 'error');
     }
   }).withFailureHandler(function(e) {
-    hideLoader();
+    planifToastErr(e);
     if (btn) btn.classList.remove('cargando');
-    sAlert('Error servidor: ' + e.message, 'error');
   }).obtenerDatosProgramadorForja();
 }
 
@@ -4596,7 +4613,11 @@ function planifRenderBoardTabla() {
 
       var maqSafe = maqKey.replace(/[^a-zA-Z0-9]/g,'_');
 
-      html += '<div class="planif-tabla-maq" id="ptm-' + maqSafe + '" style="margin-bottom:24px;border:1px solid #cfd8dc;border-radius:8px;overflow:hidden;">';
+      var _htmlBloqueMaq = '<div class="planif-tabla-maq" id="ptm-' + maqSafe + '" style="margin-bottom:24px;border:1px solid #cfd8dc;border-radius:8px;overflow:hidden;">';
+      var _htmlUsandoBloque = false;
+      // Redirigir html temporalmente
+      var _htmlMain = html;
+      html = _htmlBloqueMaq;
       var maqEscapedTabla = maq.replace(/'/g, "\\'");
       html += '<div style="background:#1a237e;color:white;padding:10px 16px;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:space-between;">';
       html += '<div style="display:flex;align-items:center;gap:8px;">';
@@ -4688,6 +4709,10 @@ function planifRenderBoardTabla() {
       html += '<tbody id="pt-body-' + maqSafe + '" data-maqkey="' + maqKey + '" data-maqsafe="' + maqSafe + '">';
       var idsOrdenados = planif_tablaOrdenLocal[maqKey];
       var rowIdxFiltrado = 0;
+      var _vBusq = (document.getElementById('planif-txtBuscar') ? document.getElementById('planif-txtBuscar').value.toUpperCase().trim() : '');
+      var _cMap  = { dia:'dia', long:'long', tipo:'tipo', codigo:'codigo', acero:'acero', pedido:'pedido' };
+      var _cActiva = planif_filtroColActiva && _cMap[planif_filtroColActiva] ? planif_filtroColActiva : null;
+      var _htmlFilasMaq = '';
       idsOrdenados.forEach(function(id) {
         var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
         if (!o) return;
@@ -4695,10 +4720,21 @@ function planifRenderBoardTabla() {
         if (planif_modoExcedentes && !window._planifExcMap[String(o.codigo||'').toUpperCase()]) return;
         if (!planifPTFilaVisible(o, maqKey)) return;
         if (!planifGFOrdenVisible(o)) return;
-        html += planifRenderTablaFila(o, rowIdxFiltrado, maqKey, maqSafe, tieneC7);
+        if (_vBusq) {
+          var _pasa;
+          if (_cActiva) {
+            _pasa = String(o[_cMap[_cActiva]]||'').toUpperCase().indexOf(_vBusq) > -1;
+          } else {
+            _pasa = ['codigo','tipo','dia','long','acero','pedido','orden'].some(function(c){
+              return String(o[c]||'').toUpperCase().indexOf(_vBusq) > -1;
+            });
+          }
+          if (!_pasa) return;
+        }
+        _htmlFilasMaq += planifRenderTablaFila(o, rowIdxFiltrado, maqKey, maqSafe, tieneC7);
         rowIdxFiltrado++;
       });
-      // ── Fila de totales (tfoot) — solo suma los filtrados ──
+      // Calcular totales para el tfoot
       var totalSol = 0, totalProd = 0;
       planif_tablaOrdenLocal[maqKey].forEach(function(id) {
         var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
@@ -4712,14 +4748,19 @@ function planifRenderBoardTabla() {
       var totalRestan = Math.max(0, totalSol - totalProd);
       var totalCols = 6 + cols.filter(function(c){ return !(c.soloC7 && !tieneC7); }).length + 1;
       var colspanPrev = totalCols - 4;
-      html += '<tfoot><tr style="background:#e8eaf6;font-weight:900;border-top:2px solid #9fa8da;">';
-      html += '<td colspan="' + colspanPrev + '" style="padding:5px 10px;text-align:right;font-size:12px;color:#1a237e;">TOTALES:</td>';
-      html += '<td id="pt-total-sol-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#1565c0;font-size:12px;">' + planifFormatN(totalSol) + '</td>';
-      html += '<td id="pt-total-prod-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#880e4f;font-size:12px;">' + planifFormatN(totalProd) + '</td>';
-      html += '<td id="pt-total-restan-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#000;font-size:12px;font-weight:900;">' + planifFormatN(totalRestan) + '</td>';
-      html += '<td style="padding:5px 8px;"></td>';
-      html += '</tr></tfoot>';
-      html += '</tbody></table></div></div>';
+      var _htmlTfoot = '<tfoot><tr style="background:#e8eaf6;font-weight:900;border-top:2px solid #9fa8da;">'
+        + '<td colspan="' + colspanPrev + '" style="padding:5px 10px;text-align:right;font-size:12px;color:#1a237e;">TOTALES:</td>'
+        + '<td id="pt-total-sol-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#1565c0;font-size:12px;">' + planifFormatN(totalSol) + '</td>'
+        + '<td id="pt-total-prod-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#880e4f;font-size:12px;">' + planifFormatN(totalProd) + '</td>'
+        + '<td id="pt-total-restan-' + maqSafe + '" style="padding:5px 8px;text-align:right;color:#000;font-size:12px;font-weight:900;">' + planifFormatN(totalRestan) + '</td>'
+        + '<td style="padding:5px 8px;"></td>'
+        + '</tr></tfoot>';
+      if (_vBusq && rowIdxFiltrado === 0) {
+        html = _htmlMain;
+      } else {
+        html = _htmlMain + html + _htmlFilasMaq + _htmlTfoot + '</tbody></table></div></div>';
+      }
+      // (tfoot y cierre de bloque ahora están en el bloque condicional de arriba)
     });
   });
 
@@ -4846,11 +4887,14 @@ function planifRenderBoardTabla() {
       html += '<td style="padding:0;"><span style="display:block;padding:3px 6px;text-align:center;font-size:11px;font-weight:900;background:' + pctBg + ';color:' + pctFg + ';' + pctAnim + '">' + pctTxt + '</span></td>';
       // Color del campo Pedir: verde=pendiente, amarillo=cubierto, rojo=sobre-programado
       var _pedirColor = (typeof pedir === 'number') ? (pedir < 0 ? '#ef5350' : (pedir === 0 ? '#f9a825' : '#a5d6a7')) : '#fff';
-      var _pedirStr   = (typeof pedir === 'number') ? pedir.toLocaleString('es-MX') : String(pedir);
+      var _pedirStr   = (typeof pedir === 'number') ? planifFormatN(Math.round(pedir)) : String(pedir);
       html += '<td style="padding:4px 6px;text-align:right;"><input type="text" id="planif-sp-pedir-' + codSafe + '" value="' + _pedirStr + '" onchange="planif_spSetCantidad(\'' + it.codigo.replace(/'/g,"\\'") + '\',this.value)" style="width:80px;text-align:right;padding:3px 6px;border:1px solid #555;border-radius:4px;background:#1a1a2e;color:' + _pedirColor + ';font-size:12px;font-weight:700;"></td>';
       if (it.alerta) {
-        html += '<td colspan="5" style="padding:6px 8px;font-size:10px;color:#ff6666;font-style:italic;">Pedido activo pero proceso crítico completado</td>';
-        html += '<td style="padding:4px 6px;text-align:center;"><button onclick="planif_spAbrirDetalleAlerta(\'' + it.codigo.replace(/'/g,"\\'") + '\')" style="background:#7f1d1d;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;">⚠ Pedido vivo</button></td>';
+        html += '<td colspan="5" style="padding:6px 8px;font-size:10px;color:#ff6666;font-style:italic;"><span id="planif-sp-alerta-txt-' + codSafe + '">Pedido activo pero proceso crítico completado</span></td>';
+        html += '<td style="padding:4px 6px;text-align:center;white-space:nowrap;display:flex;gap:4px;align-items:center;">'
+          + '<button id="planif-sp-btn-alerta-' + codSafe + '" onclick="planif_spAbrirDetalleAlerta(\'' + it.codigo.replace(/'/g,"\\'") + '\')" style="background:#7f1d1d;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;">⚠ Pedido vivo</button>'
+          + '<button id="planif-sp-btn-terminar-' + codSafe + '" onclick="planif_spTerminarRapido(\'' + it.codigo.replace(/'/g,"\\'") + '\',\'' + codSafe + '\')" style="background:#dc2626;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:900;cursor:pointer;" title="Pasar todos los pedidos vivos de este código a TERMINADO">✔ Terminar</button>'
+          + '</td>';
         html += '</tr>';
       } else {
         // Badge "Sin ordenes activas" solo si no hay ninguna fila en la tabla que muestre ese código
@@ -4894,12 +4938,27 @@ function planifRenderBoardTabla() {
       if (planif_maqsVisibles.indexOf(maq) < 0) return;
       var maqUpper = String(maq).trim().toUpperCase();
       var maqKey = maqUpper + '||' + procUpper;
+      var _vBusqG = (document.getElementById('planif-txtBuscar') ? document.getElementById('planif-txtBuscar').value.toUpperCase().trim() : '');
+      var _cMapG  = { dia:'dia', long:'long', tipo:'tipo', codigo:'codigo', acero:'acero', pedido:'pedido' };
+      var _cActivaG = planif_filtroColActiva && _cMapG[planif_filtroColActiva] ? planif_filtroColActiva : null;
       (planif_tablaOrdenLocal[maqKey] || []).forEach(function(id) {
         var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
         if (!o) return;
         if (planif_modoFiltro98 && o.avance < 98) return;
         if (planif_modoExcedentes && !(window._planifExcMap && window._planifExcMap[String(o.codigo||'').toUpperCase()])) return;
         if (typeof planifGFOrdenVisible === 'function' && !planifGFOrdenVisible(o)) return;
+        // Aplicar filtro del buscador
+        if (_vBusqG) {
+          var _pasaG;
+          if (_cActivaG) {
+            _pasaG = String(o[_cMapG[_cActivaG]]||'').toUpperCase().indexOf(_vBusqG) > -1;
+          } else {
+            _pasaG = ['codigo','tipo','dia','long','acero','pedido','orden'].some(function(c){
+              return String(o[c]||'').toUpperCase().indexOf(_vBusqG) > -1;
+            });
+          }
+          if (!_pasaG) return;
+        }
         gSol  += Number(o.sol)  || 0;
         gProd += Number(o.prod) || 0;
       });
@@ -4914,7 +4973,9 @@ function planifRenderBoardTabla() {
     var elR = document.getElementById('ptg-rest'); if (elR) elR.textContent = planifFormatN(gRest);
     (function() {
       var gFab = gRest;
-      planif_sinPedidoData.forEach(function(it) {
+      // Usar solo los ítems SP que pasan los filtros activos
+      var spVisibles = planif_spFiltrarDatos();
+      spVisibles.forEach(function(it) {
         var _back4 = it.back || 0;
         var _exNeg4 = (it.existNeg !== null && it.existNeg !== undefined) ? (it.existNeg || 0) : 0;
         var _pedirSP = it.esVarilla
@@ -5034,7 +5095,15 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
   var _invExist = o.invExist || 0;
   var _claseInv = '';
   if (_invMax > 0) {
-    var _restanKg = Math.max(0, (o.sol||0) - (o.prod||0));
+    // Sumar restan de TODAS las órdenes vivas del mismo código (no solo esta)
+    var _codUp = String(o.codigo||'').toUpperCase();
+    var _restanKgTotal = 0;
+    planif_ordenesVivas.forEach(function(ox) {
+      if (String(ox.codigo||'').toUpperCase() === _codUp) {
+        _restanKgTotal += Math.max(0, (ox.sol||0) - (ox.prod||0));
+      }
+    });
+    var _restanKg = _restanKgTotal;
     var _restanUnid = _restanKg;
     var _esVar = o.invEsVarilla === true || String(o.tipo||'').toUpperCase().indexOf('VARILLA') > -1;
     var _invBack2 = _esVar ? (parseFloat(o.invBack) || 0) : 0;
@@ -6506,15 +6575,14 @@ function planifEjecutarCambioEstadoOrden(id, nuevoEst, nota) {
     }
   });
 
-  showLoader('Cambiando estado...');
+  planifToastGuardando('Cambiando estado...');
   google.script.run
     .withSuccessHandler(function() {
-      hideLoader();
+      planifToastOk('✔ Estado actualizado');
       if (planif_vistaTablaActiva) planifRenderBoardTabla();
       else planifRenderBoard();
     })
     .withFailureHandler(function(e) {
-      hideLoader();
       // Revertir en memoria
       planif_ordenesVivas.forEach(function(ov) {
         if (String(ov.serie||'') + String(ov.orden||'') === serieOrden) {
@@ -6522,7 +6590,7 @@ function planifEjecutarCambioEstadoOrden(id, nuevoEst, nota) {
         }
       });
       if (btn) { btn.disabled = false; }
-      sAlert('Error: ' + e);
+      planifToastErr(e);
     })
     .planifCambiarEstadoOrdenCompleta(id, nuevoEst, nota);
 }
@@ -6599,7 +6667,7 @@ function planifGuardarPrioridadTabla(callback) {
     if (typeof callback === 'function') callback();
     return;
   }
-  showLoader('Guardando prioridades...');
+  planifToastGuardando('Guardando prioridades...');
   google.script.run.withSuccessHandler(function() {
     // Actualizar planif_ordenesVivas en memoria
     Object.keys(planif_tablaOrdenLocal).forEach(function(maqKey) {
@@ -6612,13 +6680,11 @@ function planifGuardarPrioridadTabla(callback) {
     planif_undoStack = {};
     var btnST = document.getElementById('planif-btnSaveTabla');
     if (btnST) btnST.style.display = 'none';
-    hideLoader();
+    planifToastOk('✔ Prioridades guardadas');
     if (typeof callback === 'function') {
       callback();
-    } else {
-      sAlert('Prioridades guardadas correctamente', 'success', '¡Listo!');
     }
-  }).withFailureHandler(function(e){ hideLoader(); sAlert('Error: ' + e); })
+  }).withFailureHandler(function(e){ planifToastErr(e); })
   .guardarPlanificacion(listaCambios);
 }
 
@@ -6779,6 +6845,45 @@ function planif_spTerminarPedido(folio, codigo) {
   });
 }
 
+function planif_spTerminarRapido(codigo, codSafe) {
+  sConfirm('¿Pasar a TERMINADO todos los pedidos vivos del código <b>' + codigo + '</b>?', 'Confirmar', 'Sí, terminar', 'Cancelar', true).then(function(r) {
+    if (!r.isConfirmed) return;
+    // Feedback inline: gris con leyenda "Actualizando pedidos"
+    var btnAlerta   = document.getElementById('planif-sp-btn-alerta-'   + codSafe);
+    var btnTerminar = document.getElementById('planif-sp-btn-terminar-' + codSafe);
+    var txtAlerta   = document.getElementById('planif-sp-alerta-txt-'   + codSafe);
+    if (btnAlerta)   { btnAlerta.disabled = true;   btnAlerta.style.opacity   = '0.4'; }
+    if (btnTerminar) { btnTerminar.disabled = true;  btnTerminar.style.background = '#9ca3af'; btnTerminar.textContent = '⏳ Actualizando pedidos'; }
+    if (txtAlerta)   txtAlerta.textContent = 'Actualizando pedidos...';
+    planif_bgPausado = true;
+    google.script.run
+      .withSuccessHandler(function(raw) {
+        planif_bgPausado = false;
+        var res = JSON.parse(raw);
+        if (!res.success) {
+          if (btnTerminar) { btnTerminar.disabled = false; btnTerminar.style.background = '#dc2626'; btnTerminar.textContent = '✔ Terminar'; }
+          if (btnAlerta)   { btnAlerta.disabled = false;   btnAlerta.style.opacity = '1'; }
+          if (txtAlerta)   txtAlerta.textContent = 'Pedido activo pero proceso crítico completado';
+          sAlert('Error: ' + res.msg, 'error');
+          return;
+        }
+        // Quitar de la lista en memoria y re-renderizar solo la sección
+        planif_sinPedidoData = planif_sinPedidoData.filter(function(it){ return it.codigo !== codigo || !it.alerta; });
+        planifToastOk('✔ ' + res.msg);
+        planifCargarSinPedidoBg();
+        if (planif_vistaTablaActiva) planifRenderBoardTabla();
+      })
+      .withFailureHandler(function(e) {
+        planif_bgPausado = false;
+        if (btnTerminar) { btnTerminar.disabled = false; btnTerminar.style.background = '#dc2626'; btnTerminar.textContent = '✔ Terminar'; }
+        if (btnAlerta)   { btnAlerta.disabled = false;   btnAlerta.style.opacity = '1'; }
+        if (txtAlerta)   txtAlerta.textContent = 'Pedido activo pero proceso crítico completado';
+        sAlert('Error: ' + e, 'error');
+      })
+      .terminarPedidosPorCodigo(codigo);
+  });
+}
+
 function planif_spToggleCheck(codigo, checked) {
   if (checked) planif_spSeleccionados[codigo] = true;
   else delete planif_spSeleccionados[codigo];
@@ -6828,12 +6933,35 @@ function planif_spSetFiltro(col, val) {
 }
 
 function planif_spFiltrarDatos() {
+  var busq = (document.getElementById('planif-txtBuscar') ? document.getElementById('planif-txtBuscar').value : '').toUpperCase().trim();
+  var colFiltro = planif_filtroColActiva || null;
+  var colCampoMap = { dia: 'dia', long: 'long', tipo: 'tipo', codigo: 'codigo', acero: 'acero', pedido: 'pedido' };
   return planif_sinPedidoData.filter(function(it) {
-    return Object.keys(planif_spFiltros).every(function(col) {
+    // 1. Filtros tipo Excel propios del SP (encabezados del recuadro negro)
+    var pasaFiltros = Object.keys(planif_spFiltros).every(function(col) {
       var sel = planif_spFiltros[col];
       if (!sel || sel.size === 0) return true;
-      var v = String(it[col]||'').trim();
-      return sel.has(v);
+      return sel.has(String(it[col]||'').trim());
+    });
+    if (!pasaFiltros) return false;
+    // 2. Filtros globales de columna (los mismos que filtran las órdenes de arriba)
+    if (planif_gfiltros && Object.keys(planif_gfiltros).length > 0) {
+      var pasaGlobal = Object.keys(planif_gfiltros).every(function(col) {
+        var sel = planif_gfiltros[col];
+        if (!sel || sel.length === 0) return true;
+        return sel.indexOf(planifGFGetVal(it, col)) >= 0;
+      });
+      if (!pasaGlobal) return false;
+    }
+    // 2. Filtro de buscador + combobox
+    if (!busq) return true;
+    if (colFiltro && colCampoMap[colFiltro]) {
+      // Buscar solo en la columna seleccionada
+      return String(it[colCampoMap[colFiltro]]||'').toUpperCase().indexOf(busq) > -1;
+    }
+    // Sin columna: buscar en todos los campos relevantes
+    return ['codigo','tipo','dia','long','esp1','esp2','acero'].some(function(campo) {
+      return String(it[campo]||'').toUpperCase().indexOf(busq) > -1;
     });
   });
 }
@@ -7142,9 +7270,10 @@ function planifRenderSinPedidoBlock() {
 function planifCargarProdBg() {
   var ids = planif_ordenesVivas.map(function(o){ return String(o.id); });
   var pendProd = ids.filter(function(id){ return !planif_prodCache[id] && !planif_prodCargando[id]; });
-  var loteSize = 3;  // máx 3 simultáneos para no saturar GAS (límite ~6 por sesión)
+  var loteSize = 3;
   var loteIdx = 0;
   function sig() {
+    if (planif_bgPausado) { setTimeout(sig, 500); return; }
     if (loteIdx >= pendProd.length) return;
     var lote = pendProd.slice(loteIdx, loteIdx + loteSize);
     loteIdx += loteSize;
@@ -7175,6 +7304,7 @@ function planifCargarCantBg() {
   var loteSize = 5;
   var loteIdx = 0;
   function sig() {
+    if (planif_bgPausado) { setTimeout(sig, 500); return; }
     if (loteIdx >= pendientes.length) return;
     var lote = pendientes.slice(loteIdx, loteIdx + loteSize);
     loteIdx += loteSize;
@@ -7214,6 +7344,7 @@ function planifCargarHistorialBg() {
   var loteSize = 3;
   var loteIdx = 0;
   function sig() {
+    if (planif_bgPausado) { setTimeout(sig, 500); return; }
     if (loteIdx >= maqsPend.length) return;
     var lote = maqsPend.slice(loteIdx, loteIdx + loteSize);
     loteIdx += loteSize;
@@ -7439,10 +7570,10 @@ window.planifAbrirCambioMP = function(idEscaped) {
 
 window.planifSeleccionarMP = function(idOrden, nuevaMP) {
   Swal.close();
-  showLoader('Guardando MP...');
+  planifToastGuardando('Guardando MP...');
   google.script.run
     .withSuccessHandler(function(json) {
-      hideLoader();
+      planifToastOk('✔ MP actualizada a: ' + nuevaMP);
       var res = JSON.parse(json);
       if (res.success) {
         // Actualizar en memoria
@@ -7454,12 +7585,11 @@ window.planifSeleccionarMP = function(idOrden, nuevaMP) {
           var chip = card.querySelector('[title="Click para cambiar Materia Prima"]');
           if (chip) chip.innerText = '🔩 ' + nuevaMP;
         }
-        sAlert('MP actualizada a: ' + nuevaMP, 'success', '¡Listo!');
       } else {
         sAlert('Error al guardar: ' + res.msg);
       }
     })
-    .withFailureHandler(function(e){ hideLoader(); sAlert('Error: ' + e); })
+    .withFailureHandler(function(e){ planifToastErr(e); })
     .guardarMP(idOrden, nuevaMP);
 };
 
@@ -7467,6 +7597,34 @@ function planifActualizarContador() { var c = Object.keys(planif_cambiosPendient
 function planifCerrarModal(id) { var el = document.getElementById(id); if(el) el.style.display = 'none'; }
 
 var planif_filtroCol = null; // 'dia' | 'long' | 'tipo' | null
+var planif_filtroColActiva = null; // columna activa del combobox
+var planif_busqDebounceTimer = null;
+
+// Re-renderiza SOLO el bloque de códigos de línea sin tocar las órdenes de arriba
+function planifRenderSoloSpBloque() {
+  if (!planif_vistaTablaActiva) return;
+  var container = document.getElementById('planif-board-tabla');
+  if (!container) return;
+  var bloqueActual = document.getElementById('planif-spBloque');
+  if (!planif_sinPedidoVisible) {
+    if (bloqueActual) bloqueActual.remove();
+    return;
+  }
+  // Generar solo el HTML del bloque SP usando planif_spFiltrarDatos (ya filtra por buscador)
+  // Reutiliza la misma lógica de render que planifRenderBoardTabla pero solo la parte SP
+  // Para no duplicar código, hacemos re-render completo SOLO si el bloque no existe
+  if (!bloqueActual) {
+    planifRenderBoardTabla();
+    return;
+  }
+  // Si ya existe el bloque, reemplazamos su contenido sin tocar el resto del container
+  var spFiltrados = planif_spFiltrarDatos();
+  var spSelCount = Object.keys(planif_spSeleccionados).filter(function(c){ return planif_spSeleccionados[c]; }).length;
+  var _spProc = (planif_seleccionProcesos && planif_seleccionProcesos.length > 0) ? planif_seleccionProcesos.join(', ') : '—';
+  // Crear un div temporal y llamar planifRenderBoardTabla sobre una copia del container
+  // — solución más simple: marcar el bloque y hacer render completo diferido
+  planifRenderBoardTabla();
+}
 
 function planifCambiarColBusq(val) {
   var sel = document.getElementById('planif-selCol');
@@ -7493,108 +7651,21 @@ function planifToggleFiltroCol(col) {
 function planifFiltrarTablero() {
   var v = document.getElementById('planif-txtBuscar').value.toUpperCase().trim();
 
-  // Filtro vista tablero (tarjetas)
+  // Filtro vista TABLERO (tarjetas kanban) — inmediato, solo afecta cards
   document.querySelectorAll('#planif-panel .card').forEach(function(c) {
     c.style.display = (!v || c.innerText.toUpperCase().indexOf(v) > -1) ? 'block' : 'none';
   });
   document.querySelectorAll('#planif-panel .machine-column').forEach(function(col) {
     if (!v) { col.style.display = ''; return; }
-    var visibles = Array.from(col.querySelectorAll('.card')).filter(function(c) { return c.style.display !== 'none'; }).length;
-    col.style.display = visibles > 0 ? '' : 'none';
+    var vis = Array.from(col.querySelectorAll('.card')).filter(function(c){ return c.style.display !== 'none'; }).length;
+    col.style.display = vis > 0 ? '' : 'none';
   });
 
-  // Filtro vista tabla PRIORIDAD
-  document.querySelectorAll('[id^="pt-body-"] tr').forEach(function(tr) {
-    if (!v) {
-      tr.style.display = '';
-    } else {
-      var texto = tr.innerText.toUpperCase();
-      tr.style.display = texto.indexOf(v) > -1 ? '' : 'none';
-    }
-  });
-  // Ocultar bloque de máquina completo si no tiene filas visibles en filtro
-  document.querySelectorAll('.planif-tabla-maq').forEach(function(bloque) {
-    if (!v) { bloque.style.display = ''; return; }
-    var visibles = Array.from(bloque.querySelectorAll('[id^="pt-body-"] tr')).filter(function(tr){ return tr.style.display !== 'none'; }).length;
-    bloque.style.display = visibles > 0 ? '' : 'none';
-  });
-  // Recalcular totales de Solic. y Prod. por cada tabla visible tras filtro
-  document.querySelectorAll('[id^="pt-body-"]').forEach(function(tbody) {
-    var maqSafe = tbody.dataset.maqsafe;
-    if (!maqSafe) return;
-    var totalSol = 0, totalProd = 0;
-    Array.from(tbody.querySelectorAll('tr')).forEach(function(tr) {
-      if (tr.style.display === 'none') return;
-      var id = tr.dataset.id;
-      if (!id) return;
-      var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
-      if (o) { totalSol += Number(o.sol)||0; totalProd += Number(o.prod)||0; }
-    });
-    var elSol   = document.getElementById('pt-total-sol-'   + maqSafe);
-    var elProd  = document.getElementById('pt-total-prod-'  + maqSafe);
-    var elRest  = document.getElementById('pt-total-restan-'+ maqSafe);
-    var totalRestan = Math.max(0, totalSol - totalProd);
-    if (elSol)  elSol.textContent  = planifFormatN(totalSol);
-    if (elProd) elProd.textContent = planifFormatN(totalProd);
-    if (elRest) elRest.textContent = planifFormatN(totalRestan);
-  });
-  // Filtro SIN PEDIDO ACTIVO
-  var spBloque = document.getElementById('planif-spBloque');
-  if (spBloque) {
-    // Construir mapa de filtros de columna globales → campo del item SP
-    var _spColMap = { codigo: 'codigo', tipo: 'tipo', dia: 'dia', long: 'long', acero: 'acero' };
-    var spFilas = spBloque.querySelectorAll('tbody tr');
-    spFilas.forEach(function(tr) {
-      // ── Primero: filtro por barra de búsqueda ──
-      var _pasaBusq = true;
-      if (v) {
-        if (planif_filtroCol) {
-          var colIdx = planif_filtroCol === 'tipo' ? 2 : planif_filtroCol === 'dia' ? 3 : planif_filtroCol === 'long' ? 4 : -1;
-          if (colIdx >= 0) {
-            var celdas = tr.querySelectorAll('td');
-            _pasaBusq = celdas[colIdx] ? celdas[colIdx].textContent.toUpperCase().indexOf(v) > -1 : false;
-          } else {
-            _pasaBusq = tr.textContent.toUpperCase().indexOf(v) > -1;
-          }
-        } else {
-          _pasaBusq = tr.textContent.toUpperCase().indexOf(v) > -1;
-        }
-      }
-      // ── Segundo: filtros globales por columna (encabezados) ──
-      var _pasaFiltros = true;
-      if (_pasaBusq && planif_filtrosGlobales && Object.keys(planif_filtrosGlobales).length > 0) {
-        var _codSP = tr.querySelector('td:nth-child(2)') ? tr.querySelector('td:nth-child(2)').textContent.trim() : '';
-        var _itemSP = planif_sinPedidoData ? planif_sinPedidoData.find(function(x){ return String(x.codigo).trim() === _codSP; }) : null;
-        if (_itemSP) {
-          Object.keys(planif_filtrosGlobales).forEach(function(col) {
-            if (!_pasaFiltros) return;
-            var vals = planif_filtrosGlobales[col];
-            if (!vals || vals.length === 0) return;
-            var campo = _spColMap[col];
-            if (!campo) return;
-            var val = String(_itemSP[campo] || '').trim().toUpperCase();
-            var encontrado = vals.some(function(fv){ return String(fv).trim().toUpperCase() === val; });
-            if (!encontrado) _pasaFiltros = false;
-          });
-        }
-      }
-      tr.style.display = (_pasaBusq && _pasaFiltros) ? '' : 'none';
-    });
-  }
-
-  // Filtro por columna específica en tablas de máquina (vista PRIORIDAD)
-  if (planif_filtroCol && v) {
-    var colMap = { dia: 'dia', long: 'long', tipo: 'tipo' };
-    document.querySelectorAll('[id^="pt-body-"] tr').forEach(function(tr) {
-      if (tr.style.display === 'none') return;
-      var id = tr.dataset.id;
-      if (!id) return;
-      var o = planif_ordenesVivas.find(function(x){ return x.id == id; });
-      if (!o) return;
-      var val = String(o[colMap[planif_filtroCol]]||'').toUpperCase();
-      tr.style.display = val.indexOf(v) > -1 ? '' : 'none';
-    });
-  }
+  // Vista tabla: re-renderizar con debounce (el render ya incluye el filtro integrado)
+  if (planif_busqDebounceTimer) clearTimeout(planif_busqDebounceTimer);
+  planif_busqDebounceTimer = setTimeout(function() {
+    if (planif_vistaTablaActiva) planifRenderBoardTabla();
+  }, 250);
 
   // Recalcular TOTAL GLOBAL con las filas visibles
   (function() {
@@ -7609,25 +7680,11 @@ function planifFiltrarTablero() {
     var elS = document.getElementById('ptg-sol');  if (elS) elS.textContent = planifFormatN(gSol);
     var elP = document.getElementById('ptg-prod'); if (elP) elP.textContent = planifFormatN(gProd);
     var elR = document.getElementById('ptg-rest'); if (elR) elR.textContent = planifFormatN(gRest);
-    // Total a fabricar = Restan (ya en kg) + Pedir de SP visible filtrado (convertido a kg si varilla)
+    // Total a fabricar = Restan (ya en kg) + Pedir de SP visible filtrado
     (function() {
       var gFab = gRest;
-      var vBusq = (document.getElementById('planif-txtBuscar') ? document.getElementById('planif-txtBuscar').value.toUpperCase().trim() : '');
-      var spBloque = document.getElementById('planif-spBloque');
-      planif_sinPedidoData.forEach(function(it) {
-        // Si hay filtro activo, solo incluir ítems visibles en el bloque SP
-        if (vBusq && spBloque) {
-          var spRow = spBloque.querySelector('tr[data-codigo="' + it.codigo.replace(/"/g,'') + '"]');
-          if (!spRow) {
-            // Verificar por texto si no hay data-codigo
-            var found = false;
-            var filas = spBloque.querySelectorAll('tbody tr');
-            for (var fi = 0; fi < filas.length; fi++) {
-              if (filas[fi].style.display !== 'none' && filas[fi].textContent.toUpperCase().indexOf(it.codigo) > -1) { found = true; break; }
-            }
-            if (!found) return;
-          } else if (spRow.style.display === 'none') return;
-        }
+      var spVisibles = planif_spFiltrarDatos();
+      spVisibles.forEach(function(it) {
         var _back4 = it.back || 0;
         var _exNeg4 = (it.existNeg !== null && it.existNeg !== undefined) ? (it.existNeg || 0) : 0;
         var _pedirSP = it.esVarilla
@@ -8223,28 +8280,26 @@ function planifConfirmarMaqsRuta() {
   planifCerrarModal('planif-modalMaqsRuta');
   var savEl = planif_idCardActiva ? document.getElementById('planif-sav-' + planif_idCardActiva) : null;
   if (savEl) savEl.style.display = 'flex';
-  showLoader('Actualizando ruta...');
+  planifToastGuardando('Actualizando ruta...');
   google.script.run.withSuccessHandler(function() {
-    hideLoader();
+    planif_bgPausado = false;
+    toggleSaving(false);
+    planifToastOk('✔ Ruta actualizada');
     if (savEl) savEl.style.display = 'none';
-    // Actualizar cards del tablero kanban si existen
     document.querySelectorAll('#planif-panel .card').forEach(function(card) {
       var cardObj = planif_ordenesVivas.find(function(o) { return o.id == card.dataset.id; });
       if (cardObj && cardObj.codigo === planif_codRutaEditando && cardObj.proceso === planif_procRutaEditando) {
         card.dataset.permitidas = maqsString; cardObj.maquinasPermitidas = maqsString;
       }
     });
-    // Actualizar también en ordenesVivas para la vista tabla
     planif_ordenesVivas.forEach(function(o) {
       if (o.codigo === planif_codRutaEditando && o.proceso === planif_procRutaEditando) {
         o.maquinasPermitidas = maqsString;
       }
     });
-    sAlert('Ruta actualizada correctamente', 'success', '¡Listo!');
   }).withFailureHandler(function(e) {
-    hideLoader();
     if (savEl) savEl.style.display = 'none';
-    sAlert('Error al actualizar ruta: ' + e, 'error');
+    planifToastErr(e);
   }).actualizarMaquinasRutaPlanif(planif_codRutaEditando, planif_procRutaEditando, maqsString);
 }
 
@@ -8402,9 +8457,10 @@ function planifAbrirEditCantidad(idOrden) {
         });
         var fillToN = Math.round(invMax - invExist - solOtros);
         var cantActual = primer.cantidad || 0;
-        if (fillToN > cantActual && divLlenar) {
+        // Solo mostrar "Llenar a máximos" si hay espacio real (no excede con otras órdenes)
+        if (fillToN > cantActual && fillToN > 0 && divLlenar) {
           divLlenar.style.display = 'block';
-          divLlenar.innerHTML = '<button onclick="planifLlenarAMaximos(' + fillToN + ')" style="width:100%;padding:10px 16px;background:#1565c0;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;">📈 Llenar a máximos (aumenta a ' + planifFormatN(fillToN) + ')</button>';
+          divLlenar.innerHTML = '<button onclick="planifLlenarAMaximos(' + fillToN + ')" style="width:100%;padding:10px 16px;background:#1565c0;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;">📈 Llenar a máximos (ajusta a ' + planifFormatN(fillToN) + ')</button>';
         }
       })();
       // ── Sugerido: detectar excedido o calcular cantidad óptima ──
@@ -8434,6 +8490,27 @@ function planifAbrirEditCantidad(idOrden) {
           }
           return;
         }
+        // Sumar restan de OTRAS órdenes del mismo código (excluyendo esta)
+        var _cod5 = String(oRef.codigo||'').toUpperCase();
+        var restanOtros = 0;
+        planif_ordenesVivas.forEach(function(x) {
+          if (String(x.id) !== String(idOrden) && String(x.codigo||'').toUpperCase() === _cod5) {
+            restanOtros += Math.max(0, (x.sol||0) - (x.prod||0));
+          }
+        });
+        // Lo que queda por planear en esta orden considerando todas las demás
+        var capacidadDisponible = Math.round(invMax - invExist - restanOtros);
+        // Si con las otras órdenes ya se supera el máximo, mostrar aviso y ocultar sugerido
+        if (capacidadDisponible <= 0) {
+          if (divSug) {
+            divSug.style.display = 'block';
+            divSug.innerHTML =
+              '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:#fff0f0;border:1px solid #fca5a5;border-radius:8px;">'
+              + '<span style="font-size:13px;font-weight:700;color:#c62828;">⚠ Se tiene planeado una cantidad mayor al máximo para llenar. Revisa y ajusta manualmente las órdenes de este código.</span>'
+              + '</div>';
+          }
+          return;
+        }
         // ── Calcular cantidad sugerida normal ──
         var sugSol;
         if (esVar) {
@@ -8444,27 +8521,27 @@ function planifAbrirEditCantidad(idOrden) {
             var prodPzas = Math.floor(prod / pvFact);
             var _back3 = parseFloat(oRef.invBack) || 0;
             var _exNeg3 = (oRef.invExistNeg !== null && oRef.invExistNeg !== undefined) ? (parseFloat(oRef.invExistNeg) || 0) : 0;
-            sugSol = prodPzas + Math.round(invMax - invExist - _back3 - _exNeg3);
+            sugSol = prodPzas + Math.round(invMax - invExist - _back3 - _exNeg3 - restanOtros);
           } else {
-            sugSol = Math.round(invMax - invExist);
+            sugSol = Math.round(invMax - invExist - restanOtros);
           }
         } else {
-          sugSol = Math.round(invMax - invExist) + prod;
+          sugSol = Math.round(invMax - invExist - restanOtros) + prod;
         }
         sugSol = Math.max(0, sugSol);
         var cantActual = primer.cantidad || 0;
         if (Math.round(sugSol) === Math.round(cantActual)) return;
+        // Solo mostrar sugerido si es REDUCCIÓN (nunca sugerir aumento)
         var esAumento = sugSol > cantActual;
-        var colDir    = esAumento ? '#2e7d32' : '#c62828';
-        var txtDir    = esAumento ? 'aumentar' : 'disminuir';
+        if (esAumento) return; // no sugerir aumentar
         if (divSug) {
           divSug.style.display = 'block';
           divSug.innerHTML =
             '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;">'
-            + '<span style="font-size:13px;font-weight:700;color:' + colDir + ';">'
-            + 'Sugerido ' + txtDir + ' a <b>' + planifFormatN(sugSol) + ' pzas</b></span>'
+            + '<span style="font-size:13px;font-weight:700;color:#c62828;">'
+            + 'Sugerido disminuir a <b>' + planifFormatN(sugSol) + '</b></span>'
             + '<button onclick="planifAplicarSugerido(' + sugSol + ')" '
-            + 'style="padding:5px 14px;background:' + colDir + ';color:white;border:none;border-radius:6px;cursor:pointer;font-weight:900;font-size:12px;">Sugerido</button>'
+            + 'style="padding:5px 14px;background:#c62828;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:900;font-size:12px;">Aplicar sugerido</button>'
             + '</div>';
         }
       })();
@@ -8561,13 +8638,13 @@ function planifConfirmarCambioCantidad() {
   var nuevaCantidad = parseFloat(document.getElementById('planif-txtNuevaCantidad').value);
   if (!nuevaCantidad || nuevaCantidad <= 0) { sAlert('Ingresa una cantidad válida'); return; }
   planifCerrarModal('planif-modalCantidad');
-  showLoader('Actualizando cantidad...');
+  planifToastGuardando('Actualizando cantidad...');
   var idGuardando = planif_idCantidadEditando;
   // Invalidar cache para que al volver a abrir recargue datos frescos
   delete planif_cantCache[idGuardando];
   delete planif_prodCache[idGuardando];
   google.script.run.withSuccessHandler(function(resRaw) {
-    hideLoader();
+    planifToastOk('✔ Cantidad actualizada');
     // Usar valores reales calculados por el backend
     var resultado = null;
     try { resultado = JSON.parse(resRaw); } catch(e) { resultado = null; }
@@ -8613,10 +8690,8 @@ function planifConfirmarCambioCantidad() {
         }
       }
     }
-    Swal.fire({ icon:'success', title:'Cantidad actualizada', timer:1500, showConfirmButton:false });
   }).withFailureHandler(function(e) {
-    hideLoader();
-    sAlert('Error al actualizar cantidad: ' + e, 'error');
+    planifToastErr(e);
   }).actualizarCantidadOrden(idGuardando, nuevaCantidad);
 }
 

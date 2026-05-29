@@ -4374,6 +4374,52 @@ function terminarPedidoColatado(folioPedido) {
   }
 }
 
+function terminarPedidosPorCodigo(codigo) {
+  try {
+    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shPed = ss.getSheetByName("PEDIDOS");
+    var shOrd = ss.getSheetByName("ORDENES");
+    var dataPed = shPed.getDataRange().getValues();
+    var dataOrd = shOrd.getDataRange().getValues();
+    var hPed = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    var pdFOL = hPed.indexOf("FOLIO");  if (pdFOL < 0) pdFOL = 1;
+    var pdCOD = hPed.indexOf("CODIGO"); if (pdCOD < 0) pdCOD = 3;
+    var pdEST = hPed.indexOf("ESTADO"); if (pdEST < 0) pdEST = 8;
+    var oPED  = hOrd.indexOf("PEDIDO");
+    var oEST  = hOrd.indexOf("ESTADO");
+    // Recopilar folios vivos que pertenecen a este código
+    var foliosVivos = [];
+    for (var p = 1; p < dataPed.length; p++) {
+      var codPed = String(dataPed[p][pdCOD]).trim().toUpperCase();
+      var estPed = String(dataPed[p][pdEST]).trim().toUpperCase();
+      if (codPed === String(codigo).trim().toUpperCase() && estPed !== 'TERMINADO' && estPed !== 'CANCELADO') {
+        foliosVivos.push({ fila: p + 1, folio: String(dataPed[p][pdFOL]).trim() });
+      }
+    }
+    if (foliosVivos.length === 0) return JSON.stringify({ success: true, msg: 'Sin pedidos vivos para terminar.', pedidos: 0, ordenes: 0 });
+    var foliosSet = {};
+    foliosVivos.forEach(function(f) { foliosSet[f.folio] = true; });
+    // Terminar pedidos
+    foliosVivos.forEach(function(f) { shPed.getRange(f.fila, pdEST + 1).setValue('TERMINADO'); });
+    // Terminar órdenes de esos pedidos
+    var ordenesTerminadas = 0, ordenesCanceladas = 0;
+    for (var o = 1; o < dataOrd.length; o++) {
+      var folOrd = String(dataOrd[o][oPED]).trim();
+      if (!foliosSet[folOrd]) continue;
+      var estOrd = String(dataOrd[o][oEST] || '').toUpperCase().trim();
+      if (estOrd === 'CANCELADO') { ordenesCanceladas++; continue; }
+      shOrd.getRange(o + 1, oEST + 1).setValue('TERMINADO');
+      ordenesTerminadas++;
+    }
+    SpreadsheetApp.flush();
+    return JSON.stringify({ success: true, pedidos: foliosVivos.length, ordenes: ordenesTerminadas, canceladas: ordenesCanceladas,
+      msg: foliosVivos.length + ' pedido(s) y ' + ordenesTerminadas + ' orden(es) pasados a TERMINADO.' });
+  } catch(e) {
+    return JSON.stringify({ success: false, msg: e.message });
+  }
+}
+
 function obtenerDetallePedidoAlerta(codigo) {
   try {
     var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
@@ -4541,17 +4587,26 @@ function actualizarMaquinasRutaPlanif(codigo, proceso, maqsString) {
     var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
     var sh = ss.getSheetByName("RUTAS");
     var data = sh.getDataRange().getValues();
-    
-    // Buscamos todas las filas que coincidan con el Código y el Proceso
+    var codUp  = String(codigo).trim().toUpperCase();
+    var procUp = String(proceso).toUpperCase().trim();
+
+    // Recolectar filas que coinciden, luego escribir de una sola vez por rango contiguo
+    var filasActualizar = [];
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][1]).trim() === String(codigo).trim() && 
-          String(data[i][4]).toUpperCase().trim() === String(proceso).toUpperCase().trim()) {
-        
-        // Actualizamos la Columna F (índice 6) que es MAQUINA
-        sh.getRange(i + 1, 6).setValue(maqsString);
+      if (String(data[i][1]).trim().toUpperCase() === codUp &&
+          String(data[i][4]).toUpperCase().trim()  === procUp) {
+        filasActualizar.push(i + 1); // número de fila en la hoja (base 1)
       }
     }
-    return "Ruta Maestra Actualizada: " + maqsString;
+    // Una sola llamada setValue por fila encontrada — evita múltiples roundtrips
+    // agrupando filas contiguas en un solo setValues
+    if (filasActualizar.length > 0) {
+      filasActualizar.forEach(function(fila) {
+        sh.getRange(fila, 6).setValue(maqsString);
+      });
+      SpreadsheetApp.flush();
+    }
+    return "OK";
   } catch (e) {
     throw new Error("Error actualizando ruta: " + e.message);
   }
