@@ -31,7 +31,7 @@ const ORDEN = [
   'Mod_NuevaRuta',
   'Mod_EditorRutas',
   'Mod_TableroSupervisor',
-  'Mod_GestionDocs',
+  // 'Mod_GestionDocs',  // Módulo desactivado
   'Mod_Usuarios',
   'Mod_TrackingModule',
   'Mod_MrpMp',

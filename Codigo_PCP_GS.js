@@ -10901,10 +10901,32 @@ function guardarCambiosRuta(payload) {
   }
   
   // --- 4. ACTUALIZAR ORDENES (CORREGIDO) ---
+  // Sanear columna ID: reemplazar celdas vacías o con error (#NUM!, etc.) por UUID
+  (function() {
+    var lastRow = sheetOrd.getLastRow();
+    if (lastRow < 2) return;
+    var idCol = 1; // Columna A
+    var idVals = sheetOrd.getRange(2, idCol, lastRow - 1, 1).getValues();
+    var fixes = [];
+    for (var r = 0; r < idVals.length; r++) {
+      var v = idVals[r][0];
+      // Detectar celda vacía, valor 0, o error de fórmula (objeto Error de GAS)
+      var esInvalido = (v === '' || v === 0 || v === null || v === undefined ||
+                        (typeof v === 'object') ||
+                        (typeof v === 'string' && v.indexOf('#') === 0));
+      if (esInvalido) {
+        fixes.push({ row: r + 2, val: Utilities.getUuid().substring(0, 8) });
+      }
+    }
+    fixes.forEach(function(f) {
+      sheetOrd.getRange(f.row, idCol).setValue(f.val);
+    });
+  })();
+
   var fechaLimite = new Date();
-  fechaLimite.setDate(fechaLimite.getDate() - 60); 
+  fechaLimite.setDate(fechaLimite.getDate() - 60);
   var timeLimite = fechaLimite.getTime();
-  
+
   var dataOrd = sheetOrd.getDataRange().getValues();
   var headersOrd = dataOrd[0];
   
@@ -11104,14 +11126,25 @@ function actualizarFilaOrden(sheet, fila, datos, headers, datosFilaCompleta, IDX
 
 // Helper: Inserta nueva con protección
 function insertarFilaOrden(sheet, datosBase, datosNuevos, headers, IDX) {
-   var nextId = obtenerSiguienteIdNumerico(sheet, IDX.ID);
-   var nuevaFila = [...datosBase]; 
-   
+   // Si IDX.ID es -1 (columna no encontrada), usar UUID como fallback
+   var nextId;
+   if (IDX.ID !== undefined && IDX.ID > -1) {
+     nextId = obtenerSiguienteIdNumerico(sheet, IDX.ID);
+   } else {
+     nextId = Utilities.getUuid().substring(0, 8);
+   }
+   var nuevaFila = [...datosBase];
+
    var safeSet = function(idx, val) {
       if(idx !== undefined && idx > -1) nuevaFila[idx] = val;
    };
-   
-   safeSet(IDX.ID, nextId); 
+
+   // Asignar ID directo por índice 0 si IDX.ID no está disponible
+   if (IDX.ID !== undefined && IDX.ID > -1) {
+     safeSet(IDX.ID, nextId);
+   } else {
+     nuevaFila[0] = nextId;
+   }
    safeSet(IDX.SEC, datosNuevos.SEC);
    safeSet(IDX.PROCESO, datosNuevos.PROCESO);
    
@@ -11138,11 +11171,15 @@ function insertarFilaOrden(sheet, datosBase, datosNuevos, headers, IDX) {
 
 // HELPER: OBTENER SIGUIENTE ID NUMÉRICO
 function obtenerSiguienteIdNumerico(sheet, colIndexID) {
+  if (colIndexID === undefined || colIndexID < 0) return Utilities.getUuid().substring(0, 8);
   var data = sheet.getDataRange().getValues();
   var maxId = 0;
   for (var i = 1; i < data.length; i++) {
-    var val = Number(data[i][colIndexID]);
-    if (!isNaN(val) && val > maxId) {
+    var raw = data[i][colIndexID];
+    // Ignorar errores de fórmula (#NUM!, #REF!, etc.), fechas u objetos
+    if (raw === null || raw === undefined || typeof raw === 'object') continue;
+    var val = Number(raw);
+    if (!isNaN(val) && val > 0 && val > maxId) {
       maxId = val;
     }
   }
