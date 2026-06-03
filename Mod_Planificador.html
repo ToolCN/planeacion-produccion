@@ -38,6 +38,7 @@ var planif_prodCargando = {};   // idOrden -> true si está cargando
 var planif_nivelZoom = 100;
 var planif_modoFiltro98    = false;
 var planif_modoExcedentes  = false;
+var planif_dblClickCodigo  = '';
 var planif_maqLblEsp       = {};  // maqKey → {esp1, esp2} para mantener labels al reordenar
 
 // Calcula el valor total en inventario para un código (en unidades de la orden)
@@ -5153,7 +5154,10 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
           tipTxt = ' title="Peso Unitario: ' + pesoUnit.toFixed(3) + ' kg"';
         }
       }
-      return '<td style="padding:4px 8px;white-space:nowrap;font-size:11px;color:#455a64;"' + tipTxt + '>' + (o.codigo||'') + '</td>';
+      var _cod = (o.codigo||'').toUpperCase().trim();
+      var _isActive = planif_dblClickCodigo === _cod;
+      var _tdStyle = 'padding:4px 8px;white-space:nowrap;font-size:11px;color:#455a64;cursor:pointer;' + (_isActive ? 'background:#fff9c4;font-weight:900;outline:2px solid #f9a825;outline-offset:-2px;' : '');
+      return '<td style="' + _tdStyle + '"' + tipTxt + ' ondblclick="planifFiltrarPorCodigo(\'' + _cod.replace(/'/g,"\\'") + '\')" title="Doble clic: filtrar por este código">' + (o.codigo||'') + '</td>';
     })() +
     '<td style="padding:4px 8px;white-space:nowrap;">' + (o.tipo||'') + '</td>' +
     '<td style="padding:4px 2px;cursor:grab;text-align:center;" class="pt-drag-handle" title="Arrastrar">⠿</td>' +
@@ -5165,7 +5169,21 @@ function planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7) {
     '<td style="padding:4px 6px;text-align:center;cursor:pointer;" onclick="planifAbrirEditAcero(\'' + idE + '\',\'' + (o.acero||'').replace(/'/g,"\\'") + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" title="Clic para editar Acero" id="pt-acerobadge-' + o.id + '">' + planifGetAceroBadge(o.acero||'', o.id) + '</td>' +
     '<td style="padding:4px 6px;text-align:center;"><button onclick="planifAbrirDocOrden(\'' + idE + '\')" title="Ver documentación y lotes" style="background:#37474f;color:white;border:none;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:13px;line-height:1;">&#128203;</button></td>' +
     planifInvCeldas(o, tieneC7) +
-    '<td onclick="planifAbrirEditCantidad(\'' + idE + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#1565c0;font-weight:700;text-decoration:underline;" title="Click para editar cantidad">' + planifFormatN(o.sol) + '</td>' +
+    (function(){
+      var solTitle = '';
+      if (o.invEsVarilla === true || String(o.tipo||'').toUpperCase().indexOf('VARILLA') > -1) {
+        var pesoKgMS = parseFloat(o.peso) || 0;
+        var longStrS = String(o.long || '');
+        var longMatchS = longStrS.match(/[\d.]+/);
+        var longMS = longMatchS ? (parseFloat(longMatchS[0]) || 0) : 0;
+        var pesoPzaS = (pesoKgMS > 0 && longMS > 0) ? pesoKgMS * longMS : 0;
+        if (pesoPzaS > 0) {
+          var solPzas = Math.round((o.sol||0) / pesoPzaS);
+          solTitle = ' title="' + solPzas.toLocaleString('es-MX') + ' pzas"';
+        }
+      }
+      return '<td onclick="planifAbrirEditCantidad(\'' + idE + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#1565c0;font-weight:700;text-decoration:underline;"' + solTitle + '>' + planifFormatN(o.sol) + '</td>';
+    })() +
     (Number(o.prod) > 0
       ? '<td onclick="planifAbrirModalProdPlanif(\'' + idE + '\',\'' + o.serie + '.' + String(o.orden).padStart(4,'0') + '\')" style="padding:4px 8px;text-align:right;cursor:pointer;color:#880e4f;font-weight:900;text-decoration:underline;" title="Click para ver producción">' + planifFormatN(o.prod) + '</td>'
       : '<td style="padding:4px 8px;text-align:right;color:#999;">' + planifFormatN(o.prod) + '</td>') +
@@ -6088,6 +6106,14 @@ function planifGFLimpiarTodo() {
     ordenes.sort(function(a,b){ return a.prioridad - b.prioridad; });
     planif_tablaOrdenLocal[maqKey] = ordenes.map(function(o){ return o.id; });
   });
+  if (planif_dblClickCodigo) {
+    planif_dblClickCodigo = '';
+    var _qi = document.getElementById('planif-txtBuscar');
+    var _qs = document.getElementById('planif-selCol');
+    if (_qi) { _qi.value = ''; _qi.style.background = ''; _qi.style.borderColor = ''; }
+    if (_qs) { _qs.value = ''; _qs.classList.remove('activo'); }
+    planif_filtroColActiva = null;
+  }
   planifGFRenderBarra();
   planifRenderBoardTabla();
 }
@@ -6575,6 +6601,7 @@ function planifEjecutarCambioEstadoOrden(id, nuevoEst, nota) {
     }
   });
 
+  var estadoAnterior = o.estado;
   planifToastGuardando('Cambiando estado...');
   google.script.run
     .withSuccessHandler(function() {
@@ -6583,14 +6610,15 @@ function planifEjecutarCambioEstadoOrden(id, nuevoEst, nota) {
       else planifRenderBoard();
     })
     .withFailureHandler(function(e) {
-      // Revertir en memoria
       planif_ordenesVivas.forEach(function(ov) {
         if (String(ov.serie||'') + String(ov.orden||'') === serieOrden) {
-          ov.estado = o.estado;
+          ov.estado = estadoAnterior;
         }
       });
       if (btn) { btn.disabled = false; }
       planifToastErr(e);
+      if (planif_vistaTablaActiva) planifRenderBoardTabla();
+      else planifRenderBoard();
     })
     .planifCambiarEstadoOrdenCompleta(id, nuevoEst, nota);
 }
@@ -6608,19 +6636,10 @@ function planifTablaToggleFaltaMP(ev, id) {
   if (btn) { btn.textContent = '...'; btn.disabled = true; btn.className = ''; }
   google.script.run.withSuccessHandler(function() {
     o.estado = nuevoEst;
-    var tr = document.getElementById('pt-row-' + id);
-    if (tr) {
-      var tbody = tr.closest('tbody');
-      var maqKey  = tbody ? tbody.dataset.maqkey  : '';
-      var maqSafe = tbody ? tbody.dataset.maqsafe : '';
-      var rowIdx  = tbody ? Array.from(tbody.querySelectorAll('tr')).indexOf(tr) : 0;
-      var tieneC7 = tbody ? Array.from(tbody.querySelectorAll('tr')).some(function(r){
-        var ord = planif_ordenesVivas.find(function(x){ return x.id == r.dataset.id; });
-        return ord && String(ord.codigo||'').charAt(0) === '7';
-      }) : false;
-      tr.outerHTML = planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7);
-    }
+    if (planif_vistaTablaActiva) planifRenderBoardTabla();
+    else planifRenderBoard();
   }).withFailureHandler(function(e){
+    o.estado = estadoActual;
     if (btn) { btn.textContent = estadoActual; btn.disabled = false; }
     sAlert('Error: ' + e);
   }).ejecutarCambioEstadoDirecto(id, nuevoEst);
@@ -6636,20 +6655,10 @@ function planifTablaToggleEstado(id) {
   if (btn) { btn.textContent = '...'; btn.disabled = true; btn.className = ''; }
   google.script.run.withSuccessHandler(function() {
     o.estado = nuevoEst;
-    // Re-renderizar la fila completa para reflejar el nuevo estado (incluyendo clase sobrep)
-    var tr = document.getElementById('pt-row-' + id);
-    if (tr) {
-      var tbody = tr.closest('tbody');
-      var maqKey  = tbody ? tbody.dataset.maqkey  : '';
-      var maqSafe = tbody ? tbody.dataset.maqsafe : '';
-      var rowIdx  = tbody ? Array.from(tbody.querySelectorAll('tr')).indexOf(tr) : 0;
-      var tieneC7 = tbody ? Array.from(tbody.querySelectorAll('tr')).some(function(r){
-        var ord = planif_ordenesVivas.find(function(x){ return x.id == r.dataset.id; });
-        return ord && String(ord.codigo||'').charAt(0) === '7';
-      }) : false;
-      tr.outerHTML = planifRenderTablaFila(o, rowIdx, maqKey, maqSafe, tieneC7);
-    }
+    if (planif_vistaTablaActiva) planifRenderBoardTabla();
+    else planifRenderBoard();
   }).withFailureHandler(function(e){
+    o.estado = estadoActual;
     if (btn) { btn.textContent = estadoActual === 'SOBREPRODUCCION' ? 'ACTIVE' : estadoActual; btn.disabled = false; }
     sAlert('Error: ' + e);
   }).ejecutarCambioEstadoDirecto(id, nuevoEst);
@@ -7648,8 +7657,34 @@ function planifToggleFiltroCol(col) {
   planifFiltrarTablero();
 }
 
+function planifFiltrarPorCodigo(codigo) {
+  var mismo = planif_dblClickCodigo === codigo;
+  planif_dblClickCodigo = mismo ? '' : codigo;
+  var inp = document.getElementById('planif-txtBuscar');
+  var sel = document.getElementById('planif-selCol');
+  if (planif_dblClickCodigo) {
+    if (inp) { inp.value = planif_dblClickCodigo; inp.style.background = '#fff9c4'; inp.style.borderColor = '#f9a825'; }
+    if (sel) { sel.value = 'codigo'; sel.classList.add('activo'); }
+    planif_filtroColActiva = 'codigo';
+    if (!planif_sinPedidoVisible) planifToggleSinPedido();
+  } else {
+    if (inp) { inp.value = ''; inp.style.background = ''; inp.style.borderColor = ''; }
+    if (sel) { sel.value = ''; sel.classList.remove('activo'); }
+    planif_filtroColActiva = null;
+  }
+  planifFiltrarTablero();
+}
+
 function planifFiltrarTablero() {
   var v = document.getElementById('planif-txtBuscar').value.toUpperCase().trim();
+  if (!v && planif_dblClickCodigo) {
+    planif_dblClickCodigo = '';
+    var _i = document.getElementById('planif-txtBuscar');
+    var _s = document.getElementById('planif-selCol');
+    if (_i) { _i.style.background = ''; _i.style.borderColor = ''; }
+    if (_s) { _s.value = ''; _s.classList.remove('activo'); }
+    planif_filtroColActiva = null;
+  }
 
   // Filtro vista TABLERO (tarjetas kanban) — inmediato, solo afecta cards
   document.querySelectorAll('#planif-panel .card').forEach(function(c) {
@@ -8455,12 +8490,15 @@ function planifAbrirEditCantidad(idOrden) {
             solOtros += (x.sol||0);
           }
         });
-        var fillToN = Math.round(invMax - invExist - solOtros);
+        var _esVarLL = oRef.invEsVarilla === true || String(oRef.tipo||'').toUpperCase().indexOf('VARILLA') > -1;
+        var _backLL  = _esVarLL ? (parseFloat(oRef.invBack) || 0) : 0;
+        var _exNegLL = _esVarLL ? ((oRef.invExistNeg !== null && oRef.invExistNeg !== undefined) ? (parseFloat(oRef.invExistNeg) || 0) : 0) : 0;
+        var fillToN = Math.round(invMax - invExist - _backLL - _exNegLL - solOtros);
         var cantActual = primer.cantidad || 0;
         // Solo mostrar "Llenar a máximos" si hay espacio real (no excede con otras órdenes)
         if (fillToN > cantActual && fillToN > 0 && divLlenar) {
           divLlenar.style.display = 'block';
-          divLlenar.innerHTML = '<button onclick="planifLlenarAMaximos(' + fillToN + ')" style="width:100%;padding:10px 16px;background:#1565c0;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;">📈 Llenar a máximos (ajusta a ' + planifFormatN(fillToN) + ')</button>';
+          divLlenar.innerHTML = '<button onclick="planifLlenarAMaximos(' + fillToN + ')" style="width:100%;padding:10px 16px;background:#1565c0;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:900;font-size:14px;">✅ Llenar a máximos (ajusta a ' + planifFormatN(fillToN) + ')</button>';
         }
       })();
       // ── Sugerido: detectar excedido o calcular cantidad óptima ──
@@ -8687,6 +8725,20 @@ function planifConfirmarCambioCantidad() {
             if (elSol)  elSol.textContent  = planifFormatN(totalSol);
             if (elProd) elProd.textContent = planifFormatN(totalProd);
           }
+        }
+      }
+      // Re-renderizar bloque SP (CÓDIGOS DE LÍNEA) si está visible, actualizando totalRestanActivo del código afectado
+      if (planif_sinPedidoVisible && o) {
+        var _spCod = String(o.codigo||'').toUpperCase().trim();
+        var _spIt = planif_sinPedidoData.find(function(x){ return String(x.codigo||'').toUpperCase().trim() === _spCod; });
+        if (_spIt) {
+          var _spRestan = 0;
+          planif_ordenesVivas.forEach(function(xo) {
+            if (String(xo.codigo||'').toUpperCase().trim() !== _spCod) return;
+            _spRestan += Math.max(0, (xo.sol||0) - (xo.prod||0));
+          });
+          _spIt.totalRestanActivo = _spRestan;
+          planifRenderBoardTabla();
         }
       }
     }

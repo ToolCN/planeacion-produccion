@@ -4491,75 +4491,106 @@ function obtenerDetallePedidoAlerta(codigo) {
  */
 function planifCambiarEstadoOrdenCompleta(idOrden, nuevoEst, nota) {
   try {
-    var lock = LockService.getScriptLock();
-    if (!lock.tryLock(15000)) return 'Error: servidor ocupado';
+    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var shOrd = ss.getSheetByName('ORDENES');
+    var shPed = ss.getSheetByName('PEDIDOS');
 
-    var ss     = SpreadsheetApp.openById(ID_HOJA_CALCULO);
-    var shOrd  = ss.getSheetByName('ORDENES');
-    var shPed  = ss.getSheetByName('PEDIDOS');
-    var dataOrd = shOrd.getDataRange().getValues();
-    var hOrd    = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
+    // ── Leer solo las columnas necesarias de ORDENES ──
+    var lastRowOrd = shOrd.getLastRow();
+    var hOrd = shOrd.getRange(1, 1, 1, shOrd.getLastColumn()).getValues()[0]
+                    .map(function(h){ return String(h).toUpperCase().trim(); });
+    var iId      = 0;
+    var iSerie   = hOrd.indexOf('SERIE');
+    var iOrden   = hOrd.indexOf('ORDEN');
+    var iPedido  = hOrd.indexOf('PEDIDO');
+    var iPartida = hOrd.indexOf('PARTIDA');
+    var iEst     = hOrd.indexOf('ESTADO');
 
-    var iId     = 0;                          // col A = ID
-    var iSerie  = hOrd.indexOf('SERIE');      // col E
-    var iOrden  = hOrd.indexOf('ORDEN');      // col F
-    var iPedido = hOrd.indexOf('PEDIDO');     // col B
-    var iPartida= hOrd.indexOf('PARTIDA');    // col C
-    var iEst    = hOrd.indexOf('ESTADO');     // col P (índice 15)
+    // Leer solo las 4 columnas clave (ID, SERIE, ORDEN, PEDIDO, PARTIDA, ESTADO)
+    var colsNec = [iId, iSerie, iOrden, iPedido, iPartida, iEst].sort(function(a,b){return a-b;});
+    var colMin  = colsNec[0];
+    var colMax  = colsNec[colsNec.length - 1];
+    var bloque  = shOrd.getRange(1, colMin + 1, lastRowOrd, colMax - colMin + 1).getValues();
+    // Ajustar índices al bloque
+    var bId      = iId      - colMin;
+    var bSerie   = iSerie   - colMin;
+    var bOrden   = iOrden   - colMin;
+    var bPedido  = iPedido  - colMin;
+    var bPartida = iPartida - colMin;
+    var bEst     = iEst     - colMin;
 
-    // 1. Encontrar la fila target para obtener SERIE + ORDEN + PEDIDO + PARTIDA
+    // 1. Localizar fila target y extraer serie+orden+pedido+partida
     var serieTarget = '', ordenTarget = '', pedidoTarget = '', partidaTarget = '';
-    for (var i = 1; i < dataOrd.length; i++) {
-      if (String(dataOrd[i][iId]).trim() === String(idOrden).trim()) {
-        serieTarget  = String(dataOrd[i][iSerie]).trim();
-        ordenTarget  = String(dataOrd[i][iOrden]).trim();
-        pedidoTarget = String(dataOrd[i][iPedido]).trim();
-        partidaTarget= String(dataOrd[i][iPartida] || '').trim();
+    for (var i = 1; i < bloque.length; i++) {
+      if (String(bloque[i][bId]).trim() === String(idOrden).trim()) {
+        serieTarget   = String(bloque[i][bSerie]).trim();
+        ordenTarget   = String(bloque[i][bOrden]).trim();
+        pedidoTarget  = String(bloque[i][bPedido]).trim();
+        partidaTarget = String(bloque[i][bPartida] || '').trim();
         break;
       }
     }
+    if (!serieTarget) return 'Error: orden no encontrada';
 
-    // 2. Actualizar ESTADO en TODAS las filas con misma SERIE + ORDEN
-    for (var j = 1; j < dataOrd.length; j++) {
-      if (String(dataOrd[j][iSerie]).trim() === serieTarget &&
-          String(dataOrd[j][iOrden]).trim() === ordenTarget) {
-        shOrd.getRange(j + 1, iEst + 1).setValue(nuevoEst);
+    // 2. Recolectar filas ORDENES que coinciden con misma SERIE+ORDEN → escribir en batch
+    var filasOrd = [];
+    for (var j = 1; j < bloque.length; j++) {
+      if (String(bloque[j][bSerie]).trim() === serieTarget &&
+          String(bloque[j][bOrden]).trim() === ordenTarget) {
+        filasOrd.push(j + 1); // número de fila en hoja (base-1)
       }
     }
+    // Agrupar rangos contiguos y escribir en batch
+    filasOrd.sort(function(a,b){return a-b;});
+    var grupos = [];
+    var ini = filasOrd[0], fin = filasOrd[0];
+    for (var k = 1; k < filasOrd.length; k++) {
+      if (filasOrd[k] === fin + 1) {
+        fin = filasOrd[k];
+      } else {
+        grupos.push([ini, fin]);
+        ini = filasOrd[k]; fin = filasOrd[k];
+      }
+    }
+    grupos.push([ini, fin]);
+    grupos.forEach(function(g) {
+      var nRows = g[1] - g[0] + 1;
+      var vals  = [];
+      for (var r = 0; r < nRows; r++) vals.push([nuevoEst]);
+      shOrd.getRange(g[0], iEst + 1, nRows, 1).setValues(vals);
+    });
 
-    // 3. Actualizar PEDIDOS: col I (ESTADO) + col R (NOTA) donde PEDIDO+PARTIDA coincidan
+    // 3. Actualizar PEDIDOS — leer solo columnas B, C, I, R
     var ESTADOS_CON_NOTA = ['FALTA MP', 'FALTA ESPEC.'];
     var ESTADOS_LIMPIAR  = ['ACTIVE', 'EN PROCESO', 'ABIERTO'];
     if (pedidoTarget) {
-      var dataPed = shPed.getDataRange().getValues();
-      var hPed    = dataPed[0].map(function(h){ return String(h).toUpperCase().trim(); });
-      var iPedB   = hPed.indexOf('PEDIDO');   // col B
-      var iPedC   = hPed.indexOf('PARTIDA');  // col C
-      var iPedI   = hPed.indexOf('ESTADO');   // col I
-      var iPedR   = 17;                        // col R (índice 17, 0-based)
-
-      for (var p = 1; p < dataPed.length; p++) {
-        var pedRow = String(dataPed[p][iPedB] || '').trim();
-        var parRow = String(dataPed[p][iPedC] || '').trim();
-        if (pedRow !== pedidoTarget) continue;
-        if (partidaTarget && parRow !== partidaTarget) continue;
-        // Actualizar estado del pedido
+      var lastRowPed = shPed.getLastRow();
+      var hPed = shPed.getRange(1, 1, 1, shPed.getLastColumn()).getValues()[0]
+                      .map(function(h){ return String(h).toUpperCase().trim(); });
+      var iPedB = hPed.indexOf('PEDIDO');
+      var iPedC = hPed.indexOf('PARTIDA');
+      var iPedI = hPed.indexOf('ESTADO');
+      var iPedR = 17;
+      var colMinP = Math.min(iPedB, iPedC, iPedI, iPedR);
+      var colMaxP = Math.max(iPedB, iPedC, iPedI, iPedR);
+      var bloquePed = shPed.getRange(1, colMinP + 1, lastRowPed, colMaxP - colMinP + 1).getValues();
+      var pB = iPedB - colMinP, pC = iPedC - colMinP, pI = iPedI - colMinP, pR = iPedR - colMinP;
+      for (var p = 1; p < bloquePed.length; p++) {
+        if (String(bloquePed[p][pB] || '').trim() !== pedidoTarget) continue;
+        if (partidaTarget && String(bloquePed[p][pC] || '').trim() !== partidaTarget) continue;
         shPed.getRange(p + 1, iPedI + 1).setValue(nuevoEst);
-        // Actualizar nota
         if (ESTADOS_CON_NOTA.indexOf(nuevoEst) >= 0) {
           shPed.getRange(p + 1, iPedR + 1).setValue(nota || '');
         } else if (ESTADOS_LIMPIAR.indexOf(nuevoEst) >= 0) {
           shPed.getRange(p + 1, iPedR + 1).setValue('');
         }
-        break; // Solo una fila por PEDIDO+PARTIDA
+        break;
       }
     }
 
     SpreadsheetApp.flush();
-    lock.releaseLock();
     return 'ok';
   } catch(e) {
-    try { LockService.getScriptLock().releaseLock(); } catch(ex){}
     return 'Error: ' + e.toString();
   }
 }
@@ -4567,18 +4598,21 @@ function planifCambiarEstadoOrdenCompleta(idOrden, nuevoEst, nota) {
 function ejecutarCambioEstadoDirecto(id, nuevoEstado) {
   var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
   var sh = ss.getSheetByName("ORDENES");
-  var data = sh.getDataRange().getValues();
-  var headers = data[0].map(h => String(h).toUpperCase().trim());
-  var colId = 0; 
-  var colEstado = headers.indexOf("ESTADO");
 
-  for(var i=1; i<data.length; i++){
-    if(String(data[i][colId]) === String(id)){
-      sh.getRange(i+1, colEstado+1).setValue(nuevoEstado);
-      break;
-    }
-  }
-  // Devolvemos el SVG actualizado para que el HTML lo pinte sin recargar
+  // Localizar la fila del ID usando TextFinder — no carga toda la hoja
+  var finder = sh.getRange(2, 1, sh.getLastRow() - 1, 1)
+                 .createTextFinder(String(id))
+                 .matchEntireCell(true);
+  var match = finder.findNext();
+  if (!match) return 'Error: no encontrado';
+
+  // Leer encabezados solo una vez para encontrar col ESTADO
+  var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+                  .map(function(h){ return String(h).toUpperCase().trim(); });
+  var colEstado = headers.indexOf("ESTADO") + 1; // base-1
+  if (colEstado < 1) return 'Error: columna ESTADO no encontrada';
+
+  sh.getRange(match.getRow(), colEstado).setValue(nuevoEstado);
   return getSvgEstado(nuevoEstado);
 }
 
