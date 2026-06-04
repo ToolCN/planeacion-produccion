@@ -1374,11 +1374,8 @@ function buscarPedidosConSaldos() {
 // 4. VALIDADOR — MODAL TRANSFERENCIA DE PRODUCCIÓN
 function obtenerProduccionDeOrden(idsOrdenJson) {
   try {
-    var ss         = SpreadsheetApp.openById(ID_HOJA_CALCULO);
-    var sheetProd  = ss.getSheetByName("PRODUCCION");
-    var sheetLotes = ss.getSheetByName("LOTES");
-    var sheetOrd   = ss.getSheetByName(HOJA_ORDENES);
-    var tz         = Session.getScriptTimeZone();
+    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var tz = Session.getScriptTimeZone();
 
     var ids;
     try { ids = JSON.parse(idsOrdenJson); } catch(e) { ids = [idsOrdenJson]; }
@@ -1386,83 +1383,112 @@ function obtenerProduccionDeOrden(idsOrdenJson) {
     var setIds = {};
     ids.forEach(function(id) { setIds[String(id)] = true; });
 
-    var dataProd  = sheetProd.getDataRange().getValues();
-    var dataLotes = sheetLotes.getDataRange().getValues();
-    var dataOrd   = sheetOrd.getDataRange().getValues();
+    // ── 1. ORDENES: leer solo columnas A-L (índices 0-11) ──
+    var sheetOrd  = ss.getSheetByName(HOJA_ORDENES);
+    var lastRowOrd = sheetOrd.getLastRow();
+    var dataOrd   = lastRowOrd > 1
+      ? sheetOrd.getRange(1, 1, lastRowOrd, 12).getValues()
+      : [[]];
 
     var mapaOrdenes = {};
+    var descripcionOrden = '';
+    var nombreOrden      = '';
     for (var i = 1; i < dataOrd.length; i++) {
       var idO = String(dataOrd[i][0]);
       if (!setIds[idO]) continue;
       var serieO = String(dataOrd[i][4]).trim();
-      var numO   = ("0000" + Number(dataOrd[i][5])).slice(-4);
+      var numO   = ('0000' + Number(dataOrd[i][5])).slice(-4);
       mapaOrdenes[idO] = {
         proceso: String(dataOrd[i][11]).trim(),
         codigo:  String(dataOrd[i][6]).trim(),
-        prefijo: serieO + "." + numO + "."
+        prefijo: serieO + '.' + numO + '.'
       };
+      if (!descripcionOrden) {
+        descripcionOrden = String(dataOrd[i][7] || '').trim();
+        nombreOrden      = serieO + '.' + numO;
+      }
     }
+
+    // ── 2. PRODUCCION: leer solo columnas necesarias (A,C,D,E,F,G,I,J,K,W = 1,3,4,5,6,7,9,10,11,23) ──
+    // Rango mínimo: cols 1-11 + col 23 → leer 1-23
+    var sheetProd  = ss.getSheetByName('PRODUCCION');
+    var lastRowProd = sheetProd.getLastRow();
+    var dataProd    = lastRowProd > 1
+      ? sheetProd.getRange(1, 1, lastRowProd, 23).getValues()
+      : [[]];
 
     var registros = [];
     for (var p = 1; p < dataProd.length; p++) {
       var row   = dataProd[p];
       var idOrd = String(row[2]);
       if (!setIds[idOrd]) continue;
-
       var fechaStr = row[5] instanceof Date
-        ? Utilities.formatDate(row[5], tz, "yyyy-MM-dd")
-        : String(row[5] || "").trim();
-
+        ? Utilities.formatDate(row[5], tz, 'yyyy-MM-dd')
+        : String(row[5] || '').trim();
       var oInfo = mapaOrdenes[idOrd] || {};
       registros.push({
-        id:       String(row[0]),
-        fila:     p + 1,
-        idOrden:  idOrd,
-        fecha:    fechaStr,
-        turno:    String(row[6]),
-        lote:     String(row[3]),
-        maquina:  String(row[4]),
-        pesoI:    Number(row[8])  || 0,
-        pesoF:    Number(row[9])  || 0,
-        pesoTina: Number(row[22]) || 0,
+        id:        String(row[0]),
+        fila:      p + 1,
+        idOrden:   idOrd,
+        fecha:     fechaStr,
+        turno:     String(row[6]),
+        lote:      String(row[3]),
+        maquina:   String(row[4]),
+        pesoI:     Number(row[8])  || 0,
+        pesoF:     Number(row[9])  || 0,
+        pesoTina:  Number(row[22]) || 0,
         producido: Number(row[10]) || 0,
-        proceso:  oInfo.proceso || ""
+        proceso:   oInfo.proceso || ''
       });
     }
 
+    // ── 3. LOTES: leer solo columna E (índice 4, col 5) ──
+    var sheetLotes  = ss.getSheetByName('LOTES');
+    var lastRowLot  = sheetLotes.getLastRow();
+    var dataLotNom  = lastRowLot > 1
+      ? sheetLotes.getRange(2, 5, lastRowLot - 1, 1).getValues()
+      : [];
+
+    var prefijos = [];
+    for (var idOx in mapaOrdenes) prefijos.push(mapaOrdenes[idOx].prefijo);
+
     var lotesDisponibles = [];
     var setLotes = {};
-    for (var l = 1; l < dataLotes.length; l++) {
-      var nomLote = String(dataLotes[l][4]).trim();
-      for (var idOx in mapaOrdenes) {
-        var pref = mapaOrdenes[idOx].prefijo;
-        if (pref && nomLote.indexOf(pref) === 0 && !setLotes[nomLote]) {
+    for (var l = 0; l < dataLotNom.length; l++) {
+      var nomLote = String(dataLotNom[l][0]).trim();
+      if (!nomLote) continue;
+      for (var px = 0; px < prefijos.length; px++) {
+        if (prefijos[px] && nomLote.indexOf(prefijos[px]) === 0 && !setLotes[nomLote]) {
           lotesDisponibles.push(nomLote);
           setLotes[nomLote] = true;
+          break;
         }
       }
     }
 
-    var sheetEst = ss.getSheetByName("ESTANDARES");
+    // ── 4. ESTANDARES: cachear en ScriptCache (TTL 6h) — no cambia durante el día ──
     var maquinasDelProceso = {};
-    if (sheetEst) {
-      var dataEst = sheetEst.getDataRange().getValues();
-      for (var e = 1; e < dataEst.length; e++) {
-        var procE = String(dataEst[e][2]).trim();
-        var maqE  = String(dataEst[e][3]).trim();
-        if (!procE || !maqE) continue;
-        if (!maquinasDelProceso[procE]) maquinasDelProceso[procE] = [];
-        if (maquinasDelProceso[procE].indexOf(maqE) < 0) maquinasDelProceso[procE].push(maqE);
-      }
+    var cache = CacheService.getScriptCache();
+    var cachedMaq = cache.get('maquinasDelProceso_v1');
+    if (cachedMaq) {
+      try { maquinasDelProceso = JSON.parse(cachedMaq); } catch(ex) {}
     }
-
-    var descripcionOrden = "";
-    var nombreOrden      = "";
-    for (var i = 1; i < dataOrd.length; i++) {
-      if (setIds[String(dataOrd[i][0])]) {
-        descripcionOrden = String(dataOrd[i][7] || "").trim();
-        nombreOrden = String(dataOrd[i][4]).trim() + "." + ("0000" + Number(dataOrd[i][5])).slice(-4);
-        break;
+    if (!cachedMaq || Object.keys(maquinasDelProceso).length === 0) {
+      var sheetEst = ss.getSheetByName('ESTANDARES');
+      if (sheetEst) {
+        var lastRowEst = sheetEst.getLastRow();
+        // Solo leer cols C y D (índices 2 y 3 = cols 3-4)
+        var dataEst = lastRowEst > 1
+          ? sheetEst.getRange(2, 3, lastRowEst - 1, 2).getValues()
+          : [];
+        for (var e = 0; e < dataEst.length; e++) {
+          var procE = String(dataEst[e][0]).trim();
+          var maqE  = String(dataEst[e][1]).trim();
+          if (!procE || !maqE) continue;
+          if (!maquinasDelProceso[procE]) maquinasDelProceso[procE] = [];
+          if (maquinasDelProceso[procE].indexOf(maqE) < 0) maquinasDelProceso[procE].push(maqE);
+        }
+        try { cache.put('maquinasDelProceso_v1', JSON.stringify(maquinasDelProceso), 21600); } catch(ex) {}
       }
     }
 
@@ -4087,41 +4113,59 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
       MP:    getIdx("ALERTA_SECUENCIA")   // ← Col AD
     };
 
-    var dRutas = shRutas.getDataRange().getValues();
+    // ── RUTAS, INVENTARIO_EXTERNO y CODIGOS: cachear en ScriptCache (TTL 4h) ──
+    // El botón "🔄 Inv" en el planificador llama planifInvalidarCacheInv() para forzar recarga.
+    var cache = CacheService.getScriptCache();
+
     var maqPermitidasMap = {};
-    for (var r = 1; r < dRutas.length; r++) {
-      maqPermitidasMap[String(dRutas[r][1]).trim() + "_" + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || "");
+    var cachedRutas = cache.get('planif_rutasMap_v1');
+    if (cachedRutas) {
+      try { maqPermitidasMap = JSON.parse(cachedRutas); } catch(ex) {}
+    }
+    if (!cachedRutas || Object.keys(maqPermitidasMap).length === 0) {
+      var dRutas = shRutas.getDataRange().getValues();
+      for (var r = 1; r < dRutas.length; r++) {
+        maqPermitidasMap[String(dRutas[r][1]).trim() + '_' + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || '');
+      }
+      try { cache.put('planif_rutasMap_v1', JSON.stringify(maqPermitidasMap), 14400); } catch(ex) {}
     }
 
-    // Cargar INVENTARIO_EXTERNO: col A=CODIGO, B=EXISTENCIA, C=MINIMO, D=MAXIMO, buscar UNIDAD por header
-    var shInvExt = ss.getSheetByName("INVENTARIO_EXTERNO");
     var invExtMap = {};
-    if (shInvExt) {
-      var dInvExt = shInvExt.getDataRange().getValues();
-      var hInvExt = dInvExt[0].map(function(h){ return String(h).toUpperCase().trim(); });
-      var ieUNID  = hInvExt.indexOf("UNIDAD"); if (ieUNID < 0) ieUNID = hInvExt.indexOf("UNID");
-      for (var ie = 1; ie < dInvExt.length; ie++) {
-        var invCod = String(dInvExt[ie][0] || "").trim().toUpperCase();
-        if (!invCod) continue;
-        invExtMap[invCod] = {
-          exist:  parseFloat(dInvExt[ie][1]) || 0,
-          min:    parseFloat(dInvExt[ie][2]) || 0,
-          max:    parseFloat(dInvExt[ie][3]) || 0,
-          back:   parseFloat(dInvExt[ie][4]) || 0,
-          unidad: ieUNID >= 0 ? String(dInvExt[ie][ieUNID] || "").trim().toUpperCase() : ""
-        };
+    var codigoVentaMap = {};
+    var cachedInv = cache.get('planif_invExtMap_v1');
+    var cachedCod = cache.get('planif_codigoVentaMap_v1');
+    if (cachedInv) { try { invExtMap = JSON.parse(cachedInv); } catch(ex) {} }
+    if (cachedCod) { try { codigoVentaMap = JSON.parse(cachedCod); } catch(ex) {} }
+    if (!cachedInv || Object.keys(invExtMap).length === 0) {
+      var shInvExt = ss.getSheetByName('INVENTARIO_EXTERNO');
+      if (shInvExt) {
+        var dInvExt = shInvExt.getDataRange().getValues();
+        var hInvExt = dInvExt[0].map(function(h){ return String(h).toUpperCase().trim(); });
+        var ieUNID  = hInvExt.indexOf('UNIDAD'); if (ieUNID < 0) ieUNID = hInvExt.indexOf('UNID');
+        for (var ie = 1; ie < dInvExt.length; ie++) {
+          var invCod = String(dInvExt[ie][0] || '').trim().toUpperCase();
+          if (!invCod) continue;
+          invExtMap[invCod] = {
+            exist:  parseFloat(dInvExt[ie][1]) || 0,
+            min:    parseFloat(dInvExt[ie][2]) || 0,
+            max:    parseFloat(dInvExt[ie][3]) || 0,
+            back:   parseFloat(dInvExt[ie][4]) || 0,
+            unidad: ieUNID >= 0 ? String(dInvExt[ie][ieUNID] || '').trim().toUpperCase() : ''
+          };
+        }
+        try { cache.put('planif_invExtMap_v1', JSON.stringify(invExtMap), 14400); } catch(ex) {}
       }
     }
-
-    // Cargar CODIGOS: col A=CODIGO, F=CODIGO_VENTA (índice 5)
-    var shCodigos = ss.getSheetByName("CODIGOS");
-    var codigoVentaMap = {};
-    if (shCodigos) {
-      var dCodigos = shCodigos.getDataRange().getValues();
-      for (var cv = 1; cv < dCodigos.length; cv++) {
-        var cvCod = String(dCodigos[cv][0] || "").trim().toUpperCase();
-        var cvVenta = String(dCodigos[cv][5] || "").trim().toUpperCase();
-        if (cvCod && cvVenta) codigoVentaMap[cvCod] = cvVenta;
+    if (!cachedCod || Object.keys(codigoVentaMap).length === 0) {
+      var shCodigos = ss.getSheetByName('CODIGOS');
+      if (shCodigos) {
+        var dCodigos = shCodigos.getDataRange().getValues();
+        for (var cv = 1; cv < dCodigos.length; cv++) {
+          var cvCod   = String(dCodigos[cv][0] || '').trim().toUpperCase();
+          var cvVenta = String(dCodigos[cv][5] || '').trim().toUpperCase();
+          if (cvCod && cvVenta) codigoVentaMap[cvCod] = cvVenta;
+        }
+        try { cache.put('planif_codigoVentaMap_v1', JSON.stringify(codigoVentaMap), 14400); } catch(ex) {}
       }
     }
 
@@ -4220,70 +4264,82 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
 }
 
 // Función para el historial
+function planifInvalidarCacheInv() {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.removeAll(['planif_invExtMap_v1', 'planif_codigoVentaMap_v1', 'planif_rutasMap_v1', 'maquinasDelProceso_v1']);
+    return 'ok';
+  } catch(e) { return 'Error: ' + e.toString(); }
+}
+
 function obtenerHistorialMaquina(maquina) {
   try {
     var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
-    var sh = ss.getSheetByName("ORDENES");
-    var shRutas = ss.getSheetByName("RUTAS");
-    var data = sh.getDataRange().getValues();
-    var headers = data[0].map(h => String(h).toUpperCase().trim());
-    
+    var sh = ss.getSheetByName('ORDENES');
     var fLimite = new Date(); fLimite.setDate(fLimite.getDate() - 90);
+
+    // Leer encabezados para mapear índices
+    var lastCol = sh.getLastColumn();
+    var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0]
+                    .map(function(h){ return String(h).toUpperCase().trim(); });
     var getIdx = function(n) { return headers.indexOf(n); };
-
     var idx = {
-      ID: 0, ORD: getIdx("ORDEN"), COD: getIdx("CODIGO"), DESC: getIdx("DESCRIPCION"),
-      EST: getIdx("ESTADO"), SOL: getIdx("SOLICITADO"), PROD: getIdx("PRODUCIDO"),
-      TIPO: getIdx("TIPO"), ACERO: getIdx("ACERO"), DIA: getIdx("DIAMETRO"),
-      LONG: getIdx("LONGITUD"), CUERDA: getIdx("CUERDA"), CUERPO: getIdx("CUERPO"),
-      PED: getIdx("PEDIDO"), PROC: getIdx("PROCESO"), MAQ: getIdx("MAQUINA"),
-      FECHA: headers.indexOf("FECHA_REGISTRO")
+      ID: 0, ORD: getIdx('ORDEN'), COD: getIdx('CODIGO'), DESC: getIdx('DESCRIPCION'),
+      EST: getIdx('ESTADO'), SOL: getIdx('SOLICITADO'), PROD: getIdx('PRODUCIDO'),
+      TIPO: getIdx('TIPO'), ACERO: getIdx('ACERO'), DIA: getIdx('DIAMETRO'),
+      LONG: getIdx('LONGITUD'), CUERDA: getIdx('CUERDA'), CUERPO: getIdx('CUERPO'),
+      PED: getIdx('PEDIDO'), PROC: getIdx('PROCESO'), MAQ: getIdx('MAQUINA'),
+      FECHA: headers.indexOf('FECHA_REGISTRO')
     };
-    if(idx.FECHA == -1) idx.FECHA = headers.indexOf("FECHA");
+    if (idx.FECHA === -1) idx.FECHA = headers.indexOf('FECHA');
 
-    var dRutas = shRutas.getDataRange().getValues();
-    var maqPermitidasMap = {}; 
-    for(var r=1; r<dRutas.length; r++){
-      maqPermitidasMap[String(dRutas[r][1]).trim() + "_" + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || ""); 
+    // Leer solo hasta la columna máxima necesaria
+    var colMax = Math.max(idx.ID, idx.ORD, idx.COD, idx.DESC, idx.EST, idx.SOL, idx.PROD,
+                          idx.TIPO, idx.ACERO, idx.DIA, idx.LONG, idx.CUERDA, idx.CUERPO,
+                          idx.PED, idx.PROC, idx.MAQ, idx.FECHA, 4);
+    var lastRow = sh.getLastRow();
+    var data = lastRow > 1 ? sh.getRange(1, 1, lastRow, colMax + 1).getValues() : [[]];
+
+    // RUTAS: usar cache compartido
+    var cache = CacheService.getScriptCache();
+    var maqPermitidasMap = {};
+    var cachedRutas = cache.get('planif_rutasMap_v1');
+    if (cachedRutas) { try { maqPermitidasMap = JSON.parse(cachedRutas); } catch(ex) {} }
+    if (!cachedRutas || Object.keys(maqPermitidasMap).length === 0) {
+      var dRutas = ss.getSheetByName('RUTAS').getDataRange().getValues();
+      for (var r = 1; r < dRutas.length; r++) {
+        maqPermitidasMap[String(dRutas[r][1]).trim() + '_' + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || '');
+      }
+      try { cache.put('planif_rutasMap_v1', JSON.stringify(maqPermitidasMap), 14400); } catch(ex) {}
     }
 
     var res = [];
-    for(var i=1; i<data.length; i++){
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idx.MAQ]).trim() !== maquina) continue;
       var fVal = (data[i][idx.FECHA] instanceof Date) ? data[i][idx.FECHA] : new Date();
-      if(String(data[i][idx.MAQ]).trim() === maquina && fVal >= fLimite){
-        var t = String(data[i][idx.TIPO] || "ESP");
-        var a = String(data[i][idx.ACERO] || "-");
-        var s = parseFloat(data[i][idx.SOL]) || 0;
-        var p = parseFloat(data[i][idx.PROD]) || 0;
-        var est = String(data[i][idx.EST]).toUpperCase().trim();
-        var cod = String(data[i][idx.COD]);
-        var prc = String(data[i][idx.PROC]).toUpperCase().trim();
-
-        res.push({
-          id: String(data[i][idx.ID]),
-          serie: String(data[i][4]),
-          orden: String(data[i][idx.ORD]),
-          codigo: cod,
-          desc: String(data[i][idx.DESC]),
-          estado: est,
-          sol: s, prod: p, tipo: t, acero: a,
-          dia: String(data[i][idx.DIA]),
-          long: String(data[i][idx.LONG]),
-          cuerda: String(data[i][idx.CUERDA]),
-          cuerpo: String(data[i][idx.CUERPO]),
-          pedido: String(data[i][idx.PED]),
-          proceso: prc,
-          maquina: maquina,
-          avance: s > 0 ? Math.round((p/s)*100) : 0,
-          iconoSVG: obtenerIconoSVG(t),
-          estadoSVG: getSvgEstado(est),
-          aceroSVG: getSvgAcero(a),
-          maquinasPermitidas: maqPermitidasMap[cod + "_" + prc] || maquina
-        });
-      }
+      if (fVal < fLimite) continue;
+      var t = String(data[i][idx.TIPO] || 'ESP');
+      var a = String(data[i][idx.ACERO] || '-');
+      var s = parseFloat(data[i][idx.SOL]) || 0;
+      var p = parseFloat(data[i][idx.PROD]) || 0;
+      var est = String(data[i][idx.EST]).toUpperCase().trim();
+      var cod = String(data[i][idx.COD]);
+      var prc = String(data[i][idx.PROC]).toUpperCase().trim();
+      res.push({
+        id: String(data[i][idx.ID]), serie: String(data[i][4]),
+        orden: String(data[i][idx.ORD]), codigo: cod,
+        desc: String(data[i][idx.DESC]), estado: est,
+        sol: s, prod: p, tipo: t, acero: a,
+        dia: String(data[i][idx.DIA]), long: String(data[i][idx.LONG]),
+        cuerda: String(data[i][idx.CUERDA]), cuerpo: String(data[i][idx.CUERPO]),
+        pedido: String(data[i][idx.PED]), proceso: prc, maquina: maquina,
+        avance: s > 0 ? Math.round((p / s) * 100) : 0,
+        iconoSVG: obtenerIconoSVG(t), estadoSVG: getSvgEstado(est), aceroSVG: getSvgAcero(a),
+        maquinasPermitidas: maqPermitidasMap[cod + '_' + prc] || maquina
+      });
     }
     return JSON.stringify(res);
-  } catch(e) { return JSON.stringify({error: e.toString()}); }
+  } catch(e) { return JSON.stringify({ error: e.toString() }); }
 }
 
 function guardarPlanificacion(listaCambios) {
@@ -4708,6 +4764,73 @@ function obtenerDatosCantidadOrden(id) {
   }
 }
 
+function obtenerDatosCantidadOrdenBatch(idsJson) {
+  try {
+    var ids = JSON.parse(idsJson);
+    if (!Array.isArray(ids) || ids.length === 0) return JSON.stringify({});
+    var setIds = {};
+    ids.forEach(function(id) { setIds[String(id)] = true; });
+
+    var ss  = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var sh  = ss.getSheetByName('ORDENES');
+    var lastRow = sh.getLastRow();
+    var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+                    .map(function(h){ return String(h).toUpperCase().trim(); });
+    var getIdx = function(n) { return headers.indexOf(n); };
+    var idx = {
+      ID: getIdx('ID'), SERIE: getIdx('SERIE'), ORDEN: getIdx('ORDEN'),
+      PROCESO: getIdx('PROCESO'), UNIDAD: getIdx('UNIDAD'), CANTIDAD: getIdx('CANTIDAD'),
+      SOLICITADO: getIdx('SOLICITADO'), PRODUCIDO: getIdx('PRODUCIDO'),
+      DESCRIPCION: getIdx('DESCRIPCION'), PESO: getIdx('PESO'), LONGITUD: getIdx('LONGITUD')
+    };
+    var colMax = Math.max.apply(null, Object.values(idx).filter(function(v){ return v >= 0; }));
+    var data = lastRow > 1 ? sh.getRange(1, 1, lastRow, colMax + 1).getValues() : [[]];
+
+    // Paso 1: localizar serie+orden de cada ID solicitado
+    var serieOrdenMap = {}; // idStr -> {serie, orden}
+    for (var i = 1; i < data.length; i++) {
+      var idStr = String(data[i][idx.ID]);
+      if (!setIds[idStr]) continue;
+      serieOrdenMap[idStr] = { serie: String(data[i][idx.SERIE]), orden: String(data[i][idx.ORDEN]) };
+    }
+
+    // Paso 2: agrupar todos los procesos por serie+orden
+    var grupoMap = {}; // "serie|orden" -> [filas]
+    for (var j = 1; j < data.length; j++) {
+      var key = String(data[j][idx.SERIE]) + '|' + String(data[j][idx.ORDEN]);
+      // Solo incluir grupos que tienen al menos un ID solicitado
+      var esRelevante = false;
+      for (var idK in serieOrdenMap) {
+        if (serieOrdenMap[idK].serie === String(data[j][idx.SERIE]) &&
+            serieOrdenMap[idK].orden === String(data[j][idx.ORDEN])) {
+          esRelevante = true; break;
+        }
+      }
+      if (!esRelevante) continue;
+      if (!grupoMap[key]) grupoMap[key] = [];
+      grupoMap[key].push({
+        id: String(data[j][idx.ID]),
+        serie: String(data[j][idx.SERIE]), orden: String(data[j][idx.ORDEN]),
+        proceso: String(data[j][idx.PROCESO]), unidad: String(data[j][idx.UNIDAD] || ''),
+        cantidad: parseFloat(data[j][idx.CANTIDAD]) || 0,
+        solicitado: parseFloat(data[j][idx.SOLICITADO]) || 0,
+        producido: parseFloat(data[j][idx.PRODUCIDO]) || 0,
+        descripcion: String(data[j][idx.DESCRIPCION] || ''),
+        peso: parseFloat(data[j][idx.PESO]) || 0,
+        longitud: parseFloat(data[j][idx.LONGITUD]) || 0
+      });
+    }
+
+    // Paso 3: construir resultado indexado por ID solicitado
+    var resultado = {};
+    for (var idR in serieOrdenMap) {
+      var keyR = serieOrdenMap[idR].serie + '|' + serieOrdenMap[idR].orden;
+      resultado[idR] = grupoMap[keyR] || [];
+    }
+    return JSON.stringify(resultado);
+  } catch(e) { return JSON.stringify({ error: e.toString() }); }
+}
+
 function actualizarCantidadOrden(id, nuevaCantidad) {
   try {
     var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
@@ -4957,22 +5080,23 @@ function obtenerProdPlanif(idOrden) {
     var shOrd  = ss.getSheetByName("ORDENES");
     var tz     = ss.getSpreadsheetTimeZone();
 
-    var dOrd = shOrd.getDataRange().getValues();
     var ordenInfo = null;
-    for (var o = 1; o < dOrd.length; o++) {
-      if (String(dOrd[o][0]) == String(idOrden)) {
-        ordenInfo = {
-          tipo:    String(dOrd[o][19] || ""),
-          dia:     String(dOrd[o][20] || ""),
-          long:    String(dOrd[o][21] || ""),
-          cuerda:  String(dOrd[o][22] || ""),
-          cuerpo:  String(dOrd[o][23] || ""),
-          acero:   String(dOrd[o][24] || ""),
-          proceso: String(dOrd[o][11] || ""),
-          iconoSVG: obtenerIconoSVG(String(dOrd[o][19] || ""))
-        };
-        break;
-      }
+    var finder = shOrd.getRange(2, 1, shOrd.getLastRow() - 1, 1)
+                      .createTextFinder(String(idOrden)).matchEntireCell(true);
+    var match = finder.findNext();
+    if (match) {
+      var fRow = match.getRow();
+      var rowData = shOrd.getRange(fRow, 1, 1, 25).getValues()[0];
+      ordenInfo = {
+        tipo:     String(rowData[19] || ''),
+        dia:      String(rowData[20] || ''),
+        long:     String(rowData[21] || ''),
+        cuerda:   String(rowData[22] || ''),
+        cuerpo:   String(rowData[23] || ''),
+        acero:    String(rowData[24] || ''),
+        proceso:  String(rowData[11] || ''),
+        iconoSVG: obtenerIconoSVG(String(rowData[19] || ''))
+      };
     }
 
     var dProd = shProd.getDataRange().getValues();
@@ -7900,7 +8024,8 @@ function obtenerSinPedidoBajoStock(proceso) {
         var inv2 = getInv(codU); if (!inv2 || inv2.max <= 0 || inv2.max > 500000) return;
         var pct2, pedir2;
         if (inv2.esVarilla) {
-          var g2=inv2.back||0, en2=inv2.existNeg||0, tot2=inv2.exist+g2+en2;
+          var _esC72=String(codU).charAt(0)==='7';
+          var g2=_esC72?(inv2.back||0):0, en2=_esC72?(inv2.existNeg||0):0, tot2=inv2.exist+g2+en2;
           pct2=inv2.max>0?tot2/inv2.max:0; pedir2=Math.max(0,Math.round(inv2.max-inv2.exist-g2-en2));
         } else { pct2=inv2.exist/inv2.max; pedir2=Math.max(0,Math.round(inv2.max-inv2.exist)); }
         var rInfo2=rutaInfoMap[cod]||{}, ruta2=rutaMap[cod]||[];
@@ -7925,11 +8050,12 @@ function obtenerSinPedidoBajoStock(proceso) {
         // Tiene orden activa y proceso vivo → incluir marcado
         var invA = getInv(codU);
         if (!invA || invA.max <= 0 || invA.max > 500000) return;
+        var _esC7A=String(codU).charAt(0)==='7';
         var pctA = invA.esVarilla
-          ? (invA.exist + (invA.back||0) + (invA.existNeg||0)) / invA.max
+          ? (invA.exist + (_esC7A?(invA.back||0):0) + (_esC7A?(invA.existNeg||0):0)) / invA.max
           : invA.exist / invA.max;
         var pedirA = invA.esVarilla
-          ? Math.max(0, Math.round(invA.max - invA.exist - (invA.back||0) - (invA.existNeg||0)))
+          ? Math.max(0, Math.round(invA.max - invA.exist - (_esC7A?(invA.back||0):0) - (_esC7A?(invA.existNeg||0):0)))
           : Math.max(0, Math.round(invA.max - invA.exist));
         var rInfoA = rutaInfoMap[cod]||{}, rutaA = rutaMap[cod]||[];
         resultados.push({
@@ -7954,9 +8080,10 @@ function obtenerSinPedidoBajoStock(proceso) {
       // Calcular pct y pedir según tipo
       var pct, pedir;
       if (inv.esVarilla) {
-        // Varilla: (exist_venta + galva + exis_neg) / max_venta
-        var galva    = inv.back    || 0;
-        var existNeg = inv.existNeg|| 0;
+        // Varilla: solo suma galva/existNeg si el código empieza con 7
+        var _esC7G = String(codU).charAt(0) === '7';
+        var galva    = _esC7G ? (inv.back    || 0) : 0;
+        var existNeg = _esC7G ? (inv.existNeg || 0) : 0;
         var total    = inv.exist + galva + existNeg;
         pct   = inv.max > 0 ? total / inv.max : 0;
         pedir = Math.max(0, Math.round(inv.max - inv.exist - galva - existNeg));
