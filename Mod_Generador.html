@@ -1,11 +1,11 @@
 function loadGenerador() {
   var area = document.getElementById('content-area');
   area.style.padding = '1rem 1.5rem 2rem';
-  area.innerHTML = '\n<div id="gen-panel">\n\n  <!-- MODALES -->\n  <div id="gen-modalDetalle" class="gen-modal">\n    <div class="gen-modal-content">\n      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">\n        <h2 id="gen-detTitle" style="margin:0;color:#1565c0;font-size:18px;"></h2>\n        <button onclick="document.getElementById(\'gen-modalDetalle\').style.display=\'none\'" style="font-size:30px;border:none;background:none;cursor:pointer;">&times;</button>\n      </div>\n      <div style="overflow-x:auto;">\n        <table style="width:100%;font-size:14px;">\n          <thead>\n            <tr style="background:#f5f5f5;">\n              <th style="padding:10px;background:#263238;color:white;">ORDEN</th>\n              <th style="padding:10px;background:#263238;color:white;">CANT (I)</th>\n              <th style="padding:10px;background:#263238;color:white;">SOLIC (N)</th>\n              <th style="padding:10px;background:#263238;color:white;">PROD (O)</th>\n              <th style="padding:10px;background:#263238;color:white;">MÁQUINA</th>\n              <th style="padding:10px;background:#263238;color:white;">ACCIÓN</th>\n            </tr>\n          </thead>\n          <tbody id="gen-detBody"></tbody>\n        </table>\n      </div>\n    </div>\n  </div>\n\n  <div id="gen-modal" class="gen-modal">\n    <div class="gen-modal-content" style="max-width:450px;">\n      <h3 id="gen-mdlTitle" style="margin-top:0;color:#1565c0;"></h3>\n      <div id="gen-mdlInfo" style="background:#e3f2fd;padding:15px;border-radius:8px;margin-bottom:15px;font-size:15px;font-weight:bold;"></div>\n      <div style="margin-bottom:15px;">\n        <label style="font-weight:bold;font-size:13px;color:#666;">CANTIDAD POR CADA ORDEN:</label>\n        <input type="number" id="gen-inpCantOrd" style="width:100%;padding:14px;font-size:20px;font-weight:900;border:2px solid #1565c0;border-radius:8px;margin-top:6px;">\n      </div>\n      <div>\n        <label style="font-weight:bold;font-size:13px;color:#666;">¿CUÁNTAS ÓRDENES IGUALES?</label>\n        <input type="number" id="gen-inpNumOrd" value="1" style="width:100%;padding:14px;font-size:20px;font-weight:900;border:2px solid #1565c0;border-radius:8px;margin-top:6px;">\n      </div>\n      <div style="display:flex;gap:10px;margin-top:25px;">\n        <button onclick="document.getElementById(\'gen-modal\').style.display=\'none\'" style="flex:1;padding:14px;border-radius:8px;border:1px solid #ccc;font-weight:900;font-size:15px;cursor:pointer;">CANCELAR</button>\n        <button onclick="genConfirmarParcial()" style="flex:1;padding:14px;background:#1565c0;color:white;border:none;border-radius:8px;font-weight:900;font-size:15px;cursor:pointer;">AGREGAR</button>\n      </div>\n    </div>\n  </div>\n\n  <!-- VISTA PRINCIPAL: GENERADOR -->\n  <div id="gen-main-view">\n    <div class="gen-container">\n      <div class="gen-header-tools">\n        <div class="gen-tabs">\n          <div id="gen-tabPend" class="gen-tab active" onclick="genSetTab(\'PENDIENTES\')">📦 VIVOS</div>\n          <div id="gen-tabCerr" class="gen-tab" onclick="genSetTab(\'CERRADOS\')">📂 HISTORIAL</div>\n        </div>\n        <button onclick="genAbrirRellenoMP()" style="background:#2e7d32;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:900;font-size:13px;cursor:pointer;" title="Rellenar columna MP en órdenes existentes">🔧 RELLENAR MP MASIVO</button>\n        <button onclick="genIrTEM()" style="background:#7b1fa2;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:900;font-size:13px;cursor:pointer;">🔄 REEMPLAZO PEDIDOS</button>\n      </div>\n\n      <button id="gen-btnSave" class="gen-fab-save" onclick="genPreviaGuardar()">\n        💾 APLICAR <span id="gen-count">0</span> CAMBIOS\n      </button>\n\n      <input type="text" id="gen-search" class="gen-search-box"\n             placeholder="🔍 Buscar pedido, código o descripción..."\n             onkeyup="genRender()">\n\n      <div class="gen-filter-container">\n        <div class="gen-chip gen-active-chip" onclick="genSetSubFilter(\'TODOS\', this)">TODOS</div>\n        <div class="gen-chip" onclick="genSetSubFilter(\'ABIERTO\', this)">ABIERTO</div>\n        <div class="gen-chip" onclick="genSetSubFilter(\'PARCIAL\', this)">PARCIAL</div>\n        <div class="gen-chip" onclick="genSetSubFilter(\'PLANEADO\', this)">PLANEADO</div>\n        <div class="gen-chip" onclick="genSetSubFilter(\'EN PROCESO\', this)">EN PROCESO</div>\n      </div>\n\n      <div style="overflow-x:auto;max-height:65vh;border:1px solid #ddd;border-radius:8px;">\n        <table id="gen-tbl">\n          <thead>\n            <tr>\n              <th>FECHA</th><th>FOLIO</th><th>CÓDIGO</th><th>DESCRIPCIÓN</th>\n              <th>CANTIDAD (PLAN/TOT)</th><th>ESTADO</th><th>ACCIONES</th>\n            </tr>\n          </thead>\n          <tbody id="gen-body"></tbody>\n        </table>\n      </div>\n    </div>\n  </div>\n\n  <!-- VISTA REEMPLAZO TEM -->\n  <div id="tem-view">\n    <div class="tem-container">\n      <div class="tem-header">\n        <button class="tem-back-btn" onclick="genVolverGenerador()">← VOLVER</button>\n        <span class="tem-title">EDITOR DE PEDIDOS (TEM)</span>\n        <button class="tem-reload-btn" onclick="genIrTEM()" title="Recargar">🔄</button>\n      </div>\n      <input type="text" id="tem-search" class="tem-search"\n             placeholder="🔍 Buscar por folio, código o descripción..."\n             oninput="temFiltrar()">\n      <div class="tem-table-wrap">\n        <table class="tem-table">\n          <thead>\n            <tr>\n              <th style="width:20%">PEDIDO (EDIT)</th>\n              <th style="width:10%">FECHA</th>\n              <th style="width:14%">CÓDIGO</th>\n              <th style="width:28%">DESCRIPCIÓN</th>\n              <th style="width:5%;text-align:center">PART</th>\n              <th style="width:13%">CANT (EDIT)</th>\n              <th style="width:10%">UNIDAD</th>\n            </tr>\n          </thead>\n          <tbody id="tem-body"></tbody>\n        </table>\n      </div>\n      <button id="tem-btnSave" class="tem-save-btn" onclick="temGuardar()">\n        💾 GUARDAR (<span id="tem-count">0</span>)\n      </button>\n    </div>\n  </div>\n\n</div>';
+  area.innerHTML = '\n<div id="gen-panel">\n\n  <!-- MODALES -->\n  <div id="gen-modalDetalle" class="gen-modal">\n    <div class="gen-modal-content">\n      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">\n        <h2 id="gen-detTitle" style="margin:0;color:#1565c0;font-size:18px;"></h2>\n        <button onclick="document.getElementById(\'gen-modalDetalle\').style.display=\'none\'" style="font-size:30px;border:none;background:none;cursor:pointer;">&times;</button>\n      </div>\n      <div style="overflow-x:auto;">\n        <table style="width:100%;font-size:14px;">\n          <thead>\n            <tr style="background:#f5f5f5;">\n              <th style="padding:10px;background:#263238;color:white;">ORDEN</th>\n              <th style="padding:10px;background:#263238;color:white;">CANT (I)</th>\n              <th style="padding:10px;background:#263238;color:white;">SOLIC (N)</th>\n              <th style="padding:10px;background:#263238;color:white;">PROD (O)</th>\n              <th style="padding:10px;background:#263238;color:white;">MÁQUINA</th>\n              <th style="padding:10px;background:#263238;color:white;">ACCIÓN</th>\n            </tr>\n          </thead>\n          <tbody id="gen-detBody"></tbody>\n        </table>\n      </div>\n    </div>\n  </div>\n\n  <div id="gen-modal" class="gen-modal">\n    <div class="gen-modal-content" style="max-width:450px;">\n      <h3 id="gen-mdlTitle" style="margin-top:0;color:#1565c0;"></h3>\n      <div id="gen-mdlInfo" style="background:#e3f2fd;padding:15px;border-radius:8px;margin-bottom:15px;font-size:15px;font-weight:bold;"></div>\n      <div style="margin-bottom:15px;">\n        <label style="font-weight:bold;font-size:13px;color:#666;">CANTIDAD POR CADA ORDEN:</label>\n        <input type="number" id="gen-inpCantOrd" style="width:100%;padding:14px;font-size:20px;font-weight:900;border:2px solid #1565c0;border-radius:8px;margin-top:6px;">\n      </div>\n      <div>\n        <label style="font-weight:bold;font-size:13px;color:#666;">¿CUÁNTAS ÓRDENES IGUALES?</label>\n        <input type="number" id="gen-inpNumOrd" value="1" style="width:100%;padding:14px;font-size:20px;font-weight:900;border:2px solid #1565c0;border-radius:8px;margin-top:6px;">\n      </div>\n      <div style="display:flex;gap:10px;margin-top:25px;">\n        <button onclick="document.getElementById(\'gen-modal\').style.display=\'none\'" style="flex:1;padding:14px;border-radius:8px;border:1px solid #ccc;font-weight:900;font-size:15px;cursor:pointer;">CANCELAR</button>\n        <button onclick="genConfirmarParcial()" style="flex:1;padding:14px;background:#1565c0;color:white;border:none;border-radius:8px;font-weight:900;font-size:15px;cursor:pointer;">AGREGAR</button>\n      </div>\n    </div>\n  </div>\n\n  <!-- VISTA PRINCIPAL: GENERADOR -->\n  <div id="gen-main-view">\n    <div class="gen-container">\n      <div class="gen-header-tools">\n        <div class="gen-tabs">\n          <div id="gen-tabAbierto"  class="gen-tab active" onclick="genSetTab(\'ABIERTO\')">🟠 ABIERTO<span id="gen-badge-abierto"   class="gen-badge gen-badge-rojo" style="display:none;">0</span></div>\n          <div id="gen-tabParcial"  class="gen-tab"        onclick="genSetTab(\'PARCIAL\')">🟢 PARCIAL<span id="gen-badge-parcial"   class="gen-badge gen-badge-rojo" style="display:none;">0</span></div>\n          <div id="gen-tabPlaneado" class="gen-tab"        onclick="genSetTab(\'PLANEADO\')">🔵 PLANEADO<span id="gen-badge-planeado" class="gen-badge gen-badge-azul" style="display:none;">0</span></div>\n          <div id="gen-tabProceso"  class="gen-tab"        onclick="genSetTab(\'EN PROCESO\')">🟣 EN PROCESO<span id="gen-badge-proceso"  class="gen-badge gen-badge-azul" style="display:none;">0</span></div>\n          <div id="gen-tabCerr"     class="gen-tab"        onclick="genSetTab(\'CERRADOS\')">📂 HISTORIAL</div>\n        </div>\n        <button onclick="genAbrirRellenoMP()" style="background:#2e7d32;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:900;font-size:13px;cursor:pointer;" title="Rellenar columna MP en órdenes existentes">🔧 RELLENAR MP MASIVO</button>\n        <button onclick="genIrTEM()" style="background:#7b1fa2;color:white;padding:10px 16px;border-radius:8px;border:none;font-weight:900;font-size:13px;cursor:pointer;">🔄 REEMPLAZO PEDIDOS</button>\n      </div>\n\n      <button id="gen-btnSave" class="gen-fab-save" onclick="genPreviaGuardar()">\n        💾 APLICAR <span id="gen-count">0</span> CAMBIOS\n      </button>\n\n      <input type="text" id="gen-search" class="gen-search-box"\n             placeholder="🔍 Buscar pedido, código o descripción..."\n             onkeyup="genRender()">\n\n      <div style="overflow-x:auto;max-height:65vh;border:1px solid #ddd;border-radius:8px;">\n        <table id="gen-tbl">\n          <thead>\n            <tr>\n              <th>FECHA</th><th>FOLIO</th><th>CÓDIGO</th><th>DESCRIPCIÓN</th>\n              <th>CANTIDAD (PLAN/TOT)</th><th>ESTADO</th><th>ACCIONES</th>\n            </tr>\n          </thead>\n          <tbody id="gen-body"></tbody>\n        </table>\n      </div>\n    </div>\n  </div>\n\n  <!-- VISTA REEMPLAZO TEM -->\n  <div id="tem-view">\n    <div class="tem-container">\n      <div class="tem-header">\n        <button class="tem-back-btn" onclick="genVolverGenerador()">← VOLVER</button>\n        <span class="tem-title">EDITOR DE PEDIDOS (TEM)</span>\n        <button class="tem-reload-btn" onclick="genIrTEM()" title="Recargar">🔄</button>\n      </div>\n      <input type="text" id="tem-search" class="tem-search"\n             placeholder="🔍 Buscar por folio, código o descripción..."\n             oninput="temFiltrar()">\n      <div class="tem-table-wrap">\n        <table class="tem-table">\n          <thead>\n            <tr>\n              <th style="width:20%">PEDIDO (EDIT)</th>\n              <th style="width:10%">FECHA</th>\n              <th style="width:14%">CÓDIGO</th>\n              <th style="width:28%">DESCRIPCIÓN</th>\n              <th style="width:5%;text-align:center">PART</th>\n              <th style="width:13%">CANT (EDIT)</th>\n              <th style="width:10%">UNIDAD</th>\n            </tr>\n          </thead>\n          <tbody id="tem-body"></tbody>\n        </table>\n      </div>\n      <button id="tem-btnSave" class="tem-save-btn" onclick="temGuardar()">\n        💾 GUARDAR (<span id="tem-count">0</span>)\n      </button>\n    </div>\n  </div>\n\n</div>';
 
   gen_rawData        = [];
   gen_cambios        = {};
-  gen_currentTab     = 'PENDIENTES';
+  gen_currentTab     = 'ABIERTO';
   gen_subFilter      = 'TODOS';
   gen_activeEditId   = null;
   gen_ultimaOrden    = {};
@@ -43,7 +43,7 @@ function loadGenerador() {
 // ── Variables globales del módulo Generador ──
 var gen_rawData        = [];
 var gen_cambios        = {};
-var gen_currentTab     = 'PENDIENTES';
+var gen_currentTab     = 'ABIERTO';
 var gen_subFilter      = 'TODOS';
 var gen_activeEditId   = null;
 var gen_ultimaOrden    = {};   // { serie -> ultimoNumero } cargado al iniciar
@@ -51,12 +51,20 @@ var gen_foliosPreview  = {};   // id -> [{ serie, numero }] asignados localmente
 
 function genSetTab(t) {
   gen_currentTab = t;
-  var tabPend = document.getElementById('gen-tabPend');
-  var tabCerr = document.getElementById('gen-tabCerr');
-  if (tabPend) tabPend.classList.remove('active');
-  if (tabCerr) tabCerr.classList.remove('active');
-  if (t === 'PENDIENTES' && tabPend) tabPend.classList.add('active');
-  else if (tabCerr) tabCerr.classList.add('active');
+  var tabIds = ['gen-tabAbierto','gen-tabParcial','gen-tabPlaneado','gen-tabProceso','gen-tabCerr'];
+  tabIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  var mapa = {
+    'ABIERTO':     'gen-tabAbierto',
+    'PARCIAL':     'gen-tabParcial',
+    'PLANEADO':    'gen-tabPlaneado',
+    'EN PROCESO':  'gen-tabProceso',
+    'CERRADOS':    'gen-tabCerr'
+  };
+  var activo = document.getElementById(mapa[t] || 'gen-tabCerr');
+  if (activo) activo.classList.add('active');
   genRender();
 }
 
@@ -75,9 +83,13 @@ function genRender() {
   var filtrados = gen_rawData.filter(function(r) {
     var matchBusqueda = (r.codigo + r.folio + r.descripcion).toUpperCase().indexOf(busqueda) > -1;
     var isPend = ['ABIERTO','PLANEADO','PARCIAL','EN PROCESO'].indexOf(r.estado) > -1;
-    var matchTab = (gen_currentTab === 'PENDIENTES' ? isPend : !isPend);
-    var matchSub = (gen_subFilter === 'TODOS' || r.estado === gen_subFilter);
-    return matchBusqueda && matchTab && matchSub;
+    var matchTab;
+    if (gen_currentTab === 'CERRADOS') {
+      matchTab = !isPend;
+    } else {
+      matchTab = r.estado === gen_currentTab;
+    }
+    return matchBusqueda && matchTab;
   });
 
   var ordenEstados = { 'ABIERTO':1,'PARCIAL':2,'PLANEADO':3,'EN PROCESO':4,'CANCELADO':5,'TERMINADO':6 };
@@ -106,7 +118,7 @@ function genRender() {
     var badgeColor  = colorEstado[r.estado] || '#607d8b';
 
     var sid = String(r.id).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-    var actions = (gen_currentTab === 'PENDIENTES') ?
+    var actions = (gen_currentTab !== 'CERRADOS') ?
       '<button class="gen-btn-action gen-btn-fast"    data-genid="' + sid + '" data-genaccion="fast"    title="Generar Orden por toda la cantidad">⚡</button>' +
       '<button class="gen-btn-action gen-btn-partial" data-genid="' + sid + '" data-genaccion="partial" title="Generar Orden parcial">✨</button>' +
       '<button class="gen-btn-action gen-btn-cancel"  data-genid="' + sid + '" data-genaccion="cancel"  title="Cancelar Pedido">✕</button>'
@@ -134,6 +146,7 @@ function genRender() {
       '</tr>';
   }).join('');
 
+  genActualizarBadges();
   genUpdateFab();
 }
 
@@ -277,6 +290,30 @@ function genUndo(id) {
   delete gen_foliosPreview[id];
   genRecalcularTodosFolios();
   genRender();
+}
+
+function genActualizarBadges() {
+  var estados = { 'ABIERTO': 0, 'PARCIAL': 0, 'PLANEADO': 0, 'EN PROCESO': 0 };
+  gen_rawData.forEach(function(r) {
+    if (estados[r.estado] !== undefined) estados[r.estado]++;
+  });
+  var mapa = [
+    { id: 'gen-badge-abierto',  estado: 'ABIERTO',     tipo: 'rojo' },
+    { id: 'gen-badge-parcial',  estado: 'PARCIAL',     tipo: 'rojo' },
+    { id: 'gen-badge-planeado', estado: 'PLANEADO',    tipo: 'azul' },
+    { id: 'gen-badge-proceso',  estado: 'EN PROCESO',  tipo: 'azul' }
+  ];
+  mapa.forEach(function(m) {
+    var el = document.getElementById(m.id);
+    if (!el) return;
+    var n = estados[m.estado] || 0;
+    if (n === 0) {
+      el.style.display = 'none';
+    } else {
+      el.style.display = 'inline-flex';
+      el.textContent = n;
+    }
+  });
 }
 
 function genUpdateFab() {
