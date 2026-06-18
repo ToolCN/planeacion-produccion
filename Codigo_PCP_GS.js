@@ -7997,14 +7997,18 @@ function obtenerSinPedidoBajoStock(proceso) {
     });
 
     // ── 6.5. Calcular total sol y RESTAN activo por código en este proceso ──
-    var totalSolActivoMap    = {};  // codigo → suma de SOLICITADO de órdenes vivas
-    var totalRestanActivoMap = {};  // codigo → suma de (SOLICITADO-PRODUCIDO) de órdenes vivas (en unidad nativa: kg para varilla)
+    // Solo se consideran órdenes cuyo PEDIDO padre esté vivo (no terminado/cancelado/cerrado)
+    var totalSolActivoMap    = {};
+    var totalRestanActivoMap = {};
     for (var ts = 1; ts < dataOrd.length; ts++) {
       var tsCod  = String(dataOrd[ts][oCOD] ||'').trim().toUpperCase();
       var tsEst  = String(dataOrd[ts][oEST] ||'').toUpperCase().trim();
       var tsProc = String(dataOrd[ts][oPROC]||'').toUpperCase().trim();
+      var tsPed  = String(dataOrd[ts][oPED] ||'').trim();
       if (!tsCod || tsProc !== PROC) continue;
       if (ESTADOS_MUERTOS_ORD.indexOf(tsEst) !== -1) continue;
+      // Excluir órdenes cuyo pedido padre ya está muerto
+      if (tsPed && !codigosConPedidoVivo[tsCod]) continue;
       var tsSol  = oSOLord  >= 0 ? (Number(dataOrd[ts][oSOLord])||0)  : 0;
       var tsProd = oPRODord >= 0 ? (Number(dataOrd[ts][oPRODord])||0) : 0;
       var tsRest = Math.max(0, tsSol - tsProd);
