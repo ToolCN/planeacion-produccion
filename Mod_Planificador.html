@@ -7326,31 +7326,49 @@ function planifRenderSinPedidoBlock() {
 
 // ── ETAPA 2: Producción (se llama a los 3000ms — después de sinPedido) ──
 function planifCargarProdBg() {
+  // ── PRECARGA DE PRODUCCIÓN DESACTIVADA ──
+  // El detalle de producción se carga bajo demanda al abrir el modal (igual que el historial).
+  // Evita ~5 lecturas de la hoja PRODUCCION COMPLETA (29,945 filas) en cada carga del planificador.
+  // Para reactivar la precarga: quitar este bloque de comentario y el "return;" de abajo.
+  return;
   var ids = planif_ordenesVivas.map(function(o){ return String(o.id); });
   var pendProd = ids.filter(function(id){ return !planif_prodCache[id] && !planif_prodCargando[id]; });
-  var loteSize = 3;
-  var loteIdx = 0;
+  if (pendProd.length === 0) return;
+  var CHUNK = 60;            // órdenes por llamada (antes: 1 llamada por orden)
+  var idx = 0;
   function sig() {
     if (planif_bgPausado) { setTimeout(sig, 500); return; }
-    if (loteIdx >= pendProd.length) return;
-    var lote = pendProd.slice(loteIdx, loteIdx + loteSize);
-    loteIdx += loteSize;
-    lote.forEach(function(id) {
-      planif_prodCargando[id] = true;
-      google.script.run
-        .withSuccessHandler(function(idRef) {
-          return function(resRaw) {
-            try { planif_prodCache[idRef] = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw; }
-            catch(e) { planif_prodCache[idRef] = { registros: [] }; }
-            planif_prodCargando[idRef] = false;
-          };
-        }(id))
-        .withFailureHandler(function(idRef) {
-          return function() { planif_prodCargando[idRef] = false; };
-        }(id))
-        .obtenerProduccionDeOrden(JSON.stringify([id]));
-    });
-    setTimeout(sig, 1500);
+    if (idx >= pendProd.length) return;
+    var lote = pendProd.slice(idx, idx + CHUNK);
+    idx += CHUNK;
+    lote.forEach(function(id){ planif_prodCargando[id] = true; });
+    google.script.run
+      .withSuccessHandler(function(resRaw) {
+        try {
+          var parsed = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+          var registros = (parsed && parsed.registros) ? parsed.registros : [];
+          // Agrupar los registros que vienen juntos, por idOrden
+          var porOrden = {};
+          registros.forEach(function(r){
+            var k = String(r.idOrden);
+            if (!porOrden[k]) porOrden[k] = [];
+            porOrden[k].push(r);
+          });
+          // Marcar TODAS las órdenes del lote como cargadas (vacío si no tienen registros)
+          lote.forEach(function(id){
+            planif_prodCache[id] = { registros: porOrden[id] || [] };
+            planif_prodCargando[id] = false;
+          });
+        } catch(e) {
+          lote.forEach(function(id){ planif_prodCargando[id] = false; });
+        }
+        setTimeout(sig, 400);
+      })
+      .withFailureHandler(function() {
+        lote.forEach(function(id){ planif_prodCargando[id] = false; });
+        setTimeout(sig, 400);
+      })
+      .obtenerProduccionDeOrden(JSON.stringify(lote));
   }
   sig();
 }

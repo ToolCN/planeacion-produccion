@@ -16,10 +16,108 @@ var THREAD_ID_SELLOS = "1250";
 var TOKEN_TELEGRAM = "7947767393:AAFmZUcSTnV5gvP6u_UsBcSHlz-0s9x1kSQ";
 var CHAT_ID_AVISOS = "625827165";
 
+// === Helper: abre el spreadsheet UNA sola vez por ejecución y lo reutiliza ===
+// Reduce ejecuciones simultáneas al no reabrir el archivo en cada función.
+// Entre ejecuciones distintas, GAS reinicia esta variable, así que nunca hay datos viejos.
+var _ssCache_ = null;
+function getSS_() {
+  if (!_ssCache_) {
+    _ssCache_ = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  }
+  return _ssCache_;
+}
+
+// === Helper: lee la hoja CODIGOS UNA vez y la guarda en caché (TTL 6h) ===
+// CODIGOS es un catálogo que casi no cambia (se edita a mano). Cachearlo evita
+// releer la hoja completa en cada función. Si agregas códigos nuevos, presiona
+// el botón "🔄 Inv" del planificador para refrescar al instante.
+function getCodigosData_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('cache_codigos_raw_v1');
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) {}
+  }
+  var sh = getSS_().getSheetByName("CODIGOS");
+  var data = sh ? sh.getDataRange().getValues() : [];
+  try { cache.put('cache_codigos_raw_v1', JSON.stringify(data), 21600); } catch(e) {}
+  return data;
+}
+
+// === Helper: lee la hoja ESTANDARES UNA vez y la guarda en caché (TTL 6h) ===
+// ESTANDARES no cambia durante el día. Cachearlo evita releer la hoja completa
+// en cada función. Se refresca solo cada 6h, o al instante con el botón "🔄 Inv".
+function getEstandaresData_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('cache_estandares_raw_v1');
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) {}
+  }
+  var sh = getSS_().getSheetByName("ESTANDARES");
+  var data = sh ? sh.getDataRange().getValues() : [];
+  try { cache.put('cache_estandares_raw_v1', JSON.stringify(data), 21600); } catch(e) {}
+  return data;
+}
+
+// === Helper: lee la hoja RUTAS UNA vez y la guarda en caché (TTL 1h) ===
+// RUTAS SÍ se edita desde la app, por eso el TTL es corto (1h) y además se
+// invalida automáticamente con invalidarCacheRutas_() en cada escritura.
+function getRutasData_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('cache_rutas_raw_v1');
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) {}
+  }
+  var sh = getSS_().getSheetByName("RUTAS");
+  var data = sh ? sh.getDataRange().getValues() : [];
+  try { cache.put('cache_rutas_raw_v1', JSON.stringify(data), 3600); } catch(e) {}
+  return data;
+}
+
+// === Helper: borra el caché de RUTAS tras cada escritura (crear/editar/borrar ruta) ===
+function invalidarCacheRutas_() {
+  try {
+    CacheService.getScriptCache().removeAll(['cache_rutas_raw_v1', 'planif_rutasMap_v1']);
+  } catch(e) {}
+}
+
 
 // =================================================================================
 // doGet — Sirve el MainApp_PlaneacionHTML como Web App
 // =================================================================================
+function _diagOptimizacion() {
+  var ss = getSS_();
+  function info(nombre) {
+    var sh = ss.getSheetByName(nombre);
+    if (!sh) return nombre + ': NO EXISTE';
+    return nombre + ': ' + sh.getLastRow() + ' filas x ' + sh.getLastColumn() + ' columnas';
+  }
+  var out = [
+    info('ORDENES'), info('PRODUCCION'), info('LOTES'),
+    info('PEDIDOS'), info('RUTAS'), info('CODIGOS'), info('ESTANDARES')
+  ];
+  // Desglose de ORDENES por ESTADO (vivas vs muertas)
+  var shO = ss.getSheetByName('ORDENES');
+  var lastRow = shO ? shO.getLastRow() : 0;
+  if (lastRow > 1) {
+    var headers = shO.getRange(1, 1, 1, shO.getLastColumn()).getValues()[0]
+      .map(function(h){ return String(h).toUpperCase().trim(); });
+    var iEst = headers.indexOf('ESTADO');
+    if (iEst >= 0) {
+      var estados = shO.getRange(2, iEst + 1, lastRow - 1, 1).getValues();
+      var conteo = {};
+      estados.forEach(function(r){
+        var e = String(r[0]).toUpperCase().trim() || '(vacío)';
+        conteo[e] = (conteo[e] || 0) + 1;
+      });
+      out.push('--- ORDENES por ESTADO ---');
+      Object.keys(conteo).sort().forEach(function(k){ out.push('  ' + k + ': ' + conteo[k]); });
+    }
+  }
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
 function doGet(e) {
   var params = e && e.parameter ? e.parameter : {};
 
@@ -95,7 +193,7 @@ function getWebAppUrl() {
 
 function obtenerUsuariosPCP() {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var sheet = ss.getSheetByName("USUARIOS");
     if (!sheet) return [];
 
@@ -141,7 +239,7 @@ function obtenerUsuariosPCP() {
 
 function guardarPermisosPCP(nombre, nuevosPCP) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var sheet = ss.getSheetByName("USUARIOS");
     if (!sheet) return JSON.stringify({ success: false, msg: "Hoja USUARIOS no encontrada" });
 
@@ -178,7 +276,7 @@ function guardarPermisosPCP(nombre, nuevosPCP) {
 
 function cambiarPasswordPCP(nombre, nuevaPass) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var sheet = ss.getSheetByName("USUARIOS");
     if (!sheet) return JSON.stringify({ success: false, msg: "Hoja USUARIOS no encontrada" });
 
@@ -205,7 +303,7 @@ function cambiarPasswordPCP(nombre, nuevaPass) {
 
 function crearUsuarioPCP(data) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var sheet = ss.getSheetByName("USUARIOS");
     if (!sheet) return JSON.stringify({ success: false, msg: "Hoja USUARIOS no encontrada" });
 
@@ -240,7 +338,7 @@ function crearUsuarioPCP(data) {
 
 function actualizarUsuarioPCP(data) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var sheet = ss.getSheetByName("USUARIOS");
     if (!sheet) return JSON.stringify({ success: false, msg: "Hoja USUARIOS no encontrada" });
 
@@ -288,7 +386,7 @@ function actualizarUsuarioPCP(data) {
 
 function eliminarUsuarioPCP(nombre) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var sheet = ss.getSheetByName("USUARIOS");
     if (!sheet) return JSON.stringify({ success: false, msg: "Hoja USUARIOS no encontrada" });
 
@@ -449,7 +547,7 @@ function obtenerIconoSVG(tipo) {
  */
 function obtenerDatosDashboardPCP(mes, anio) {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var sheetPed = ss.getSheetByName(HOJA_PEDIDOS);
     var sheetOrd = ss.getSheetByName(HOJA_ORDENES);
     var sheetCod = ss.getSheetByName("CODIGOS");
@@ -583,7 +681,7 @@ function obtenerDatosDashboardPCP(mes, anio) {
     // Mapa codigo->familia
     var mapCodFam = {};
     if (sheetCod) {
-      var dataCod = sheetCod.getDataRange().getValues();
+      var dataCod = getCodigosData_();
       var hCod = dataCod[0].map(function(x){ return String(x).toUpperCase().trim(); });
       var icCod = hCod.indexOf('CODIGO'); if (icCod < 0) icCod = 0;
       var icFam = hCod.indexOf('FAMILY'); if (icFam < 0) icFam = hCod.indexOf('FAMILIA'); if (icFam < 0) icFam = 8;
@@ -688,7 +786,7 @@ function obtenerDatosDashboardPCP(mes, anio) {
 
 function obtenerDashboardStock() {
   try {
-    var ss  = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss  = getSS_();
     var tz  = ss.getSpreadsheetTimeZone();
     var res = obtenerFamiliasMRP();
     var lista = res.lista || [], stats = res.stats || {};
@@ -716,7 +814,7 @@ function obtenerDatosTablero(fechaInicioStr, fechaFinStr) {
   try {
     Logger.log("📞 obtenerDatosTablero llamada con: " + fechaInicioStr + " - " + fechaFinStr);
     
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var tz = ss.getSpreadsheetTimeZone();
     var sheet = ss.getSheetByName("TABLERO");
     
@@ -797,7 +895,7 @@ function obtenerDatosTablero(fechaInicioStr, fechaFinStr) {
 
 // 2. GUARDAR DATO (CELDA) - CORREGIDO PARA EVITAR BLOQUEO
 function guardarDatoTablero(payload) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var tz = ss.getSpreadsheetTimeZone();
   var sheet = ss.getSheetByName("TABLERO");
   
@@ -865,7 +963,7 @@ function guardarDatoTablero(payload) {
 // 3. RESUMEN PRODUCCION (AJUSTE COLATADO, EMPAQUE Y TORNILLERÍA)
 // =================================================================================
 function obtenerResumenProduccionDetallado(fechaIniStr, fechaFinStr) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetStd = ss.getSheetByName("ESTANDARES");
@@ -880,7 +978,7 @@ function obtenerResumenProduccionDetallado(fechaIniStr, fechaFinStr) {
      mapOrd[String(dataOrd[o][0])] = { tipo: String(dataOrd[o][19]).toUpperCase().trim(), peso: Number(dataOrd[o][18]) || 0 };
   }
 
-  var dataStd = sheetStd.getDataRange().getValues();
+  var dataStd = getEstandaresData_();
   var mapStd = {};
   for(var s=1; s<dataStd.length; s++) {
      var maq = String(dataStd[s][3]).toUpperCase().trim();
@@ -989,7 +1087,7 @@ function obtenerResumenProduccionDetallado(fechaIniStr, fechaFinStr) {
 // 1. VALIDADOR — CARGA DE DATOS COMPLETOS
 function obtenerDatosCompletosValidador() {
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sheetOrd  = ss.getSheetByName(HOJA_ORDENES);
     var sheetPed  = ss.getSheetByName(HOJA_PEDIDOS);
     var sheetInv  = ss.getSheetByName("INVENTARIO_EXTERNO");
@@ -1001,8 +1099,8 @@ function obtenerDatosCompletosValidador() {
     var dataOrd   = sheetOrd.getDataRange().getValues();
     var dataPed   = sheetPed.getDataRange().getValues();
     var dataInv   = sheetInv   ? sheetInv.getDataRange().getValues()   : [];
-    var dataCod   = sheetCod   ? sheetCod.getDataRange().getValues()   : [];
-    var dataRutas = sheetRutas ? sheetRutas.getDataRange().getValues() : [];
+    var dataCod = getCodigosData_();
+    var dataRutas = getRutasData_();
 
     // 1. Mapa CODIGO → CODIGO_VENTA
     var mapaCodVenta = {};
@@ -1241,7 +1339,7 @@ function _extraerLongitudes(mapaRutas) {
 
 // 2. VALIDADOR — GUARDAR CAMBIOS
 function aplicarCambiosValidador(listaCambios) {
-  var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss   = getSS_();
   var sPed = ss.getSheetByName(HOJA_PEDIDOS);
   var sOrd = ss.getSheetByName(HOJA_ORDENES);
 
@@ -1323,7 +1421,7 @@ function buscarPedidosConSaldos() {
     var ahora         = new Date().getTime();
     var quinceDiasMs  = 15 * 24 * 60 * 60 * 1000;
 
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sheetProd = ss.getSheetByName("PRODUCCION");
     var dataProd  = sheetProd.getDataRange().getValues();
     var hProd     = dataProd[0].map(function(h) { return String(h).toUpperCase().trim(); });
@@ -1374,7 +1472,7 @@ function buscarPedidosConSaldos() {
 // 4. VALIDADOR — MODAL TRANSFERENCIA DE PRODUCCIÓN
 function obtenerProduccionDeOrden(idsOrdenJson) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var tz = Session.getScriptTimeZone();
 
     var ids;
@@ -1507,7 +1605,7 @@ function obtenerProduccionDeOrden(idsOrdenJson) {
 
 function guardarEdicionProduccion(payload) {
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sheetProd = ss.getSheetByName("PRODUCCION");
 
     var mapaColumnas = {
@@ -1555,12 +1653,12 @@ function transferirProduccion(payload) {
   if (!lock.tryLock(15000)) return JSON.stringify({ success: false, msg: "Servidor ocupado." });
 
   try {
-    var ss         = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss         = getSS_();
     var sheetProd  = ss.getSheetByName("PRODUCCION");
     var sheetLotes = ss.getSheetByName("LOTES");
     var sheetOrd   = ss.getSheetByName(HOJA_ORDENES);
 
-    var dataProd = sheetProd.getDataRange().getValues();
+    var dataProd = sheetProd.getRange(1, 1, sheetProd.getLastRow(), 11).getValues();
     var filaReg  = payload.filaRegistro - 1;
 
     if (filaReg < 1 || filaReg >= dataProd.length) {
@@ -1577,7 +1675,7 @@ function transferirProduccion(payload) {
     var loteName     = String(rowOrig[3]);
     var cantOrig     = Number(rowOrig[10]);
 
-    var dataOrd     = sheetOrd.getDataRange().getValues();
+    var dataOrd     = sheetOrd.getRange(1, 1, sheetOrd.getLastRow(), 16).getValues();
     var codigoOrig  = "";
     var procesoOrig = "";
     for (var i = 1; i < dataOrd.length; i++) {
@@ -1629,7 +1727,7 @@ function transferirProduccion(payload) {
       sheetProd.getRange(payload.filaRegistro, 3).setValue(idOrdenDestino);
     }
 
-    var dataLotes = sheetLotes.getDataRange().getValues();
+    var dataLotes = sheetLotes.getRange(1, 1, sheetLotes.getLastRow(), 5).getValues();
     for (var l = 1; l < dataLotes.length; l++) {
       if (String(dataLotes[l][4]).trim() === loteName) {
         sheetLotes.getRange(l + 1, 3).setValue(idOrdenDestino);
@@ -1641,7 +1739,7 @@ function transferirProduccion(payload) {
     recalcularEstadoOrdenMaestro(idOrdenDestino);
     SpreadsheetApp.flush();
 
-    var dataOrdPost   = sheetOrd.getDataRange().getValues();
+    var dataOrdPost   = sheetOrd.getRange(1, 1, sheetOrd.getLastRow(), 16).getValues();
     var estadoOrigen  = { idOrden: idOrdenOrig,   nuevoEstado: "", keyOrden: "" };
     var estadoDestino = { idOrden: idOrdenDestino, nuevoEstado: "", keyOrden: "" };
     var pedidosActualizar = {};
@@ -1660,7 +1758,7 @@ function transferirProduccion(payload) {
     }
 
     var sheetPed = ss.getSheetByName(HOJA_PEDIDOS);
-    var dataPed  = sheetPed.getDataRange().getValues();
+    var dataPed  = sheetPed.getRange(1, 1, sheetPed.getLastRow(), 6).getValues();
     for (var keyP in pedidosActualizar) {
       var pa = pedidosActualizar[keyP];
       var todasTerminadas = true;
@@ -1706,7 +1804,7 @@ function recalcularEstadoOrdenMaestro(idOrdenInput) {
   // Esta función debe recalcular el estado de una orden según su producción.
   // Implementación mínima — reemplaza con tu lógica real si ya existe.
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var sheetOrd = ss.getSheetByName(HOJA_ORDENES);
     var sheetProd = ss.getSheetByName("PRODUCCION");
     if (!sheetOrd || !sheetProd) return;
@@ -1746,7 +1844,7 @@ function recalcularEstadoOrdenMaestro(idOrdenInput) {
 
 function rastreoBuscar(q) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var shPed = ss.getSheetByName('PEDIDOS');
     var shOrd = ss.getSheetByName('ORDENES');
     if (!shPed) return JSON.stringify({ pedidos: [], _err: 'Hoja PEDIDOS no encontrada' });
@@ -1847,7 +1945,7 @@ function rastreoBuscar(q) {
 }
 
 function rastreoDetalle(pedidoNom, partida) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var shOrd  = ss.getSheetByName('ORDENES');
   var shProd = ss.getSheetByName('PRODUCCION');
   var shEnv  = ss.getSheetByName('ENVIADO');
@@ -1951,7 +2049,7 @@ function rastreoDetalle(pedidoNom, partida) {
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shOrd   = ss.getSheetByName('ORDENES');
     var shProd  = ss.getSheetByName('PRODUCCION');
     var dataOrd  = shOrd.getDataRange().getValues();
@@ -1963,7 +2061,7 @@ function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
     var maqPorProceso = {};
     var shEst = ss.getSheetByName('ESTANDARES');
     if (shEst) {
-      var dataEst = shEst.getDataRange().getValues();
+      var dataEst = getEstandaresData_();
       for (var e = 1; e < dataEst.length; e++) {
         var maqE   = String(dataEst[e][3] || '').trim().toUpperCase(); // col D
         var velE   = parseFloat(dataEst[e][4]) || 0;                   // col E
@@ -2052,7 +2150,7 @@ function rastreoExportarProduccion(fechaIniStr, fechaFinStr) {
  */
 function npObtenerPedidosExistentes() {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("PEDIDOS");
     var data = sh.getDataRange().getValues();
     var datos = [];
@@ -2073,7 +2171,7 @@ function npObtenerPedidosExistentes() {
  */
 function npObtenerCatalogoRutas() {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("RUTAS");
     var data = sh.getDataRange().getValues();
     var mapa = {};
@@ -2099,7 +2197,7 @@ function npObtenerCatalogoRutas() {
  */
 function npBuscarCodigo(codigoRaw) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("RUTAS");
     var data = sh.getDataRange().getValues();
     // Normalizar entrada: solo dígitos, si tiene 8 dígitos agregar cero a la izquierda
@@ -2126,7 +2224,7 @@ function npBuscarCodigo(codigoRaw) {
  */
 function npValidarCodigosMultiples(codigos) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("RUTAS");
     var data = sh.getDataRange().getValues();
     // Construir mapa desde RUTAS una sola vez
@@ -2160,7 +2258,7 @@ function npGuardarPedido(d) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("PEDIDOS");
     var data = sh.getDataRange().getValues();
     var pedUp  = String(d.pedido).trim().toUpperCase();
@@ -2201,7 +2299,7 @@ function npGuardarPedidosMasivos(lista) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("PEDIDOS");
     var data = sh.getDataRange().getValues();
     var existentes = {};
@@ -2254,9 +2352,9 @@ function npGuardarPedidosMasivos(lista) {
 // ── 1. CARGA INICIAL: catálogo de códigos con PEDIDO_INT == "SI" ─────────────────
 // Llamada desde: loadPedidoINT() en el HTML al iniciar el módulo
 function obtenerCatalogosPedidoINT() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetCod = ss.getSheetByName("CODIGOS");
-  var dataCod = sheetCod.getDataRange().getValues();
+  var dataCod = getCodigosData_();
 
   var listaValidos = [];
   for (var i = 1; i < dataCod.length; i++) {
@@ -2276,9 +2374,9 @@ function obtenerCatalogosPedidoINT() {
 // ── 2. BUSCA LA RUTA DE UN CÓDIGO (incluye PT, VENTA, PESO, etc.) ────────────────
 // Llamada desde: pintCargarRuta() en el HTML al seleccionar un código
 function obtenerRutaPedidoINT(codigo) {
-  var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss       = getSS_();
   var sheetRut = ss.getSheetByName('RUTAS');
-  var dataRut  = sheetRut.getDataRange().getValues();
+  var dataRut = getRutasData_();
 
   var PROCESOS_MP = ['ESTAMPADO','FORJA','ROSCADO','ESTIRADO','TREFILADO','COLATADO'];
 
@@ -2314,7 +2412,7 @@ function obtenerRutaPedidoINT(codigo) {
 // ── 3. NÚMERO DE ORDEN SIGUIENTE (MAX+1 por SERIE) ───────────────────────────────
 // Función auxiliar interna, usada por crearPedidoInternoCompleto()
 function obtenerUltimasOrdenesPorSerie() {
-  var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss    = getSS_();
   var sheet = ss.getSheetByName("ORDENES");
   var data  = sheet.getDataRange().getValues();
   var maxPorSerie = {};
@@ -2328,7 +2426,7 @@ function obtenerUltimasOrdenesPorSerie() {
 }
 
 function getSiguienteNumeroOrden(serie) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheet = ss.getSheetByName("ORDENES");
   var data = sheet.getDataRange().getValues();
   var max = 0;
@@ -2344,7 +2442,7 @@ function getSiguienteNumeroOrden(serie) {
 // ── 4. FOLIO SIGUIENTE (ej: INT-0001, INT-0002, ...) ─────────────────────────────
 // Función auxiliar interna, usada por crearPedidoInternoCompleto()
 function getSiguienteFolio(prefijo) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheet = ss.getSheetByName("PEDIDOS");
   var data = sheet.getDataRange().getValues();
   var max = 0;
@@ -2368,7 +2466,7 @@ function crearPedidoInternoCompleto(payload) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var sheetPed = ss.getSheetByName("PEDIDOS");
     var sheetOrd = ss.getSheetByName("ORDENES");
     var sheetLot = ss.getSheetByName("LOTES");
@@ -2492,7 +2590,7 @@ function mrpmpObtenerDatos(serie) {
   try {
     serie = (serie || 'TODAS').toString().toUpperCase().trim();
 
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shOrd = ss.getSheetByName('ORDENES');
     var shEst = ss.getSheetByName('ESTANDARES');
     var shRut = ss.getSheetByName('RUTAS');
@@ -2506,7 +2604,7 @@ function mrpmpObtenerDatos(serie) {
     // ── 0. DESCRIPCIÓN DE ALAMBRES DESDE RUTAS ────────────────
     var mapaDesc = {};
     if (shRut) {
-      var dataRutDesc = shRut.getDataRange().getValues();
+      var dataRutDesc = getRutasData_();
       var hRutDesc    = dataRutDesc[0].map(function(h){ return String(h).toUpperCase().trim(); });
       var iRutCod  = hRutDesc.indexOf('CODIGO');
       var iRutDesc = hRutDesc.indexOf('DESCRIPCION');
@@ -2518,7 +2616,7 @@ function mrpmpObtenerDatos(serie) {
     }
 
     // ── 0b. ESTÁNDARES ─────────────────────────────────────────
-    var dataEst = shEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var ieMAQ   = hEst.indexOf('MAQUINA');
     var ieVEL   = hEst.indexOf('VELOCIDAD');
@@ -2962,7 +3060,7 @@ function mrpmpLeerSalidas(shInv) {
 // ────────────────────────────────────────────────────────────
 function mrpmpGuardarSalida(datos) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shInv = ss.getSheetByName('INV_ALAMBRES');
     if (!shInv) throw new Error('No existe la hoja INV_ALAMBRES.');
 
@@ -3011,7 +3109,7 @@ function mrpmpObtenerCodigosAlambre() {
     } catch(e) {}
 
     // Desde INV_ALAMBRES
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shInv = ss.getSheetByName('INV_ALAMBRES');
     if (shInv) {
       var dataInv = shInv.getDataRange().getValues();
@@ -3032,7 +3130,7 @@ function mrpmpObtenerCodigosAlambre() {
 // CREAR HOJA INV_ALAMBRES (ejecutar una sola vez manualmente)
 // ────────────────────────────────────────────────────────────
 function mrpmpCrearHojaInventario() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
 
   if (ss.getSheetByName('INV_ALAMBRES')) {
     Logger.log('INV_ALAMBRES ya existe — no se creó de nuevo.');
@@ -3068,11 +3166,11 @@ function mrpmpObtenerDetalleDia(params) {
     var diaIdx  = Number(params.diaIdx  || 0);
     var serie   = String(params.serie   || 'TODAS').trim().toUpperCase();
 
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shOrd = ss.getSheetByName('ORDENES');
     var shEst = ss.getSheetByName('ESTANDARES');
 
-    var dataEst = shEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var iEM = hEst.indexOf('MAQUINA'), iEV = hEst.indexOf('VELOCIDAD');
     var iEF = hEst.indexOf('EFICIENCIA'), iET = hEst.indexOf('TURNOS');
@@ -3188,14 +3286,14 @@ function mrpmpObtenerDetalleDia(params) {
 // ─────────────────────────────────────────────────────────────────────────────
 function rellenarMPMasivo() {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shOrd   = ss.getSheetByName('ORDENES');
     var shRut   = ss.getSheetByName('RUTAS');
 
     var PROCESOS_MP = ['ESTAMPADO','FORJA','ROSCADO','ESTIRADO','TREFILADO','COLATADO'];
 
     // Leer RUTAS → mapa codigo → { primera MP, todas las MP }
-    var dataRut = shRut.getDataRange().getValues();
+    var dataRut = getRutasData_();
     var hRut    = dataRut[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var rCOD = hRut.indexOf('CODIGO');
     var rPROC = hRut.indexOf('PROCESO');
@@ -3261,7 +3359,7 @@ function rellenarMPMasivo() {
 // ─────────────────────────────────────────────────────────────────────────────
 function obtenerOpcionesMP(idOrden) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shOrd = ss.getSheetByName('ORDENES');
     var shRut = ss.getSheetByName('RUTAS');
 
@@ -3289,7 +3387,7 @@ function obtenerOpcionesMP(idOrden) {
     if (filaOrd < 0) return JSON.stringify({ success: false, msg: 'Orden no encontrada' });
 
     // Buscar opciones en RUTAS
-    var dataRut = shRut.getDataRange().getValues();
+    var dataRut = getRutasData_();
     var hRut    = dataRut[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var rCOD    = hRut.indexOf('CODIGO');
     var rPROC   = hRut.indexOf('PROCESO');
@@ -3329,7 +3427,7 @@ function obtenerOpcionesMP(idOrden) {
 // ─────────────────────────────────────────────────────────────────────────────
 function guardarMP(idOrden, nuevaMP) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shOrd = ss.getSheetByName('ORDENES');
     var data  = shOrd.getDataRange().getValues();
     var hOrd  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -3371,7 +3469,7 @@ function guardarMP(idOrden, nuevaMP) {
 
 function mrpmpSincronizarSalidasProduccion() {
   try {
-    var ss     = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss     = getSS_();
     var shProd = ss.getSheetByName('PRODUCCION');
     var shOrd  = ss.getSheetByName('ORDENES');
     var shRut  = ss.getSheetByName('RUTAS');
@@ -3409,7 +3507,7 @@ function mrpmpSincronizarSalidasProduccion() {
     // ── 2. Mapa código MP → descripción (desde RUTAS, columna MP) ───────────────
     var mapaDescMP = {}; // { '03061006S': 'ALAMBRE 06 TREFILADO' }
     if (shRut) {
-      var dataRut = shRut.getDataRange().getValues();
+      var dataRut = getRutasData_();
       var hRut    = dataRut[0].map(function(h){ return String(h).toUpperCase().trim(); });
       var iRutPro = hRut.indexOf('PROCESO');
       var iRutMP  = hRut.indexOf('MP');
@@ -3567,11 +3665,11 @@ function mrpmpSincronizarSalidasProduccion() {
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 function obtenerDatosGenerador() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetPed = ss.getSheetByName("PEDIDOS");
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetRut = ss.getSheetByName("RUTAS");
-  var dataRut  = sheetRut.getDataRange().getValues();
+  var dataRut = getRutasData_();
 
   var dataPed = sheetPed.getDataRange().getValues();
   var dataOrd = sheetOrd.getDataRange().getValues();
@@ -3644,7 +3742,7 @@ function obtenerDatosGenerador() {
  * PROCESA LOS CAMBIOS EN BATCH (Generar, Cancelar, Activar)
  */
 function ejecutarCambiosGenerador(cambios) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetPed = ss.getSheetByName("PEDIDOS");
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetLot = ss.getSheetByName("LOTES");
@@ -3654,7 +3752,7 @@ function ejecutarCambiosGenerador(cambios) {
     return "Error: No se encontró una de las hojas (PEDIDOS, ORDENES, LOTES o RUTAS)";
   }
 
-  var dataRut = sheetRut.getDataRange().getValues();
+  var dataRut = getRutasData_();
   var lock = LockService.getScriptLock();
 
   // Procesos que consumen materia prima (guardar en Col AD)
@@ -3783,7 +3881,7 @@ function ejecutarCambiosGenerador(cambios) {
  * OBTIENE EL DETALLE DE LAS ÓRDENES RELACIONADAS A UN PEDIDO
  */
 function obtenerDetalleOrdenes(folioPedido, partidaParam) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var data = sheetOrd.getDataRange().getValues();
   var filtrarPartida = (partidaParam !== undefined && partidaParam !== null && partidaParam !== '');
@@ -3820,7 +3918,7 @@ function obtenerDetalleOrdenes(folioPedido, partidaParam) {
  * CANCELA UNA ORDEN ESPECÍFICA (TODOS SUS PROCESOS) Y ACTUALIZA PLANEACIÓN EN PEDIDOS
  */
 function cancelarOrdenEspecifica(folioPedido, serie, nOrden) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetPed = ss.getSheetByName("PEDIDOS");
   
@@ -3887,7 +3985,7 @@ function cancelarOrdenEspecifica(folioPedido, serie, nOrden) {
 // 1. OBTENER PEDIDOS "TEM"
 function obtenerPedidosTEM() {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetPed = ss.getSheetByName("PEDIDOS");
     var data = sheetPed.getDataRange().getValues();
     
@@ -3943,7 +4041,7 @@ function guardarCambiosTEM(cambios) {
   if(!lock.tryLock(10000)) return "Error: Servidor ocupado.";
 
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetPed = ss.getSheetByName("PEDIDOS");
     var sheetOrd = ss.getSheetByName("ORDENES");
     var sheetEnv = ss.getSheetByName("ENVIADO"); // <--- Nueva referencia
@@ -4029,7 +4127,7 @@ function guardarCambiosTEM(cambios) {
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 function actualizarAceroFamilia(id, nuevoAcero) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sh = ss.getSheetByName("ORDENES");
   var data = sh.getDataRange().getValues();
   var headers = data[0].map(h => String(h).toUpperCase().trim());
@@ -4078,7 +4176,7 @@ function obtenerProduccionPlanificador(filtros) {
 
 // Obtiene procesos y máquinas para el inicio
 function obtenerCatalogosPlanificador() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheet = ss.getSheetByName("ESTANDARES");
   var data = sheet.getDataRange().getValues();
   var catalogo = {}; // { PROCESO: [MAQUINA1, MAQUINA2] }
@@ -4096,7 +4194,7 @@ function obtenerCatalogosPlanificador() {
 
 function obtenerOrdenesPlanificador(procesosSeleccionados) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var shOrd   = ss.getSheetByName("ORDENES");
     var shRutas = ss.getSheetByName("RUTAS");
     var data    = shOrd.getDataRange().getValues();
@@ -4123,7 +4221,7 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
       try { maqPermitidasMap = JSON.parse(cachedRutas); } catch(ex) {}
     }
     if (!cachedRutas || Object.keys(maqPermitidasMap).length === 0) {
-      var dRutas = shRutas.getDataRange().getValues();
+      var dRutas = getRutasData_();
       for (var r = 1; r < dRutas.length; r++) {
         maqPermitidasMap[String(dRutas[r][1]).trim() + '_' + String(dRutas[r][4]).trim().toUpperCase()] = String(dRutas[r][5] || '');
       }
@@ -4267,14 +4365,14 @@ function obtenerOrdenesPlanificador(procesosSeleccionados) {
 function planifInvalidarCacheInv() {
   try {
     var cache = CacheService.getScriptCache();
-    cache.removeAll(['planif_invExtMap_v1', 'planif_codigoVentaMap_v1', 'planif_rutasMap_v1', 'maquinasDelProceso_v1']);
+    cache.removeAll(['planif_invExtMap_v1', 'planif_codigoVentaMap_v1', 'planif_rutasMap_v1', 'maquinasDelProceso_v1', 'cache_codigos_raw_v1', 'cache_estandares_raw_v1', 'cache_rutas_raw_v1']);
     return 'ok';
   } catch(e) { return 'Error: ' + e.toString(); }
 }
 
 function obtenerHistorialMaquina(maquina) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName('ORDENES');
     var fLimite = new Date(); fLimite.setDate(fLimite.getDate() - 90);
 
@@ -4343,7 +4441,7 @@ function obtenerHistorialMaquina(maquina) {
 }
 
 function guardarPlanificacion(listaCambios) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sh = ss.getSheetByName("ORDENES");
   var data = sh.getDataRange().getValues();
   var headers = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -4395,7 +4493,7 @@ function guardarPlanificacion(listaCambios) {
 
 function terminarPedidoColatado(folioPedido) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shPed = ss.getSheetByName("PEDIDOS");
     var shOrd = ss.getSheetByName("ORDENES");
     var dataPed = shPed.getDataRange().getValues();
@@ -4432,7 +4530,7 @@ function terminarPedidoColatado(folioPedido) {
 
 function terminarPedidosPorCodigo(codigo) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shPed = ss.getSheetByName("PEDIDOS");
     var shOrd = ss.getSheetByName("ORDENES");
     var dataPed = shPed.getDataRange().getValues();
@@ -4478,7 +4576,7 @@ function terminarPedidosPorCodigo(codigo) {
 
 function obtenerDetallePedidoAlerta(codigo) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shPed = ss.getSheetByName("PEDIDOS");
     var shOrd = ss.getSheetByName("ORDENES");
     var dataPed = shPed.getDataRange().getValues();
@@ -4547,7 +4645,7 @@ function obtenerDetallePedidoAlerta(codigo) {
  */
 function planifCambiarEstadoOrdenCompleta(idOrden, nuevoEst, nota) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shOrd = ss.getSheetByName('ORDENES');
     var shPed = ss.getSheetByName('PEDIDOS');
 
@@ -4652,7 +4750,7 @@ function planifCambiarEstadoOrdenCompleta(idOrden, nuevoEst, nota) {
 }
 
 function ejecutarCambioEstadoDirecto(id, nuevoEstado) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sh = ss.getSheetByName("ORDENES");
 
   // Localizar la fila del ID usando TextFinder — no carga toda la hoja
@@ -4674,7 +4772,7 @@ function ejecutarCambioEstadoDirecto(id, nuevoEstado) {
 
 function actualizarMaquinasRutaPlanif(codigo, proceso, maqsString) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("RUTAS");
     var data = sh.getDataRange().getValues();
     var codUp  = String(codigo).trim().toUpperCase();
@@ -4706,7 +4804,7 @@ function actualizarMaquinasRutaPlanif(codigo, proceso, maqsString) {
 
 function obtenerDatosCantidadOrden(id) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sh = ss.getSheetByName("ORDENES");
     var data = sh.getDataRange().getValues();
     var headers = data[0].map(h => String(h).toUpperCase().trim());
@@ -4771,7 +4869,7 @@ function obtenerDatosCantidadOrdenBatch(idsJson) {
     var setIds = {};
     ids.forEach(function(id) { setIds[String(id)] = true; });
 
-    var ss  = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss  = getSS_();
     var sh  = ss.getSheetByName('ORDENES');
     var lastRow = sh.getLastRow();
     var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
@@ -4833,7 +4931,7 @@ function obtenerDatosCantidadOrdenBatch(idsJson) {
 
 function actualizarCantidadOrden(id, nuevaCantidad) {
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sh        = ss.getSheetByName("ORDENES");
     var shPedidos = ss.getSheetByName("PEDIDOS");
     var data      = sh.getDataRange().getValues();
@@ -5013,7 +5111,7 @@ function actualizarCantidadOrden(id, nuevaCantidad) {
 
 function actualizarPrioridadesMaquina(maquina, proceso, cambiosPrio) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("ORDENES");
     var data = sh.getDataRange().getValues();
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -5040,7 +5138,7 @@ function eliminarRegistroProduccion(idRegistro, filaHoja) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return JSON.stringify({ success: false, msg: "Servidor ocupado." });
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sheetProd = ss.getSheetByName("PRODUCCION");
     var dataProd  = sheetProd.getDataRange().getValues();
 
@@ -5075,7 +5173,7 @@ function eliminarRegistroProduccion(idRegistro, filaHoja) {
 
 function obtenerProdPlanif(idOrden) {
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shProd = ss.getSheetByName("PRODUCCION");
     var shOrd  = ss.getSheetByName("ORDENES");
     var tz     = ss.getSpreadsheetTimeZone();
@@ -5128,7 +5226,7 @@ function obtenerProdPlanif(idOrden) {
 }
 
 function actualizarPesoMasivoPlanif(id, nuevoPeso) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var shOrd = ss.getSheetByName("ORDENES");
   var shRutas = ss.getSheetByName("RUTAS");
   var dataO = shOrd.getDataRange().getValues();
@@ -5193,12 +5291,13 @@ function actualizarPesoMasivoPlanif(id, nuevoPeso) {
     }
   }
 
+  invalidarCacheRutas_();
   return "OK";
 }
 
 function obtenerCandidatosTransferencia(idOrdenOrigen) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var shOrd = ss.getSheetByName("ORDENES");
     var dOrd  = shOrd.getDataRange().getValues();
 
@@ -5235,7 +5334,7 @@ function ejecutarTraspasoParcialOTotal(idRegistro, idOrdenDest, kgs) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return JSON.stringify({ success: false, msg: "Servidor ocupado." });
   try {
-    var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss    = getSS_();
     var shProd = ss.getSheetByName("PRODUCCION");
     var dProd  = shProd.getDataRange().getValues();
 
@@ -5356,13 +5455,13 @@ function getSvgAcero(acero) {
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 function obtenerFamiliasMRP() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetInv = ss.getSheetByName("INVENTARIO_EXTERNO");
   var sheetCod = ss.getSheetByName("CODIGOS");
   var sheetPlan = ss.getSheetByName("PLANIFICACION_STOCK");
   
   // A. MAPEO CODIGO -> FAMILIA Y PESO
-  var dataCod = sheetCod.getDataRange().getValues();
+  var dataCod = getCodigosData_();
   var hCod = dataCod[0].map(function(h){ return String(h).toUpperCase().trim(); });
   var icCod = hCod.indexOf("CODIGO"); if(icCod<0) icCod=0;
   var icFam = hCod.indexOf("FAMILY"); if(icFam<0) icFam = hCod.indexOf("FAMILIA"); if(icFam<0) icFam=8;
@@ -5479,7 +5578,7 @@ function obtenerFamiliasMRP() {
 // MOTOR MRP V142 (COLUMNA PESO AB + IGNORAR WIP/PISO)
 function sincronizarMRP(familiasSeleccionadas, ignorarWip, ignorarPiso) {
   var tInicio = new Date().getTime();
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   
   try {
     var sheetPlan = ss.getSheetByName("PLANIFICACION_STOCK");
@@ -5495,7 +5594,7 @@ function sincronizarMRP(familiasSeleccionadas, ignorarWip, ignorarPiso) {
     var valNum = function(n) { var v = parseFloat(n); return isNaN(v) ? 0 : v; };
 
     // 1. MAPA MAESTRO (CATÁLOGO DE CÓDIGOS)
-    var dataCod = sheetCod.getDataRange().getValues();
+    var dataCod = getCodigosData_();
     var hCod = dataCod[0];
     var icCod   = getCol(hCod, "CODIGO"); 
     var icFam   = getCol(hCod, "FAMILY"); if(icFam < 0) icFam = getCol(hCod, "FAMILIA");
@@ -5844,7 +5943,7 @@ function sincronizarMRP(familiasSeleccionadas, ignorarWip, ignorarPiso) {
 
 function obtenerDatosProgramador(familias) {
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sheetPlan = ss.getSheetByName("PLANIFICACION_STOCK");
     var sheetCod  = ss.getSheetByName("CODIGOS");
     var sheetOrd  = ss.getSheetByName("ORDENES");
@@ -5865,7 +5964,7 @@ function obtenerDatosProgramador(familias) {
       if (cod && mp && !mapaMP[cod]) mapaMP[cod] = mp;
     }
 
-    var dataCod = sheetCod.getDataRange().getValues();
+    var dataCod = getCodigosData_();
     var hCod    = dataCod[0].map(h => String(h).toUpperCase().trim());
     var icCod   = hCod.indexOf("CODIGO"); if(icCod<0) icCod=0;
     var icFamCod= hCod.indexOf("FAMILY"); if(icFamCod<0) icFamCod=hCod.indexOf("FAMILIA");
@@ -5918,7 +6017,7 @@ function obtenerDatosProgramador(familias) {
 // 4.5 OBTENER PRODUCCION DETALLADA (Para modal WIP en ProgramadorHTML)
 function obtenerProduccionDetallada(codigoBuscado) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetOrd = ss.getSheetByName("ORDENES");
     var sheetProd = ss.getSheetByName("PRODUCCION");
     
@@ -5999,7 +6098,7 @@ function obtenerProduccionDetallada(codigoBuscado) {
 
 // 4. GUARDAR CAMBIOS (EDICIÓN)
 function guardarCambiosProgramador(cambios) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetPlan = ss.getSheetByName("PLANIFICACION_STOCK");
   var dataPlan = sheetPlan.getDataRange().getValues();
   var hPlan = dataPlan[0];
@@ -6050,7 +6149,7 @@ function guardarCambiosProgramador(cambios) {
 
 function procesarAjusteMRP(item) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetOrd = ss.getSheetByName("ORDENES");
     var sheetPed = ss.getSheetByName("PEDIDOS");
     var sheetCod = ss.getSheetByName("CODIGOS"); 
@@ -6071,7 +6170,7 @@ function procesarAjusteMRP(item) {
 
     // CASO NUEVO PEDIDO
     if (accion == "NUEVO PEDIDO") {
-       var dataCod = sheetCod.getDataRange().getValues(); 
+       var dataCod = getCodigosData_(); 
        var unidadEncontrada = "PZA"; 
        var targetCod = String(item.CODIGO).trim().toUpperCase();
        
@@ -6280,7 +6379,7 @@ function ejecutarCancelacionCascada(sheetPed, sheetOrd, pedidoID, hOrd) {
 
 function procesarCancelarEx(item) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetOrd = ss.getSheetByName("ORDENES");
     var sheetPed = ss.getSheetByName("PEDIDOS");
     
@@ -6387,12 +6486,12 @@ function procesarCancelarEx(item) {
 
 function obtenerDatosProgramadorInter(proceso) {
   try {
-    var ss         = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss         = getSS_();
     var sheetOrd   = ss.getSheetByName("ORDENES");
     var sheetEst   = ss.getSheetByName("ESTANDARES");
     var sheetRutas = ss.getSheetByName("RUTAS");
 
-    var dataEst = sheetEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var eID=hEst.indexOf("ID"), ePROC=hEst.indexOf("PROCESO"), eMAQ=hEst.indexOf("MAQUINA");
     var eVEL=hEst.indexOf("VELOCIDAD"), eUNID=hEst.indexOf("UNIDAD_VEL");
@@ -6412,7 +6511,7 @@ function obtenerDatosProgramadorInter(proceso) {
       maquinas.push(obj); nombresMaqs.push(maqNom.toUpperCase()); mapaEstandar[maqNom.toUpperCase()]=obj;
     }
 
-    var dataRutas=sheetRutas.getDataRange().getValues();
+    var dataRutas = getRutasData_();
     var hRutas=dataRutas[0].map(function(h){return String(h).toUpperCase().trim();});
     var rCOD=hRutas.indexOf("CODIGO"), rPROC=hRutas.indexOf("PROCESO"), rMAQ=hRutas.indexOf("MAQUINA");
     var rutasMaqMap={};
@@ -6520,9 +6619,9 @@ function obtenerDatosProgramadorInter(proceso) {
 // ── 1. OBTENER LISTA DE PROCESOS ──────────────────────────────────────────────────
 function obtenerProcesosParaProgramador() {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var sheetEst = ss.getSheetByName("ESTANDARES");
-    var data     = sheetEst.getDataRange().getValues();
+    var data     = getEstandaresData_();
     var headers  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var idxProc  = headers.indexOf("PROCESO");
 
@@ -6543,13 +6642,13 @@ function obtenerProcesosParaProgramador() {
 // Devuelve { success, maquinas: [...], ordenes: [...] }
 function obtenerDatosProgramadorInter(proceso) {
   try {
-    var ss          = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss          = getSS_();
     var sheetOrd    = ss.getSheetByName("ORDENES");
     var sheetEst    = ss.getSheetByName("ESTANDARES");
     var sheetRutas  = ss.getSheetByName("RUTAS");
 
     // ── A. MÁQUINAS DEL PROCESO (desde ESTANDARES) ───────────────────────────
-    var dataEst  = sheetEst.getDataRange().getValues();
+    var dataEst  = getEstandaresData_();
     var hEst     = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var eID      = hEst.indexOf("ID");
     var ePROC    = hEst.indexOf("PROCESO");
@@ -6589,7 +6688,7 @@ function obtenerDatosProgramadorInter(proceso) {
 
     // ── B. MAPA DE MÁQUINAS PERMITIDAS (RUTAS col F) ─────────────────────────
     // RUTAS: B=CODIGO, E=PROCESO, F=MAQUINA
-    var dataRutas = sheetRutas.getDataRange().getValues();
+    var dataRutas = getRutasData_();
     var hRutas    = dataRutas[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var rCOD  = hRutas.indexOf("CODIGO");   // col B = 1
     var rPROC = hRutas.indexOf("PROCESO");  // col E = 4
@@ -6749,7 +6848,7 @@ function obtenerDatosProgramadorInter(proceso) {
 // ── 3. GUARDAR FECHA INICIO MANUAL ───────────────────────────────────────────────
 function guardarFechaIniOrdenProg(idOrden, fecha) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("ORDENES");
     var data = sh.getDataRange().getValues();
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -6772,7 +6871,7 @@ function guardarFechaIniOrdenProg(idOrden, fecha) {
 // ── 4. GUARDAR EFICIENCIA Y TURNOS DE MÁQUINA ────────────────────────────────────
 function guardarEficienciaTurnos(idEstandar, eficiencia, turnos) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("ESTANDARES");
     var data = sh.getDataRange().getValues();
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -6797,7 +6896,7 @@ function guardarEficienciaTurnos(idEstandar, eficiencia, turnos) {
 // ── 5. OBTENER RUTA COMPLETA DE UNA ORDEN ────────────────────────────────────────
 function obtenerRutaCompletaOrden(serie, orden) {
   try {
-    var ss         = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss         = getSS_();
     var sheetOrd   = ss.getSheetByName("ORDENES");
     var sheetRutas = ss.getSheetByName("RUTAS");
     var sheetEst   = ss.getSheetByName("ESTANDARES");
@@ -6824,7 +6923,7 @@ function obtenerRutaCompletaOrden(serie, orden) {
     if (!ordenRow) return JSON.stringify({ success: false, msg: "Orden no encontrada: "+serie+"."+orden });
 
     // Mapa de estándares
-    var dataEst = sheetEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var eMaq = hEst.indexOf("MAQUINA"), eVel = hEst.indexOf("VELOCIDAD");
     var eEfic= hEst.indexOf("EFICIENCIA"), eTurn= hEst.indexOf("TURNOS");
@@ -6843,7 +6942,7 @@ function obtenerRutaCompletaOrden(serie, orden) {
     }
 
     // Pasos de la ruta
-    var dataRutas = sheetRutas.getDataRange().getValues();
+    var dataRutas = getRutasData_();
     var hRutas    = dataRutas[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var rCOD = hRutas.indexOf("CODIGO");
     var rSEC = hRutas.indexOf("SEC");
@@ -6894,7 +6993,7 @@ function obtenerRutaCompletaOrden(serie, orden) {
 // ── 6. CAMBIAR ESTADO DE ORDEN ────────────────────────────────────────────────────
 function cambiarEstadoOrdenProg(idOrden, nuevoEstado) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("ORDENES");
     var data = sh.getDataRange().getValues();
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -6917,7 +7016,7 @@ function cambiarEstadoOrdenProg(idOrden, nuevoEstado) {
 // ── 9. REACTIVAR ÓRDENES ─────────────────────────────────────────────────────────
 function reactivarOrdenes(ids, proceso) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("ORDENES");
     var data = sh.getDataRange().getValues();
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -6941,7 +7040,7 @@ function reactivarOrdenes(ids, proceso) {
 // ── 10. GUARDAR FECHAS CALCULADAS (FECHA_INICIO_PROG / FECHA_FIN_PROG) ───────────
 function guardarFechasProgOrdenes(fechas) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var sh   = ss.getSheetByName("ORDENES");
     var data = sh.getDataRange().getValues();
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -6967,12 +7066,12 @@ function guardarFechasProgOrdenes(fechas) {
 // ── 11. RECALCULAR FECHAS TODOS LOS PROCESOS (botón Actualizar Todo) ─────────────
 function recalcularFechasTodosLosProcesos() {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var shOrd= ss.getSheetByName("ORDENES");
     var shEst= ss.getSheetByName("ESTANDARES");
     var dOrd = shOrd.getDataRange().getValues();
     var hOrd = dOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
-    var dEst = shEst.getDataRange().getValues();
+    var dEst = getEstandaresData_();
     var hEst = dEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
 
     var colID   = hOrd.indexOf("ID");
@@ -7066,7 +7165,7 @@ function recalcularFechasTodosLosProcesos() {
 // ── 12. GUARDAR MÁQUINAS PERMITIDAS EN RUTAS (col F) ─────────────────────────────
 function guardarMaquinasPermitidas(idOrden, codigoOrden, maqString, proceso) {
   try {
-    var ss     = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss     = getSS_();
     var shRutas= ss.getSheetByName("RUTAS");
     var data   = shRutas.getDataRange().getValues();
     var hdr    = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -7084,6 +7183,7 @@ function guardarMaquinasPermitidas(idOrden, codigoOrden, maqString, proceso) {
       }
     }
     SpreadsheetApp.flush();
+    invalidarCacheRutas_();
     return JSON.stringify({ success: true, msg: count+" fila(s) en RUTAS actualizadas." });
   } catch(e) {
     return JSON.stringify({ success: false, msg: e.message });
@@ -7093,7 +7193,7 @@ function guardarMaquinasPermitidas(idOrden, codigoOrden, maqString, proceso) {
 // ── 13. OBTENER ÓRDENES INACTIVAS DE UNA MÁQUINA (últimos N días) ────────────────
 function obtenerOrdenesInactivasMaquina(maquina, dias, filtroEstado) {
   try {
-    var ss   = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss   = getSS_();
     var shO  = ss.getSheetByName("ORDENES");
     var data = shO.getDataRange().getValues();
 
@@ -7182,7 +7282,7 @@ function obtenerOrdenesInactivasMaquina(maquina, dias, filtroEstado) {
 // ── 14. calcularActualizacionEjecucion — actualiza pedido + UNA orden elegida ──
 function calcularActualizacionEjecucion() {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var sheetInv = ss.getSheetByName("INVENTARIO_EXTERNO");
     var sheetOrd = ss.getSheetByName("ORDENES");
     var sheetPed = ss.getSheetByName("PEDIDOS");
@@ -7386,7 +7486,7 @@ function calcularActualizacionEjecucion() {
 // ══════════════════════════════════════════════════════════════════
 function calcularSincronizarColatado() {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shInv   = ss.getSheetByName("INVENTARIO_EXTERNO");
     var shOrd   = ss.getSheetByName("ORDENES");
     var shPed   = ss.getSheetByName("PEDIDOS");
@@ -7396,8 +7496,8 @@ function calcularSincronizarColatado() {
     var dataInv = shInv.getDataRange().getValues();
     var dataOrd = shOrd.getDataRange().getValues();
     var dataPed = shPed.getDataRange().getValues();
-    var dataRut = shRutas.getDataRange().getValues();
-    var dataCod = shCod ? shCod.getDataRange().getValues() : [];
+    var dataRut = getRutasData_();
+    var dataCod = getCodigosData_();
 
     var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var oID   = hOrd.indexOf("ID");
@@ -7780,7 +7880,7 @@ function calcularSincronizarColatado() {
 // Devuelve solo los ítems tipo SIN_PEDIDO (exist/max <= 0.75, sin pedido activo, con ruta en el proceso).
 function obtenerSinPedidoBajoStock(proceso) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shInv   = ss.getSheetByName("INVENTARIO_EXTERNO");
     var shOrd   = ss.getSheetByName("ORDENES");
     var shPed   = ss.getSheetByName("PEDIDOS");
@@ -7795,7 +7895,7 @@ function obtenerSinPedidoBajoStock(proceso) {
     var ORD_MUERTOS = ['CERRADO'];
 
     // ── 1. Máquinas del proceso (ESTANDARES) ──
-    var dataEst = shEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var ePROC   = hEst.indexOf("PROCESO");
     var eMAQ    = hEst.indexOf("MAQUINA");
@@ -7808,7 +7908,7 @@ function obtenerSinPedidoBajoStock(proceso) {
     }
 
     // ── 2. Mapa código→venta (CODIGOS col A fab, col F venta) ──
-    var dataCod = shCod ? shCod.getDataRange().getValues() : [];
+    var dataCod = getCodigosData_();
     var codigoVentaMap = {};
     for (var cv = 1; cv < dataCod.length; cv++) {
       var cvF = String(dataCod[cv][0]||'').trim().toUpperCase();
@@ -7860,7 +7960,7 @@ function obtenerSinPedidoBajoStock(proceso) {
     }
 
     // ── 4. Mapa ruta: código → TODOS los pasos (igual que calcularSincronizarColatado) ──
-    var dataRut = shRutas.getDataRange().getValues();
+    var dataRut = getRutasData_();
     var rutaMap    = {};  // codigo → [pasos completos]
     var rutaInfoMap = {}; // codigo → info visual (primer paso del PROC)
     for (var r = 1; r < dataRut.length; r++) {
@@ -8141,7 +8241,7 @@ function aplicarSincronizarColatado(items) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return JSON.stringify({ success: false, msg: 'Servidor ocupado.' });
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shOrd   = ss.getSheetByName("ORDENES");
     var shPed   = ss.getSheetByName("PEDIDOS");
     var shLot   = ss.getSheetByName("LOTES");
@@ -8304,7 +8404,7 @@ function aplicarSincronizarColatado(items) {
 // ── 15. aplicarActualizacionEjecucion — aplica cambios en PEDIDO + ORDEN elegida ──
 function aplicarActualizacionEjecucion(seleccionados) {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var sheetPed = ss.getSheetByName("PEDIDOS");
     var sheetOrd = ss.getSheetByName("ORDENES");
 
@@ -8414,7 +8514,7 @@ function ajustarOrdenSobreproduccion(id, nuevoEstado, nuevaCantidad, procesoActu
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return { success:false, msg:"Servidor ocupado, intenta de nuevo." };
   try {
-    var ss  = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss  = getSS_();
     var shO = ss.getSheetByName("ORDENES");
     var shP = ss.getSheetByName("PEDIDOS");
 
@@ -8505,7 +8605,7 @@ function ajustarOrdenSobreproduccion(id, nuevoEstado, nuevaCantidad, procesoActu
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
 function obtenerDatosWIP(familiasSeleccionadas) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetCod = ss.getSheetByName("CODIGOS");
@@ -8533,7 +8633,7 @@ function obtenerDatosWIP(familiasSeleccionadas) {
     if(rutasPorOrdenBase[rb].length > 0) rutasPorOrdenBase[rb][rutasPorOrdenBase[rb].length - 1].isLast = true;
   }
 
-  var dataCod = sheetCod.getDataRange().getValues();
+  var dataCod = getCodigosData_();
   var mapFamily = {};
   for(var c=1; c<dataCod.length; c++) {
       mapFamily[String(dataCod[c][0]).trim()] = String(dataCod[c][8] || "OTROS").toUpperCase().trim();
@@ -8624,7 +8724,7 @@ function obtenerDatosWIP(familiasSeleccionadas) {
 
 // NUEVO: MARCAR LOTE COMO CONCLUIDO
 function marcarLoteConcluido(nombreLote) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheet = ss.getSheetByName("LOTES");
   var data = sheet.getDataRange().getValues();
   
@@ -8682,7 +8782,7 @@ function enviarImagenTelegram(base64Data, caption, chatID_Destino, threadID) { /
 // 1. CARGA AL ABRIR LA APP (Para ver Procesos y Operadores)
 function obtenerDatosInicialesNvo() {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetOps = ss.getSheetByName("OPERADORES");
     var sheetMenu = ss.getSheetByName("MENU_OPERATIVO");
     var sheetStd = ss.getSheetByName("ESTANDARES");
@@ -8691,7 +8791,7 @@ function obtenerDatosInicialesNvo() {
       .filter(r => String(r[1]).toUpperCase().trim() == "PROCESO")
       .map(r => ({ nombre: r[0], img: r[2] }));
 
-    var maquinas = sheetStd.getDataRange().getValues().slice(1).map(r => ({
+    var maquinas = getEstandaresData_().slice(1).map(r => ({
       proc: String(r[2]).toUpperCase().trim(),
       maq: String(r[3]).toUpperCase().trim(),
       grupo: String(r[9]).toUpperCase().trim()
@@ -8712,14 +8812,14 @@ function obtenerDatosInicialesNvo() {
 // 2. CARGA MASIVA DE UN PROCESO (La que evita que se trabe el Tool CN)
 function obtenerTodoElProcesoNvo(nombreProceso) {
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetOrd  = ss.getSheetByName("ORDENES");
     var sheetProd = ss.getSheetByName("PRODUCCION");
     var sheetLotes= ss.getSheetByName("LOTES");
     var sheetStd  = ss.getSheetByName("ESTANDARES");
 
     // 1. Máquinas y grupos del proceso
-    var dataStd = sheetStd.getDataRange().getValues();
+    var dataStd = getEstandaresData_();
     var maquinasProceso = [], nombresMaquinas = [];
     dataStd.slice(1).forEach(function(r) {
       if (String(r[2]).toUpperCase().trim() == nombreProceso.toUpperCase().trim()) {
@@ -8863,7 +8963,7 @@ function _getLotesExistentes(sheetLotes) {
 
 // 3. BUSCADOR DE ÓRDENES TERMINADAS (Historial 90 días)
 function buscarTerminadasNvo(proceso, texto) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var data = ss.getSheetByName("ORDENES").getRange(1,1,ss.getSheetByName("ORDENES").getLastRow(), 27).getDisplayValues();
   var res = [];
   var limite = new Date(); limite.setDate(limite.getDate() - 90);
@@ -8895,7 +8995,7 @@ function guardarProduccionCompleta(payload) {
   if(!lock.tryLock(15000)) return { success: false, msg: "Servidor ocupado." };
   
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sheetProd = ss.getSheetByName("PRODUCCION");
     var sheetLotes = ss.getSheetByName("LOTES");
     var sheetOrd = ss.getSheetByName("ORDENES");
@@ -8907,7 +9007,7 @@ function guardarProduccionCompleta(payload) {
     var lotesParaActualizar = new Set();
 
     // --- A. CREACIÓN DE LOTES FALTANTES ---
-    var dataLotes = sheetLotes.getDataRange().getValues();
+    var dataLotes = sheetLotes.getRange(1, 1, sheetLotes.getLastRow(), 5).getValues();
     var maxIdLote = 0;
     for(var i=1; i<dataLotes.length; i++) {
       var valId = parseInt(dataLotes[i][0]);
@@ -8987,8 +9087,8 @@ function guardarProduccionCompleta(payload) {
     registros.forEach((r, idx) => r.idProdInterno = nuevasFilasProd[idx][0]);
 
     // --- C. ACTUALIZAR SUMATORIA EN LOTES ---
-    var dataLotesActualizado = sheetLotes.getDataRange().getValues();
-    var dataProdActualizado = sheetProd.getDataRange().getValues();
+    var dataLotesActualizado = sheetLotes.getRange(1, 1, sheetLotes.getLastRow(), 6).getValues();
+    var dataProdActualizado = sheetProd.getRange(1, 1, sheetProd.getLastRow(), 11).getValues();
     
     lotesParaActualizar.forEach(lKey => {
        var sumaLote = 0;
@@ -9012,7 +9112,7 @@ function guardarProduccionCompleta(payload) {
     });
 
     // --- D. ACTUALIZAR ORDENES ---
-    var dataOrd = sheetOrd.getDataRange().getValues();
+    var dataOrd = sheetOrd.getRange(1, 1, sheetOrd.getLastRow(), 16).getValues();
     var pedidosAfectados = new Set();
 
     ordenesAfectadas.forEach(ordID => {
@@ -9089,7 +9189,7 @@ function guardarProduccionCompleta(payload) {
     });
 
     // --- E. ACTUALIZAR PEDIDOS ---
-    var dataPed = sheetPed.getDataRange().getValues();
+    var dataPed = sheetPed.getRange(1, 1, sheetPed.getLastRow(), 9).getValues();
     pedidosAfectados.forEach(key => {
        var pts = key.split("|");
        var pID = pts[0]; var pPart = pts[1];
@@ -9121,12 +9221,12 @@ function guardarProduccionCompleta(payload) {
 // --- FUNCIÓN PARA BUSCAR ÓRDENES TERMINADAS EN EL PASADO (60 DÍAS) ---
 // XXX VERIFICAR SI HAY QUE ELIMINARSE 
 function obtenerOrdenesTerminadasPasado(maquina, textoBusqueda, nombreProceso) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetRut = ss.getSheetByName("RUTAS");
   
   // A. OBTENER RUTAS (Misma lógica de tu función original)
-  var dataRut = sheetRut.getDataRange().getValues();
+  var dataRut = getRutasData_();
   var mapMaquinasValidas = {}; 
   for(var r=1; r<dataRut.length; r++) {
      var key = String(dataRut[r][1]).trim() + "|" + String(dataRut[r][4]).toUpperCase().trim() + "|" + String(dataRut[r][3]).trim(); 
@@ -9183,7 +9283,7 @@ function obtenerOrdenesTerminadasPasado(maquina, textoBusqueda, nombreProceso) {
 // 1. OBTENER DATOS PARA PANTALLA DETALLE (MÓVIL)
 // XXX VERIFICAR SI HAY QUE ELIMINAR
 function obtenerDatosPantallaNotif(id) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sOrd = ss.getSheetByName("ORDENES");
   var sInv = ss.getSheetByName("INVENTARIO_EXTERNO");
   var sProd = ss.getSheetByName("PRODUCCION");
@@ -9252,7 +9352,7 @@ function procesarGranCambioDetalle(payload) {
   if(!lock.tryLock(15000)) return { success: false, msg: "Servidor ocupado." };
   
   try {
-    var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss = getSS_();
     var sOrd = ss.getSheetByName("ORDENES");
     var sProd = ss.getSheetByName("PRODUCCION");
     var dOrd = sOrd.getDataRange().getValues();
@@ -9360,8 +9460,8 @@ function enviarMensajeOrdenTelegram(filaOrd, producidoTotal, estado, procesoNomb
 
 // 4. MOTOR DE ESTADOS (DISPARA TELEGRAM)
 function recalcularEstadoOrden(sheetOrd, sheetProd, idOrden) {
-  if(!sheetOrd) sheetOrd = SpreadsheetApp.openById(ID_HOJA_CALCULO).getSheetByName("ORDENES");
-  if(!sheetProd) sheetProd = SpreadsheetApp.openById(ID_HOJA_CALCULO).getSheetByName("PRODUCCION");
+  if(!sheetOrd) sheetOrd = getSS_().getSheetByName("ORDENES");
+  if(!sheetProd) sheetProd = getSS_().getSheetByName("PRODUCCION");
 
   var dataProd = sheetProd.getDataRange().getValues();
   var dataOrd = sheetOrd.getDataRange().getValues();
@@ -9406,7 +9506,7 @@ function recalcularEstadoOrden(sheetOrd, sheetProd, idOrden) {
 // =============
 
 function actualizarSelloDesdeTelegram(chatId, msgIdOrig, nSello) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var data = sheetProd.getDataRange().getValues();
   var f = -1;
@@ -9446,7 +9546,7 @@ function actualizarSelloDesdeTelegram(chatId, msgIdOrig, nSello) {
 }
 
 function validarAcerosProduccion(registrosNuevos, esRevalidacion) {
-  var ssProd = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ssProd = getSS_();
   var ssMP = SpreadsheetApp.openById(ID_HOJA_OM);
   var sheetProd = ssProd.getSheetByName("PRODUCCION");
   var sheetOrd = ssProd.getSheetByName("ORDENES");
@@ -9595,7 +9695,7 @@ function fuzzySteelMatch(steelA, steelB) {
 
 // 1. CARGA INICIAL: Solo procesos (igual que NuevaCapturaHTML)
 function obtenerProcesosTablero() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetMenu = ss.getSheetByName("MENU_OPERATIVO");
   
   var procesos = sheetMenu.getDataRange().getValues().slice(1)
@@ -9607,7 +9707,7 @@ function obtenerProcesosTablero() {
 
 // 2. CARGA MASIVA DE UN PROCESO: Órdenes + Lotes + Rutas + Docs (TODO EN UNA LLAMADA)
 function obtenerOrdenesTableroLight(nombreProceso) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd   = ss.getSheetByName("ORDENES");
   var sheetPed   = ss.getSheetByName("PEDIDOS");
   var sheetLotes = ss.getSheetByName("LOTES");
@@ -9616,7 +9716,7 @@ function obtenerOrdenesTableroLight(nombreProceso) {
   var dataOrd   = sheetOrd.getDataRange().getValues();
   var dataPed   = sheetPed.getDataRange().getValues();
   var dataLotes = sheetLotes.getDataRange().getValues();
-  var dataEst   = sheetEst.getDataRange().getValues();
+  var dataEst   = getEstandaresData_();
 
   // A. Mapa pedidos vivos
   var pedidosVivos = {};
@@ -9733,7 +9833,7 @@ function obtenerOrdenesTableroLight(nombreProceso) {
 
   // E. Peso default desde RUTAS (Col W idx22 = CANT_LOTE)
   var sheetRut = ss.getSheetByName("RUTAS");
-  var dataRut  = sheetRut.getDataRange().getValues();
+  var dataRut = getRutasData_();
   var codigosUsados = {};
   ordenes.forEach(function(o) { codigosUsados[o.codigo] = true; });
   for (var rr = 1; rr < dataRut.length; rr++) {
@@ -9751,10 +9851,10 @@ function obtenerOrdenesTableroLight(nombreProceso) {
 }
 
 function obtenerRutaYDocsOrden(codigo, procesoActual, idOrden) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetRut = ss.getSheetByName("RUTAS");
   var sheetOrd = ss.getSheetByName("ORDENES");
-  var dataRut  = sheetRut.getDataRange().getValues();
+  var dataRut = getRutasData_();
   var dataOrd  = sheetOrd.getDataRange().getValues();
 
   // Construir ruta del código
@@ -9795,7 +9895,7 @@ function obtenerRutaYDocsOrden(codigo, procesoActual, idOrden) {
 
 // 3. HISTÓRICAS: Pedidos de últimos 120 días, cualquier estado
 function obtenerHistoricasTablero(nombreProceso) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var dataOrd = sheetOrd.getDataRange().getValues();
   
@@ -9846,7 +9946,7 @@ function obtenerHistoricasTablero(nombreProceso) {
 
 // 4. GENERAR LOTES (Referencia por Serie.Orden, ID como texto)
 function generarLotesTablero(payload) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetLotes = ss.getSheetByName("LOTES");
   var sheetOrd   = ss.getSheetByName("ORDENES");
 
@@ -9900,7 +10000,7 @@ function generarLotesTablero(payload) {
 
 // 5. CAMBIAR MÁQUINA DE UNA ORDEN
 function cambiarMaquinaOrden(idOrden, secObjetivo, nuevaMaquina, procesoActual, codigo) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var dataOrd = sheetOrd.getDataRange().getValues();
   
@@ -9925,7 +10025,7 @@ function obtenerUrlReporteProduccion(idOrden, ini, fin) {
 //////////***Estas no se si quitarlas ¿Eliminarlas? */
 // 3. GENERAR LOTES
 function generarNuevosLotes(payload) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetLotes = ss.getSheetByName("LOTES");
   var sheetOrd = ss.getSheetByName("ORDENES"); 
   
@@ -9973,7 +10073,7 @@ function generarNuevosLotes(payload) {
 
 // 4. GUARDAR RANGO IMPRESION Y ACTUALIZAR ESTATUS A "IMPRESO"
 function guardarRangoImpresion(idOrden, ini, fin) {
-   var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+   var ss = getSS_();
    var sheetOrd = ss.getSheetByName("ORDENES");
    var sheetLotes = ss.getSheetByName("LOTES");
 
@@ -10018,7 +10118,7 @@ function guardarRangoImpresion(idOrden, ini, fin) {
 
 // ── 1. CATÁLOGOS ──────────────────────────────────────────────────────────────
 function obtenerCatalogosProd() {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetMenu = ss.getSheetByName("MENU_OPERATIVO");
   var sheetEst  = ss.getSheetByName("ESTANDARES");
   var sheetOps  = ss.getSheetByName("OPERADORES");
@@ -10030,7 +10130,7 @@ function obtenerCatalogosProd() {
       procesos.push({ nombre: String(dataMenu[i][0]).toUpperCase().trim(), img: dataMenu[i][2] });
   }
 
-  var dataEst = sheetEst.getDataRange().getValues();
+  var dataEst = getEstandaresData_();
   var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
   var iProcE  = hEst.indexOf("PROCESO"); if (iProcE < 0) iProcE = 2;
   var iMaqE   = -1;
@@ -10068,7 +10168,7 @@ function obtenerCatalogosProd() {
 //  ORDENES y LOTES se cargan por separado solo cuando se necesitan.
 //
 function buscarProduccionCompleta(filtros) {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
 
   // Fechas de filtro como objetos Date
@@ -10171,7 +10271,7 @@ function buscarProduccionCompleta(filtros) {
 // ── Historial FORJA: producción enriquecida con datos de ORDENES ──
 function buscarHistorialForja(fechaIni, fechaFin) {
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var shProd    = ss.getSheetByName('PRODUCCION');
     var shOrd     = ss.getSheetByName('ORDENES');
     if (!shProd) return { registros: [] };
@@ -10287,7 +10387,7 @@ function buscarHistorialForja(fechaIni, fechaFin) {
 
 //3. Lee solo col ID para ubicar la fila, luego lee solo esa fila completa
 function obtenerInfoOrden(idOrden) {
-  var ss    = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss    = getSS_();
   var shOrd = ss.getSheetByName("ORDENES");
   var total = shOrd.getLastRow();
   if (total < 2) return {};
@@ -10317,7 +10417,7 @@ function obtenerInfoOrden(idOrden) {
 
 // ── 4. OBTENER LOTES DE UNA ORDEN (lazy, solo al abrir el combo) ─────────────
 function obtenerLotesDeOrden(idOrden) {
-  var ss         = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss         = getSS_();
   var sheetLotes = ss.getSheetByName("LOTES");
   var totalFilas = sheetLotes.getLastRow();
   if (totalFilas < 2) return {};
@@ -10349,7 +10449,7 @@ function obtenerLotesDeOrdenDetalle(idOrden) {
   // Busca lotes por Serie.Orden derivado del nombre del lote (igual que Tablero Supervisor)
   // idOrden puede ser el ID de cualquier orden del grupo — se busca su Serie.Orden en ORDENES
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shOrd   = ss.getSheetByName('ORDENES');
     var shLotes = ss.getSheetByName('LOTES');
     if (!shLotes || shLotes.getLastRow() < 2) return [];
@@ -10402,7 +10502,7 @@ function obtenerLotesDeOrdenDetalle(idOrden) {
 
 function obtenerMaquinasDeOrden(ordenRef) {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var shOrd    = ss.getSheetByName("ORDENES");
     var shEst    = ss.getSheetByName("ESTANDARES");
 
@@ -10422,7 +10522,7 @@ function obtenerMaquinasDeOrden(ordenRef) {
     if (!proceso) return JSON.stringify({ success: false, maquinas: [] });
 
     // 2. Buscar todas las máquinas de ese proceso en ESTANDARES (col C = PROCESO)
-    var dataEst = shEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var hEst    = dataEst[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var iProcE  = hEst.indexOf("PROCESO"); if (iProcE < 0) iProcE = 2;
     var iMaqE   = -1;
@@ -10448,7 +10548,7 @@ function obtenerMaquinasDeOrden(ordenRef) {
 // ── 5. GUARDAR CAMBIOS ────────────────────────────────────────────────────────
 // NOTA: Si ya tienes guardarCambiosProduccion en tu script, NO la copies.
 function guardarCambiosProduccion(cambios) {
-  var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss       = getSS_();
   var sheet    = ss.getSheetByName("PRODUCCION");
   var sheetOrd = ss.getSheetByName("ORDENES");
 
@@ -10546,7 +10646,7 @@ function guardarCambiosProduccion(cambios) {
 
 // ── 6. EXPORTAR EXCEL ─────────────────────────────────────────────────────────
 function generarReporteKioscoExcel(filtros) {
-  var ss     = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss     = getSS_();
   var tz     = ss.getSpreadsheetTimeZone();
   var shProd = ss.getSheetByName("PRODUCCION");
   var shOrd  = ss.getSheetByName("ORDENES");
@@ -10634,11 +10734,11 @@ function generarReporteKioscoExcel(filtros) {
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 // 1. NUEVA RUTA: CARGAR CATALOGOS (MAQUINAS + FAMILIAS)
 function obtenerCatalogosParaNuevaRuta() {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   
   // A. OBTENER MAQUINAS (ESTANDARES)
   var sheetEst = ss.getSheetByName("ESTANDARES");
-  var dataEst = sheetEst.getDataRange().getValues();
+  var dataEst = getEstandaresData_();
   
   var catalogo = {}; 
   var headers = dataEst[0].map(function(h){return String(h).toUpperCase()});
@@ -10657,7 +10757,7 @@ function obtenerCatalogosParaNuevaRuta() {
 
   // B. OBTENER FAMILIAS UNICAS (RUTAS - COLUMNA X)
   var sheetRutas = ss.getSheetByName("RUTAS");
-  var dataRutas = sheetRutas.getDataRange().getValues();
+  var dataRutas = getRutasData_();
   var familiasSet = new Set();
   
   // Columna X es el índice 23 (Base 0: A=0... X=23)
@@ -10674,9 +10774,9 @@ function obtenerCatalogosParaNuevaRuta() {
 
 // 2. NUEVA RUTA: BUSCAR SI YA EXISTE (INCLUYE FAMILIA)
 function buscarRutaPorCodigo(codigoInput) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetRutas = ss.getSheetByName("RUTAS");
-  var dataRutas = sheetRutas.getDataRange().getValues();
+  var dataRutas = getRutasData_();
   
   var codigoTarget = String(codigoInput).trim().toUpperCase();
   var rutaEncontrada = [];
@@ -10705,7 +10805,7 @@ function buscarRutaPorCodigo(codigoInput) {
 
 // 3. GUARDAR NUEVA RUTA MAESTRA (SOPORTE COL X Y Z)
 function guardarNuevaRutaCompleta(payload) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetRutas = ss.getSheetByName("RUTAS");
   
   var codigoObjetivo = String(payload.codigo).trim().toUpperCase();
@@ -10767,6 +10867,7 @@ function guardarNuevaRutaCompleta(payload) {
                .setValues(filasAInsertar);
   }
   
+  invalidarCacheRutas_();
   return "✅ Ruta Maestra guardada/actualizada correctamente.";
 }
 
@@ -10783,7 +10884,7 @@ function obtenerUltimoIdRuta() {
 
 // A. OBTENER DATOS (LECTURA MEJORADA PARA MAQUINAS)
 function obtenerDatosEditor(idOrden) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd   = ss.getSheetByName("ORDENES");
   var sheetEst   = ss.getSheetByName("ESTANDARES");
   var sheetRutas = ss.getSheetByName("RUTAS");
@@ -10884,7 +10985,7 @@ function obtenerDatosEditor(idOrden) {
 
   // Leer máquinas de RUTAS
   var mapaMaquinasRutas = {};
-  var dataRutas = sheetRutas.getDataRange().getValues();
+  var dataRutas = getRutasData_();
   for (var r = 1; r < dataRutas.length; r++) {
     if (String(dataRutas[r][1]) == String(targetCodigo)) {
       mapaMaquinasRutas[String(dataRutas[r][3])] = dataRutas[r][5];
@@ -10939,7 +11040,7 @@ function obtenerDatosEditor(idOrden) {
   });
 
   // Catálogo ESTANDARES
-  var dataEst = sheetEst.getDataRange().getValues();
+  var dataEst = getEstandaresData_();
   var headersEst = dataEst[0];
   var catalogo = {};
   var idxProcE = -1, idxMaqE = -1;
@@ -10980,7 +11081,7 @@ function obtenerDatosEditor(idOrden) {
 // B. GUARDAR CAMBIOS RUTA (V12 - SOPORTE COLUMNAS X, Y, Z + ACTUALIZACIÓN ORDENES)
 // ===============
 function guardarCambiosRuta(payload) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetRutas = ss.getSheetByName("RUTAS");
   
@@ -11065,6 +11166,8 @@ function guardarCambiosRuta(payload) {
                .setValues(nuevasFilasRutas);
   }
   
+  invalidarCacheRutas_();
+
   // --- 4. ACTUALIZAR ORDENES (CORREGIDO) ---
   // Sanear columna ID: reemplazar celdas vacías o con error (#NUM!, etc.) por UUID
   (function() {
@@ -11424,7 +11527,7 @@ function ejecutarIndexadorRemoto() {
 }
 
 function obtenerDocsTecnicos(codigo) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheet = ss.getSheetByName("BIBLIOTECA_DIGITAL");
   var data = sheet.getDataRange().getValues();
   
@@ -11460,7 +11563,7 @@ function obtenerDocsTecnicos(codigo) {
   // Obtenemos descripción del código para el encabezado
   var desc = "";
   var sheetCod = ss.getSheetByName("CODIGOS");
-  var dataCod = sheetCod.getDataRange().getValues();
+  var dataCod = getCodigosData_();
   for(var c=1; c<dataCod.length; c++) {
      if(String(dataCod[c][0]).trim().toUpperCase() === codigoObjetivo) {
         // Asumiendo Col B (indice 1) es Descripción, ajusta si es diferente
@@ -11480,7 +11583,7 @@ function indexarBibliotecaDigital() {
   // CONFIGURACIÓN: ID de tu carpeta "SISTEMA_DOCUMENTAL"
   var ID_CARPETA_RAIZ = "18znDdtnJ-u1jeyKb2o9IXYsLfUJsSc8Y"; 
 
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheet = ss.getSheetByName("BIBLIOTECA_DIGITAL");
   
   if(!sheet) {
@@ -11572,7 +11675,7 @@ function indexarBibliotecaDigital() {
 // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
 
 function obtenerDatosPlanProduccion(procesoInput) {
-  var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss       = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var data     = sheetOrd.getDataRange().getValues();
   var headers  = data[0];
@@ -11642,13 +11745,13 @@ function obtenerDatosPlanProduccion(procesoInput) {
 }
 
 function obtenerDatosReporteTurnoTsup(procesoInput) {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetOrd  = ss.getSheetByName("ORDENES");
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var sheetEst  = ss.getSheetByName("ESTANDARES");
   var dataOrd   = sheetOrd.getDataRange().getValues();
   var dataProd  = sheetProd.getDataRange().getValues();
-  var dataEst   = sheetEst ? sheetEst.getDataRange().getValues() : [];
+  var dataEst   = sheetEst ? getEstandaresData_() : [];
   var headersOrd = dataOrd[0];
   var getIdxO    = function(n) { return headersOrd.indexOf(n); };
   var idxO = {
@@ -11748,7 +11851,7 @@ function obtenerDatosReporteTurnoTsup(procesoInput) {
 
 // ─── MIS REGISTROS DE PRODUCCIÓN ──────────────────────────────────────────────
 function obtenerMisRegistros(nombreUsuario) {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var sheetOrd  = ss.getSheetByName("ORDENES");
 
@@ -11907,7 +12010,7 @@ function obtenerMisRegistros(nombreUsuario) {
 
 function guardarCambioMiRegistro(payload) {
   try {
-    var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss        = getSS_();
     var sheetProd = ss.getSheetByName("PRODUCCION");
     var data      = sheetProd.getDataRange().getValues();
     var h         = data[0].map(function(x){ return String(x).toUpperCase().trim(); });
@@ -11984,7 +12087,7 @@ function guardarCambioMiRegistro(payload) {
 }
 
 function obtenerPedidosPendientes(incluirQSQ) {
-  var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss       = getSS_();
   var shPed    = ss.getSheetByName("PEDIDOS");
   var shOrd    = ss.getSheetByName("ORDENES");
   var dataPed  = shPed.getDataRange().getValues();
@@ -12096,11 +12199,11 @@ function respaldarSheet() {
 }
 
 function obtenerDatosEficienciaParaCaptura(registros) {
-  var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss       = getSS_();
   var sheetOrd = ss.getSheetByName("ORDENES");
   var sheetEst = ss.getSheetByName("ESTANDARES");
   var dataOrd  = sheetOrd.getDataRange().getValues();
-  var dataEst  = sheetEst.getDataRange().getValues();
+  var dataEst  = getEstandaresData_();
 
   var cleanNum = function(val) {
     if (val == null || val === "") return 0;
@@ -12324,7 +12427,7 @@ function obtenerDatosEficienciaParaCaptura(registros) {
 // ── Devuelve registros reales de PRODUCCION para fecha+turno+proceso ──
 // Usado por el botón de prueba del reporte de eficiencia
 function obtenerRegistrosPorFechaTurnoProceso(fecha, turno, proceso) {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var sheetOrd  = ss.getSheetByName("ORDENES");
 
@@ -12411,7 +12514,7 @@ function obtenerRegistrosPorFechaTurnoProceso(fecha, turno, proceso) {
 // Recibe: registros = [{loteFull, maquina, fecha, ...}], fechaStr = "YYYY-MM-DD"
 // Devuelve JSON: { sobreEficiencia: [{maquina, efic}], lotesIncompletos: [{lote, maquina, falta}], pesosIncorrectos: [{lote, maquina, detalle}] }
 function verificarIrregularidadesReporte(registros, fechaStr) {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetProd = ss.getSheetByName("PRODUCCION");
   var dataProd  = sheetProd.getDataRange().getValues();
   var h         = dataProd[0].map(function(x){ return String(x).toUpperCase().trim(); });
@@ -12462,7 +12565,7 @@ function verificarIrregularidadesReporte(registros, fechaStr) {
   var todosDias = {};
 
   // ── Mapa ordenID → proceso (para filas de PRODUCCION sin col PROCESO) ──
-  var sheetOrdV = SpreadsheetApp.openById(ID_HOJA_CALCULO).getSheetByName("ORDENES");
+  var sheetOrdV = getSS_().getSheetByName("ORDENES");
   var dataOrdV  = sheetOrdV.getDataRange().getValues();
   var hOrdV     = dataOrdV[0].map(function(x){ return String(x).toUpperCase().trim(); });
   var iOrdProcV = hOrdV.indexOf("PROCESO");
@@ -12611,7 +12714,7 @@ function obtenerDatosProgramadorForja() {
     var dataOrd = shOrd.getDataRange().getValues();
     var dataPed = shPed.getDataRange().getValues();
     var dataInv = shInv ? shInv.getDataRange().getValues() : [];
-    var dataRut = shRut ? shRut.getDataRange().getValues() : [];
+    var dataRut = getRutasData_();
     var tz      = Session.getScriptTimeZone();
 
     // ORDENES índices: [1]=PEDIDO [2]=PARTIDA [4]=SERIE [5]=ORDEN [6]=CODIGO
@@ -12997,7 +13100,7 @@ function obtenerMaquinasPorCodigoYProceso(codigo, proceso) {
     var ss   = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
     var shRut = ss.getSheetByName('RUTAS');
     if (!shRut) return JSON.stringify({ maquinas: [] });
-    var data = shRut.getDataRange().getValues();
+    var data = getRutasData_();
     if (data.length < 2) return JSON.stringify({ maquinas: [] });
     var hdr   = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var iCod  = hdr.indexOf('CODIGO');
@@ -13029,7 +13132,7 @@ function fprogObtenerMaquinasForja(codigo) {
     var shRut = ss.getSheetByName('RUTAS');
     if (!shRut) return JSON.stringify({ maquinas: [] });
 
-    var data = shRut.getDataRange().getValues();
+    var data = getRutasData_();
     if (data.length < 2) return JSON.stringify({ maquinas: [] });
 
     var hdr   = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -13062,7 +13165,7 @@ function fpd_obtenerGruposMaquinas() {
     var ss  = SpreadsheetApp.openById('1RKi09zpQ3KMa_JLUINYJysDOFRi3tM2M2a8JW8Qy7gk');
     var shE = ss.getSheetByName('ESTANDARES');
     if (!shE) return JSON.stringify({ grupos: {} });
-    var data = shE.getDataRange().getValues();
+    var data = getEstandaresData_();
     if (data.length < 2) return JSON.stringify({ grupos: {} });
     var hdr  = data[0].map(function(h){ return String(h).toUpperCase().trim(); });
     var iProc  = hdr.indexOf('PROCESO');   // col C = índice 2
@@ -13096,11 +13199,11 @@ function fpd_obtenerGruposMaquinas() {
 // ══════════════════════════════════════════════════════════════════
 function trkGetPlanColatado() {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var shOrd    = ss.getSheetByName('ORDENES');
     var shEst    = ss.getSheetByName('ESTANDARES');
     var dataOrd  = shOrd.getDataRange().getValues();
-    var dataEst  = shEst.getDataRange().getValues();
+    var dataEst  = getEstandaresData_();
     var tz       = ss.getSpreadsheetTimeZone();
 
     // ── Encabezados ORDENES ──
@@ -13380,11 +13483,11 @@ function trkGetPlanColatado() {
 // ══════════════════════════════════════════════════════════════════
 function trkGetPlanClavo() {
   try {
-    var ss       = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss       = getSS_();
     var shOrd    = ss.getSheetByName('ORDENES');
     var shEst    = ss.getSheetByName('ESTANDARES');
     var dataOrd  = shOrd.getDataRange().getValues();
-    var dataEst  = shEst.getDataRange().getValues();
+    var dataEst  = getEstandaresData_();
     var tz       = ss.getSpreadsheetTimeZone();
 
     var hOrd = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -13640,11 +13743,11 @@ function trkGetPlanClavo() {
 // ══════════════════════════════════════════════════════════════════
 function trkGetPlanVarilla() {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shOrd   = ss.getSheetByName('ORDENES');
     var shEst   = ss.getSheetByName('ESTANDARES');
     var dataOrd = shOrd.getDataRange().getValues();
-    var dataEst = shEst.getDataRange().getValues();
+    var dataEst = getEstandaresData_();
     var tz      = ss.getSpreadsheetTimeZone();
 
     var hOrd  = dataOrd[0].map(function(h){ return String(h).toUpperCase().trim(); });
@@ -13896,7 +13999,7 @@ function trkGetPlanVarilla() {
 // ══════════════════════════════════════════════════════════════════
 function trkGetMaterialEnviado(anio, mes) {
   try {
-    var ss     = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss     = getSS_();
     var shEnv  = ss.getSheetByName('ENVIADO');
     if (!shEnv) return JSON.stringify({ success: false, msg: 'Hoja ENVIADO no encontrada' });
     var data   = shEnv.getDataRange().getValues();
@@ -13940,7 +14043,7 @@ function trkGetMaterialEnviado(anio, mes) {
 // ETIQUETAS — Obtener datos de lotes por orden (para EtiquetasHTML)
 // ══════════════════════════════════════════════════════════════
 function pcp_obtenerDatosLotesPorOrden(idOrdenInput, inicio, fin) {
-  var ss = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss = getSS_();
   var sheetLotes = ss.getSheetByName('LOTES');
   var sheetOrd   = ss.getSheetByName('ORDENES');
   var sheetRutas = ss.getSheetByName('RUTAS');
@@ -14030,7 +14133,7 @@ function pcp_obtenerDatosLotesPorOrden(idOrdenInput, inicio, fin) {
 // REPORTE TURNO — Datos del plan de producción por proceso
 // ══════════════════════════════════════════════════════════════
 function pcp_obtenerDatosReporteTurno(procesoInput) {
-  var ss        = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+  var ss        = getSS_();
   var sheetOrd  = ss.getSheetByName('ORDENES');
   var sheetProd = ss.getSheetByName('PRODUCCION');
   var dataOrd   = sheetOrd.getDataRange().getValues();
@@ -14116,7 +14219,7 @@ function pcp_obtenerDatosReporteTurno(procesoInput) {
 // ══════════════════════════════════════════════════════════════
 function lmObtenerHubLote(loteNombre) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shLotes = ss.getSheetByName('LOTES');
     var shOrd   = ss.getSheetByName('ORDENES');
     var shProd  = ss.getSheetByName('PRODUCCION');
@@ -14394,7 +14497,7 @@ function lmObtenerHubLote(loteNombre) {
 // ══════════════════════════════════════════════════════════════
 function lmGuardarCalidadLote(loteNombre, datosCalidad) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shLotes = ss.getSheetByName('LOTES');
     if (!shLotes) return JSON.stringify({ success: false, msg: 'Hoja LOTES no encontrada' });
     var data    = shLotes.getDataRange().getValues();
@@ -14550,7 +14653,7 @@ function lmObtenerDocumentos(codigoProducto) {
 
 function lmBuscarConSerie(payload) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shLotes = ss.getSheetByName('LOTES');
     var shOrd   = ss.getSheetByName('ORDENES');
     if (!shLotes || !shOrd) return JSON.stringify({ success: false, msg: 'Hojas no encontradas' });
@@ -14799,7 +14902,7 @@ function lmBuscarConSerie(payload) {
 
 function lmBuscarLote(q) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shLotes = ss.getSheetByName('LOTES');
     var shOrd   = ss.getSheetByName('ORDENES');
     if (!shLotes) return JSON.stringify({ success: false, msg: 'Hoja LOTES no encontrada' });
@@ -14919,7 +15022,7 @@ function lmBuscarLote(q) {
 // ══════════════════════════════════════════════════════════════
 function lmObtenerDetalleLote(loteNombre) {
   try {
-    var ss      = SpreadsheetApp.openById(ID_HOJA_CALCULO);
+    var ss      = getSS_();
     var shLotes = ss.getSheetByName('LOTES');
     var shOrd   = ss.getSheetByName('ORDENES');
     var shProd  = ss.getSheetByName('PRODUCCION');
